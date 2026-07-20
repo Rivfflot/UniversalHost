@@ -108,6 +108,7 @@ public abstract partial class SymbolRuntime : ReactiveObject
     public abstract bool UpdateValueFromBytes(ReadOnlySpan<byte> data, bool isLittleEndian);
     public abstract byte[]? StringToValue();
     public abstract string ValueToString();
+    public abstract string ValueToStringWithoutUpdate();
     public abstract string? GetValueHistoryIndexString(int index);
     public abstract void GetBitsValue(Span<byte> data);
     //TEST
@@ -303,6 +304,12 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
         ValueString = Value.ToString() ?? "";
 
         return ValueString;
+    }
+    public override string ValueToStringWithoutUpdate()
+    {
+        if (_valuesHistory.IsEmpty) return "";
+
+        return Value.ToString() ?? "";
     }
     /// <summary>
     /// 测试用，添加随机数据

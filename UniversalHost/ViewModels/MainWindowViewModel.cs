@@ -371,8 +371,6 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         try
         {
             await XcpService.Client.DisconnectAsync();
-            Serilog.Log.Information($"设备已断开连接");
-            NotificationService.Show("设备已断开连接", "", NotificationType.Success);
         }
         catch (Exception ex)
         {
@@ -382,6 +380,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         finally
         {
             await XcpService.Client.DisposeAsync();
+            Serilog.Log.Information($"设备已断开连接");
+            NotificationService.Show("设备已断开连接", "", NotificationType.Success);
             XcpService.Client = null;
         }
     }

@@ -50,7 +50,7 @@
 				Padding="1"
 				ToolTip.Tip="从设备上传此窗口所有标定变量"
 				ToolTip.ShowOnDisabled="True"
-				Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+				Command="{Binding UploadValuesCommand}"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
 				Cursor="Hand"/>
 			</Menu>

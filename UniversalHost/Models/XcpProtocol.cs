@@ -593,7 +593,7 @@ public static class XcpProtocol
         {
             public static int Encode(Span<byte> buffer, ShortDownloadParams p)
             {
-                buffer[0] = (byte)Command.Cal_Download;
+                buffer[0] = (byte)Command.Cal_ShortDownload;
                 buffer[1] = p.Ag switch
                 {
                     Std.AddressGranularity.Byte => (byte)p.Data.Length,

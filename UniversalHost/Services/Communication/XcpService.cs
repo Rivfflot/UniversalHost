@@ -194,7 +194,7 @@ public class XcpClient : IAsyncDisposable
         {
             var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            IMemoryOwner<byte> owner = _pool.Rent(512);
+            IMemoryOwner<byte> owner = _pool.Rent(280);
             Memory<byte> mem = owner.Memory;
 
             int xcpLen = TCommand.Encode(mem.Span[4..], args);
@@ -256,6 +256,7 @@ public class XcpClient : IAsyncDisposable
         byte agLen = CalculateAgLenOfValue(DeviceStatus.ConnectRes.Granularity, symbolRuntime.ValueSizeInBytes);
         buffer = await Std.ShortUploadAsync(agLen, symbolRuntime.Symbol.Address);
         symbolRuntime.UpdateValueFromBytes(buffer, DeviceStatus.ConnectRes.IsLittleEndian);
+        symbolRuntime.ValueToString();
     }
     /// <summary>
     /// 使用SHORT_UPLOAD指令将指定的变量值上传至上位机。适用于低频传输。
@@ -275,8 +276,8 @@ public class XcpClient : IAsyncDisposable
     /// <returns></returns>
     public async Task<bool> DownloadSymbol(SymbolRuntime symbolRuntime)
     {
-        string OldValue = symbolRuntime.ValueToString();
         string NewValue = symbolRuntime.ValueString;
+        string OldValue = symbolRuntime.ValueToStringWithoutUpdate();
         //相同时不处理
         if (OldValue == NewValue)
         {
@@ -317,8 +318,8 @@ public class XcpClient : IAsyncDisposable
 
         await Daq.SetDaqListModeAsync();
 
-        byte firstPid = await Daq.StartDaqListAsync(0);
-
+        byte firstPid = await Daq.SelectDaqListAsync(0);
+        await Daq.StartSynchAsync();
         layout.Pid = (byte)(firstPid + layout.Odt);
         _pidOdtMap.Add(layout.Pid, layout);
         GlobalStatus.Instance.IsMonitoring = true;
@@ -429,7 +430,7 @@ public class XcpClient : IAsyncDisposable
                 if (!_pidOdtMap.TryGetValue(frame.Pid, out var layout))
                     continue;
 
-                var payload = frame.Data.Span[5..];
+                var payload = frame.Data.Span[12..];
 
                 int offset = 0;
 
@@ -456,7 +457,7 @@ public class XcpClient : IAsyncDisposable
 
     private async Task HeartbeatLoop()
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
         while (await timer.WaitForNextTickAsync(_cts.Token))
         {
@@ -487,6 +488,7 @@ public class XcpClient : IAsyncDisposable
                     // SYNCH 超时
                     NotificationService.Show("设备断开", $"设备连接超时, {syncEx.Message}", NotificationType.Error);
                     Debug.WriteLine($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
+                    Serilog.Log.Debug($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
                     GlobalStatus.Instance.IsConnected = false;
                     GlobalStatus.Instance.IsMonitoring = false;
                     await this.DisposeAsync();
@@ -496,8 +498,11 @@ public class XcpClient : IAsyncDisposable
             catch (Exception unkownEx)
             {
                 // 捕获其他非超时类非预期异常（如 Socket 硬件接口被强行 Dispose）
+                NotificationService.Show("设备断开", $"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}", NotificationType.Error);
                 Debug.WriteLine($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
+                Serilog.Log.Debug($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
                 GlobalStatus.Instance.IsConnected = false;
+                GlobalStatus.Instance.IsMonitoring = false;
                 break;
             }
         }
@@ -507,17 +512,10 @@ public class XcpClient : IAsyncDisposable
     {
         _cts.Cancel();
 
-        if (_rxTask != null)
-            await _rxTask;
-
-        if (_txTask != null)
-            await _txTask;
-
-        if (_daqTask != null)
-            await _daqTask;
-
-        if (_heartbeatTask != null)
-            await _heartbeatTask;
+        try { if (_rxTask != null) await _rxTask; } catch (OperationCanceledException) { }
+        try { if (_txTask != null) await _txTask; } catch (OperationCanceledException) { }
+        try { if (_daqTask != null) await _daqTask; } catch (OperationCanceledException) { }
+        try { if (_heartbeatTask != null) await _heartbeatTask; } catch (OperationCanceledException) { }
 
         _cts.Dispose();
         await _comm.DisposeAsync();
@@ -734,7 +732,7 @@ public class XcpClient : IAsyncDisposable
             {
                 IsLittleEndian = _client.DeviceStatus.ConnectRes.IsLittleEndian,
                 Direction = false,
-                Timestamp = false,
+                Timestamp = true,
                 PidOff = false,
                 DaqList = daqList,
                 EventChannel = eventChannel,
@@ -759,7 +757,16 @@ public class XcpClient : IAsyncDisposable
             };
             return _client.SendCtoAsync<Daq.StartStopDaqListCommand, Daq.StartStopDaqListParams, byte>(p);
         }
-
+        public Task<byte> SelectDaqListAsync(ushort list = 0)
+        {
+            Daq.StartStopDaqListParams p = new()
+            {
+                IsLittleEndian = _client.DeviceStatus.ConnectRes.IsLittleEndian,
+                Mode = XcpProtocol.Daq.DaqListMode.Select,
+                DaqList = list,
+            };
+            return _client.SendCtoAsync<Daq.StartStopDaqListCommand, Daq.StartStopDaqListParams, byte>(p);
+        }
         public Task<byte> StopDaqListAsync(ushort list = 0)
         {
             Daq.StartStopDaqListParams p = new()
@@ -779,6 +786,15 @@ public class XcpClient : IAsyncDisposable
                 DaqList = list,
             };
             return _client.SendCtoAsync<Daq.GetDaqListInfoCommand, Daq.GetDaqListInfoParams, Daq.GetDaqListInfoResponse>(p);
+        }
+
+        public Task<bool> StartSynchAsync()
+        {
+            return _client.SendCtoAsync<Daq.StartStopSynchCommand, Daq.DaqListMode, bool>(XcpProtocol.Daq.DaqListMode.Start);
+        }
+        public Task<bool> StopSynchAsync()
+        {
+            return _client.SendCtoAsync<Daq.StartStopSynchCommand, Daq.DaqListMode, bool>(XcpProtocol.Daq.DaqListMode.Stop);
         }
     }
 }

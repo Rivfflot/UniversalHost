@@ -192,7 +192,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
             foreach (var item in DisplaySymbolRuntimes)
             {
                 await XcpService.Client!.UploadSymbol(item);
-                NotificationService.Show("此窗口变量已上传", $"共上传 {DisplaySymbolRuntimes.Count} 个变量", NotificationType.Error);
+                NotificationService.Show("此窗口变量已上传", $"共上传 {DisplaySymbolRuntimes.Count} 个变量", NotificationType.Success);
             }
         }
         catch (Exception ex)
