@@ -1,0 +1,173 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="using:UniversalHost.Views.Documents"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+
+             xmlns:ScottPlot="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
+             xmlns:vm="using:UniversalHost.ViewModels.Documents"
+             x:DataType="vm:CurveMonitorViewModel"
+             x:Class="UniversalHost.Views.Documents.CurveMonitorView">
+
+    <UserControl.KeyBindings>
+        <!-- 触发 ViewModel 中的 Command -->
+        <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
+    </UserControl.KeyBindings>
+
+    <UserControl.Styles>
+        <!-- 鼠标悬停时的行是伪类 drag-hover SystemAccentColorBrush -->
+        <Style Selector="ListBoxItem.drag-hover">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,3"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding CurvesLayout.LeftPanelLength, Mode=TwoWay}" MinWidth="10"/>
+            <ColumnDefinition Width="1.3"/>
+            <ColumnDefinition Width="*" MinWidth="20"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel
+        Grid.Column="0"
+        Orientation="Vertical">
+            <Menu
+            Padding="0"
+            Height="25">
+                <MenuItem Header="🔽" Padding="1" ToolTip.Tip="选择显示项">
+                    <CheckBox Content="变量名" IsChecked="{Binding CurvesLayout.IsNameVisible}"/>
+                    <CheckBox Content="别名" IsChecked="{Binding CurvesLayout.IsAliasVisible}"/>
+                    <CheckBox Content="值" IsChecked="{Binding CurvesLayout.IsValueVisible}"/>
+                    <CheckBox Content="单位" IsChecked="{Binding CurvesLayout.IsUnitVisible}"/>
+                </MenuItem>
+                <MenuItem
+                Header="➕"
+                Padding="1"
+                ToolTip.Tip="添加监控变量"
+                Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+                Cursor="Hand"/>
+                <MenuItem
+                Header="⚙️"
+                Padding="1"
+                ToolTip.Tip="设置"
+                Cursor="Hand"/>
+            </Menu>
+
+            <!--  分隔线  -->
+            <Border Height="1" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+
+            <ListBox
+            x:Name="SymbolList"
+            ItemsSource="{Binding DisplayCurves}"
+            SelectionMode="Single"
+            SelectedItem="{Binding SelectedCurveItem}"
+
+            DragDrop.DragOver="ListBox_DragOver"
+            DragDrop.Drop="ListBox_Drop"
+            Background="Transparent"
+            Padding="0">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,0.6"/>
+                        <Setter Property="DragDrop.AllowDrop" Value="True" />
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem
+                        Header="切换显示"
+                        Command="{Binding ToggleCurveItemVisiableCommand}"
+                        InputGesture="Space"
+                        />
+                        <MenuItem
+                        Header="添加变量"
+                        Command="{Binding OpenAddDisplaySymbolWindowCommand}"/>
+                        <MenuItem
+                        Header="移除变量"
+                        Command="{Binding RemoveSelectedSymbolCommand}"/>
+                        <MenuItem
+                        Header="清空变量"
+                        Command="{Binding ClearSelectedSymbolsCommand}"/>
+                        <MenuItem
+                        Header="复制变量名"
+                        Command="{Binding CopySymbolNameCommand}"
+                        CommandParameter="{Binding $parent[TopLevel]}"/>
+                        <MenuItem
+                        Header="复制变量值"
+                        Command="{Binding CopySymbolValueCommand}"
+                        CommandParameter="{Binding $parent[TopLevel]}"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Spacing="0">
+                            <DockPanel
+                            PointerPressed="FirstRow_PointerPressed"
+                            LastChildFill="False"
+                            Background="Transparent">
+                                <TextBlock
+                                Text="{Binding Runtime.Symbol.Name}"
+                                FontSize="14"
+                                Padding="1,0,0,0"
+                                IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsNameVisible}"/>
+                                <TextBlock
+                                Text="{Binding Runtime.Symbol.Alias}"
+                                FontSize="14"
+                                Padding="1,0,0,0"
+                                IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsAliasVisible}"/>
+                            </DockPanel>
+                            <DockPanel LastChildFill="False">
+                                <ToggleButton
+                                Height="16"
+                                Width="20"
+                                IsThreeState="False"
+                                Padding="0,0,1,0"
+                                CornerRadius="1.5"
+                                IsChecked="{Binding IsVisible}">
+                                    <ToggleButton.Content>
+                                        <TextBlock
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Center"
+                                        IsVisible="{Binding !$parent[ToggleButton].IsChecked}"
+                                        Text="✖️"
+                                        FontSize="10"/>
+                                    </ToggleButton.Content>
+                                    <ToggleButton.Styles>
+                                        <Style Selector="ToggleButton:checked /template/ ContentPresenter">
+                                            <Setter Property="TextElement.Background" Value="{Binding Brush}"/>
+                                        </Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+
+                                <TextBlock Text="{Binding Runtime.ValueString}"
+                                           FontSize="12"
+                                           Padding="0"
+                                           IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsValueVisible}"/>
+
+                                <TextBlock Text="{Binding Runtime.Symbol.Unit}"
+                                           FontSize="12"
+                                           Padding="1,0,0,0"
+                                           IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsUnitVisible}"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </StackPanel>
+
+        <GridSplitter Grid.Column="1"
+                      MinWidth="1.3"
+                      ResizeDirection="Columns"
+                      Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
+                      Cursor="SizeWestEast"/>
+
+
+        <ScottPlot:AvaPlot Grid.Column="2" x:Name="CurvePlot"/>
+
+    </Grid>
+
+</UserControl>

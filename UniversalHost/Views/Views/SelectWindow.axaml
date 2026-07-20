@@ -1,0 +1,231 @@
+<Window xmlns="https://github.com/avaloniaui"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		xmlns:local="using:UniversalHost"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:vm="using:UniversalHost.ViewModels.Views"
+		x:Class="UniversalHost.Views.Views.SelectSymbolWindow"
+		x:DataType="vm:SelectWindowViewModel"
+		Width="800"
+		Height="450"
+		Title="变量选择窗口">
+
+	<Window.Resources>
+		<vm:SelectedConverter x:Key="SelectedConverter"/>
+	</Window.Resources>
+
+	<StackPanel Orientation="Horizontal">
+
+		<StackPanel
+		IsVisible="{Binding IsMonitorMode}"
+		Orientation="Vertical">
+			<TextBox PlaceholderText="搜索 符号名称/地址/来源文件/别名/描述"
+					 MaxWidth="650"
+					 HorizontalAlignment="Left"
+					 Text="{Binding MonitorSymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+			<DataGrid ItemsSource="{Binding FilteredMonitorSymbols}"
+					  AutoGenerateColumns="False"
+					  CanUserSortColumns="True"
+					  GridLinesVisibility="All"
+					  VerticalScrollBarVisibility="Auto"
+					  HorizontalScrollBarVisibility="Auto"
+					  Height="500"
+					  Margin="0,5,0,0">
+				<DataGrid.Columns>
+					<DataGridTemplateColumn Width="32">
+						<DataGridTemplateColumn.CellTemplate>
+							<DataTemplate>
+								<CheckBox HorizontalAlignment="Center"
+										  VerticalAlignment="Center"
+										  Command="{Binding $parent[Window].DataContext.ToggleSymbolCommand}"
+										  CommandParameter="{Binding}" >
+									<CheckBox.IsChecked>
+										<MultiBinding Converter="{StaticResource SelectedConverter}">
+											<Binding />
+											<Binding Path="$parent[Window].DataContext.SelectionRefreshVersion"/>
+										</MultiBinding>
+									</CheckBox.IsChecked>
+								</CheckBox>
+							</DataTemplate>
+						</DataGridTemplateColumn.CellTemplate>
+					</DataGridTemplateColumn>
+					<DataGridTextColumn
+					Header="符号名称"
+					Binding="{Binding Name}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="类型"
+					IsReadOnly="True"
+					Binding="{Binding DataType}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="别名"
+					Binding="{Binding Alias}"
+					IsReadOnly="False"
+					Width="Auto"
+					MaxWidth="200"/>
+					<DataGridTextColumn
+					Header="单位"
+					Binding="{Binding Unit}"
+					IsReadOnly="False"
+					Width="Auto"
+					MaxWidth="70"/>
+					<DataGridTextColumn
+					Header="偏移量"
+					Binding="{Binding Offset}"
+					IsReadOnly="True"
+					Width="Auto"
+					MaxWidth="70"/>
+					<DataGridTextColumn
+					Header="地址"
+					Binding="{Binding AddressHex}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="来源文件"
+					Binding="{Binding SourceFileName}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="描述"
+					Binding="{Binding Description}"
+					Width="Auto"
+					MaxWidth="500"
+					IsReadOnly="False"/>
+				</DataGrid.Columns>
+			</DataGrid>
+		</StackPanel>
+
+		<StackPanel
+		IsVisible="{Binding IsCalibrateMode}"
+		Orientation="Vertical">
+			<TextBox PlaceholderText="搜索 符号名称/地址/来源文件/别名/描述"
+					 MaxWidth="650"
+					 HorizontalAlignment="Left"
+					 Text="{Binding CalibrateSymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+			<DataGrid ItemsSource="{Binding FilteredCalibrateSymbols}"
+					  AutoGenerateColumns="False"
+					  CanUserSortColumns="True"
+					  GridLinesVisibility="All"
+					  VerticalScrollBarVisibility="Auto"
+					  HorizontalScrollBarVisibility="Auto"
+					  Height="500"
+					  Margin="0,5,0,0">
+				<DataGrid.Columns>
+					<DataGridTemplateColumn Width="32">
+						<DataGridTemplateColumn.CellTemplate>
+							<DataTemplate>
+								<CheckBox HorizontalAlignment="Center"
+										  VerticalAlignment="Center"
+										  Command="{Binding $parent[Window].DataContext.ToggleSymbolCommand}"
+										  CommandParameter="{Binding}" >
+									<CheckBox.IsChecked>
+										<MultiBinding Converter="{StaticResource SelectedConverter}">
+											<Binding />
+											<Binding Path="$parent[Window].DataContext.SelectionRefreshVersion"/>
+										</MultiBinding>
+									</CheckBox.IsChecked>
+								</CheckBox>
+							</DataTemplate>
+						</DataGridTemplateColumn.CellTemplate>
+					</DataGridTemplateColumn>
+					<DataGridTextColumn
+					Header="符号名称"
+					Binding="{Binding Name}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="类型"
+					IsReadOnly="True"
+					Binding="{Binding DataType}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="别名"
+					Binding="{Binding Alias}"
+					IsReadOnly="False"
+					Width="Auto"
+					MaxWidth="200"/>
+					<DataGridTextColumn
+					Header="单位"
+					Binding="{Binding Unit}"
+					IsReadOnly="False"
+					Width="Auto"
+					MaxWidth="70"/>
+					<DataGridTextColumn
+					Header="最小值"
+					Binding="{Binding MinValue}"
+					IsReadOnly="False"
+					Width="Auto"
+					MaxWidth="200"/>
+					<DataGridTextColumn
+					Header="最大值"
+					Binding="{Binding MaxValue}"
+					IsReadOnly="False"
+					Width="Auto"
+					MaxWidth="200"/>
+					<DataGridTextColumn
+					Header="偏移量"
+					Binding="{Binding Offset}"
+					IsReadOnly="True"
+					Width="Auto"
+					MaxWidth="70"/>
+					<DataGridTextColumn
+					Header="地址"
+					Binding="{Binding AddressHex}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="来源文件"
+					Binding="{Binding SourceFileName}"
+					Width="Auto"/>
+					<DataGridTextColumn
+					Header="描述"
+					Binding="{Binding Description}"
+					Width="Auto"
+					MaxWidth="500"
+					IsReadOnly="False"/>
+				</DataGrid.Columns>
+			</DataGrid>
+		</StackPanel>
+
+		<StackPanel
+		IsVisible="{Binding IsUserCmdMode}"
+		Orientation="Vertical">
+			<StackPanel Orientation="Vertical">
+				<TextBox PlaceholderText="搜索 指令码/名称/描述"
+						 MaxWidth="650"
+						 HorizontalAlignment="Left"
+						 Text="{Binding UserCommandSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+				<DataGrid ItemsSource="{Binding FilteredUserCommands}"
+						  AutoGenerateColumns="False"
+						  CanUserSortColumns="True"
+						  GridLinesVisibility="All"
+						  VerticalScrollBarVisibility="Auto"
+						  Height="500"
+						  Margin="0,5,0,0"
+						  x:CompileBindings="True">
+					<DataGrid.Columns>
+						<DataGridTemplateColumn Width="32">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<CheckBox HorizontalAlignment="Center"
+											  VerticalAlignment="Center"
+											  Command="{Binding $parent[Window].DataContext.ToggleUserCommandCommand}"
+											  CommandParameter="{Binding}" >
+										<CheckBox.IsChecked>
+											<MultiBinding Converter="{StaticResource SelectedConverter}">
+												<Binding />
+												<Binding Path="$parent[Window].DataContext.SelectionRefreshVersion"/>
+											</MultiBinding>
+										</CheckBox.IsChecked>
+									</CheckBox>
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTextColumn Header="指令码" Binding="{Binding IdHex}" SortMemberPath="Id" CanUserSort="True" IsReadOnly="True" Width="Auto"/>
+						<DataGridTextColumn Header="名称" Binding="{Binding Name}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
+						<DataGridTextColumn Header="描述" Binding="{Binding Description}" IsReadOnly="False" Width="Auto" MaxWidth="400"/>
+					</DataGrid.Columns>
+				</DataGrid>
+			</StackPanel>
+
+		</StackPanel>
+
+	</StackPanel>
+</Window>

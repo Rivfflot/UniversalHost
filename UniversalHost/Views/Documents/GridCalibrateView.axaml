@@ -1,0 +1,188 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="using:UniversalHost.ViewModels.Documents"
+			 x:DataType="vm:GridCalibrateViewModel"
+			 xmlns:services="clr-namespace:UniversalHost.Services"
+			 mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="200"
+			 x:Class="UniversalHost.Views.Documents.GridCalibrateView">
+	<UserControl.Styles>
+		<!-- 鼠标悬停时的行是伪类 drag-hover -->
+		<Style Selector="DataGridRow.drag-hover">
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorBrush}"/>
+			<Setter Property="BorderThickness" Value="0,0,0,3"/>
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+		</Style>
+		<Style Selector="DataGridCell.draggable-column">
+			<Setter Property="Cursor" Value="Hand"/>
+		</Style>
+	</UserControl.Styles>
+
+
+	<StackPanel Orientation="Vertical">
+		<StackPanel Orientation="Horizontal">
+			<!--  顶部菜单栏  -->
+			<Menu Padding="0" Height="25" HorizontalAlignment="Left">
+				<MenuItem Header="🔽" Padding="1" ToolTip.Tip="选择显示列">
+					<CheckBox Content="变量名" IsChecked="{Binding IsNameColumnVisible}"/>
+					<CheckBox Content="别名" IsChecked="{Binding IsAliasColumnVisible}"/>
+					<CheckBox Content="值" IsChecked="{Binding IsValueColumnVisible}"/>
+					<CheckBox Content="单位" IsChecked="{Binding IsUnitColumnVisible}"/>
+				</MenuItem>
+				<MenuItem
+				Header="➕"
+				Padding="1"
+				ToolTip.Tip="添加标定变量"
+				ToolTip.ShowOnDisabled="True"
+				Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+				Cursor="Hand"/>
+				<MenuItem
+				Header="⏬"
+				Padding="1"
+				ToolTip.Tip="下载此窗口所有标定变量至设备"
+				ToolTip.ShowOnDisabled="True"
+				Command="{Binding DownloadValuesCommand}"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
+				Cursor="Hand"/>
+				<MenuItem
+				Header="⏫"
+				Padding="1"
+				ToolTip.Tip="从设备上传此窗口所有标定变量"
+				ToolTip.ShowOnDisabled="True"
+				Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
+				Cursor="Hand"/>
+			</Menu>
+			<!--  最大值最小值  -->
+			<TextBlock
+			Padding="15,0,0,0"
+			VerticalAlignment="Center"
+			FontSize="10"
+			Text="最小值"/>
+			<TextBox
+			PlaceholderText="inf"
+			FontSize="10"
+			MinHeight="0"
+			Height="18"
+			MinWidth="50"
+			Width="50"
+			Padding="3,0,0,0"
+			VerticalContentAlignment="Center"
+			BorderThickness="0.5"
+			IsHitTestVisible="False"
+			IsReadOnly="True"
+			Text="{Binding SelectedSymbolRuntime.Symbol.MinValue}"/>
+			<TextBlock
+			Padding="5,0,0,0"
+			VerticalAlignment="Center"
+			FontSize="10"
+			Text="最大值"/>
+			<TextBox
+			PlaceholderText="inf"
+			FontSize="10"
+			MinHeight="0"
+			Height="18"
+			MinWidth="50"
+			Width="50"
+			Padding="3,0,0,0"
+			VerticalContentAlignment="Center"
+			BorderThickness="0.5"
+			IsHitTestVisible="False"
+			IsReadOnly="True"
+			Text="{Binding SelectedSymbolRuntime.Symbol.MaxValue}"/>
+
+		</StackPanel>
+		<!--  描述显示及编辑区域  -->
+		<TextBox
+		PlaceholderText="变量描述"
+		FontSize="12"
+		Text="{Binding SelectedSymbolRuntime.Symbol.Description}"
+		TextWrapping="Wrap"
+		IsEnabled="{Binding SelectedSymbolRuntime, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+		<!--  数据区域  -->
+		<DataGrid
+		x:Name="Grid"
+		ItemsSource="{Binding DisplaySymbolRuntimes}"
+		SelectedItem="{Binding SelectedSymbolRuntime}"
+		PointerPressed="Grid_PointerPressed"
+		DragDrop.DragOver="Grid_DragOver"
+		DragDrop.Drop="Grid_Drop"
+		VerticalScrollBarVisibility="Disabled"
+		HorizontalScrollBarVisibility="Disabled"
+		CanUserResizeColumns="True"
+		CanUserSortColumns="True"
+		GridLinesVisibility="All"
+		x:CompileBindings="True">
+
+			<DataGrid.Styles>
+				<Style Selector="DataGridRow">
+					<Setter Property="DragDrop.AllowDrop" Value="True" />
+					<!--
+					<Setter Property="Background" Value="Transparent" />
+					-->
+				</Style>
+			</DataGrid.Styles>
+
+			<DataGrid.ContextMenu>
+				<ContextMenu>
+					<MenuItem
+					Header="添加变量"
+					Command="{Binding OpenAddDisplaySymbolWindowCommand}"/>
+					<MenuItem
+					Header="移除变量"
+					Command="{Binding RemoveSelectedSymbolCommand}"/>
+					<MenuItem
+					Header="清空变量"
+					Command="{Binding ClearSelectedSymbolsCommand}"/>
+					<MenuItem
+					Header="复制变量名"
+					Command="{Binding CopySymbolNameCommand}"
+					CommandParameter="{Binding $parent[TopLevel]}"/>
+					<MenuItem
+					Header="复制变量值"
+					Command="{Binding CopySymbolValueCommand}"
+					CommandParameter="{Binding $parent[TopLevel]}"/>
+					<MenuItem
+					Header="下载至设备"
+					Command="{Binding DownloadSelectedSymbolValueCommand}"/>
+					<MenuItem
+					Header="从设备上传"
+					Command="{Binding UploadSelectedSymbolValueCommand}"/>
+				</ContextMenu>
+			</DataGrid.ContextMenu>
+
+			<DataGrid.Columns>
+				<DataGridTextColumn
+				Header="变量名"
+				Binding="{Binding Symbol.Name}"
+				Width="Auto"
+				IsVisible="{Binding IsNameColumnVisible}"
+				CellStyleClasses="draggable-column"
+				/>
+				<DataGridTextColumn
+				IsReadOnly="False"
+				Header="别名"
+				Binding="{Binding Symbol.Alias}"
+				Width="Auto"
+				IsVisible="{Binding IsAliasColumnVisible}"
+				CellStyleClasses="draggable-column"/>
+				<DataGridTextColumn
+				Header="值"
+				Binding="{Binding ValueString}"
+				Width="Auto"
+				IsReadOnly="False"
+				IsVisible="{Binding IsValueColumnVisible}"/>
+				<DataGridTextColumn
+				IsReadOnly="False"
+				Header="单位"
+				Binding="{Binding Symbol.Unit}"
+				Width="Auto"
+				IsVisible="{Binding IsUnitColumnVisible}"/>
+			</DataGrid.Columns>
+		</DataGrid>
+
+
+	</StackPanel>
+</UserControl>

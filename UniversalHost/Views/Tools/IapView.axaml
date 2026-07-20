@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="using:UniversalHost.ViewModels.Tools"
+			 xmlns:services="clr-namespace:UniversalHost.Services"
+			 mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="80"
+			 MinHeight="80"
+			 MinWidth="360"
+			 x:DataType="vm:IapViewModel"
+			 x:Class="UniversalHost.Views.Tools.IapView">
+
+	<Grid
+	Margin="8"
+	ColumnDefinitions="Auto,Auto"
+	RowDefinitions="Auto,Auto">
+
+		<!--  文件路径  -->
+		<Button
+		Grid.Row="0"
+		Grid.Column="0"
+		Margin="5,0,0,0"
+		Command="{Binding SelectIapFileCommand}"
+		CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+		Content="选择文件" />
+
+		<TextBox
+		Grid.Row="0"
+		Grid.Column="1"
+		IsReadOnly="False"
+		Text="{Binding Source={x:Static services:ProjectSaveService.Instance},Path=Settings.IapConfig.IapFilePath}" />
+
+		<!--  进度条  -->
+		<Button
+		Grid.Row="1"
+		Grid.Column="0"
+		Margin="5,0,0,0"
+		Command="{Binding StartIapCommand}"
+		Content="开始升级" />
+		<StackPanel
+		Grid.Row="1"
+		Grid.Column="1"
+		Orientation="Horizontal">
+
+			<TextBlock
+			Text="{Binding CurrentStage}"
+			Width="60"
+			VerticalAlignment="Center"/>
+
+			<ProgressBar
+			Height="25"
+			Maximum="100"
+			Minimum="0"
+			Value="{Binding IapProgressBar}" />
+		</StackPanel>
+	</Grid>
+</UserControl>

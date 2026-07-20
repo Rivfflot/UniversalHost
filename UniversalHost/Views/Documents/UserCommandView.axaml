@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:models="using:UniversalHost.Models"
+			 xmlns:services="clr-namespace:UniversalHost.Services"
+			 xmlns:vm="using:UniversalHost.ViewModels.Documents"
+			 x:DataType="vm:UserCommandViewModel"
+			 mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="200"
+			 x:Class="UniversalHost.Views.Documents.UserCommandView">
+
+	<UserControl.Styles>
+		<!-- 鼠标悬停时的行是伪类 drag-hover -->
+		<Style Selector="DataGridRow.drag-hover">
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorBrush}"/>
+			<Setter Property="BorderThickness" Value="0,0,0,3"/>
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+		</Style>
+		<Style Selector="DataGridCell.draggable-column">
+			<Setter Property="Cursor" Value="Hand"/>
+		</Style>
+	</UserControl.Styles>
+
+	<StackPanel Orientation="Vertical">
+		<!--  顶部菜单栏  -->
+		<Menu Padding="0" Height="25" HorizontalAlignment="Left">
+			<MenuItem Header="🔽" Padding="1" ToolTip.Tip="选择显示列">
+				<CheckBox Content="指令码" IsChecked="{Binding IsIdVisiable}"/>
+				<CheckBox Content="名称" IsChecked="{Binding IsNameVisiable}"/>
+			</MenuItem>
+			<MenuItem
+			Header="➕"
+			Padding="1"
+			ToolTip.Tip="添加指令"
+			Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+			Cursor="Hand"/>
+		</Menu>
+		<!--  描述显示及编辑区域  -->
+		<TextBox
+		PlaceholderText="指令描述"
+		FontSize="12"
+		Text="{Binding SelectedUserCommand.Description}"
+		TextWrapping="Wrap"
+		IsEnabled="{Binding SelectedUserCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+		<!--  数据区域  -->
+		<DataGrid
+		x:Name="Grid"
+		ItemsSource="{Binding DisplayUserCommands}"
+		SelectedItem="{Binding SelectedUserCommand}"
+		PointerPressed="Grid_PointerPressed"
+		DragDrop.DragOver="Grid_DragOver"
+		DragDrop.Drop="Grid_Drop"
+		VerticalScrollBarVisibility="Disabled"
+		HorizontalScrollBarVisibility="Disabled"
+		CanUserResizeColumns="True"
+		CanUserSortColumns="True"
+		GridLinesVisibility="All"
+		x:CompileBindings="True">
+
+			<DataGrid.Styles>
+				<Style Selector="DataGridRow">
+					<Setter Property="DragDrop.AllowDrop" Value="True" />
+				</Style>
+			</DataGrid.Styles>
+
+			<DataGrid.ContextMenu>
+				<ContextMenu>
+					<MenuItem
+					Header="添加指令"
+					Command="{Binding OpenAddDisplaySymbolWindowCommand}"/>
+					<MenuItem
+					Header="移除指令"
+					Command="{Binding RemoveSelectedCommandCommand}"/>
+					<MenuItem
+					Header="清空指令"
+					Command="{Binding ClearSelectedCommandsCommand}"/>
+				</ContextMenu>
+			</DataGrid.ContextMenu>
+			<DataGrid.Columns>
+				<DataGridTemplateColumn Width="28">
+					<DataGridTemplateColumn.CellTemplate>
+						<DataTemplate>
+							<Button
+							Background="Transparent"
+							BorderThickness="0"
+							Padding="0"
+							MinHeight="0"
+							MinWidth="0"
+							Content="✅"
+							FontFamily="Apple Color Emoji, Noto Color Emoji"
+							HorizontalContentAlignment="Center"
+							ToolTip.Tip="执行"
+							Command="{Binding  $parent[UserControl].DataContext.ExecuteUserCommandCommand}"
+							CommandParameter="{Binding}"
+							IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"/>
+						</DataTemplate>
+					</DataGridTemplateColumn.CellTemplate>
+				</DataGridTemplateColumn>
+				<DataGridTextColumn
+				Header="指令"
+				Binding="{Binding IdHex}"
+				Width="Auto"
+				IsVisible="{Binding IsIdVisiable}"
+				CellStyleClasses="draggable-column"
+				/>
+				<DataGridTextColumn
+				IsReadOnly="False"
+				Header="名称"
+				Binding="{Binding Name}"
+				Width="Auto"
+				IsVisible="{Binding IsNameVisiable}"
+				CellStyleClasses="draggable-column"/>
+			</DataGrid.Columns>
+		</DataGrid>
+	</StackPanel>
+</UserControl>

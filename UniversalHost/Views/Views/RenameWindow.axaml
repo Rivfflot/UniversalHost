@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:UniversalHost.ViewModels.Views"
+        x:Class="UniversalHost.Views.Views.RenameWindow"
+        x:DataType="vm:RenameWindowViewModel"
+
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        WindowDecorations="BorderOnly"
+        Title="重命名"
+        Width="320"
+        Height="140"
+        >
+    <Border Padding="20" Background="{DynamicResource SystemChromeLowColor}">
+        <StackPanel Spacing="15" VerticalAlignment="Center">
+
+            <TextBlock Text="请输入新名称："
+                       FontSize="13"
+                       FontWeight="SemiBold"/>
+
+            <!-- 绑定输入文本 -->
+            <TextBox
+            Name="NameInput"
+            Text="{Binding NewName, Mode=TwoWay}"
+            PlaceholderText="新名称"
+            Focusable="True"
+            VerticalAlignment="Center"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <!-- 取消按钮 -->
+                <Button Content="取消"
+                        Command="{Binding CancelCommand}"
+                        IsCancel="True"
+                        Width="70"
+                        HorizontalContentAlignment="Center"/>
+                <!-- 确定按钮 -->
+                <Button Content="确定"
+                        Command="{Binding ConfirmCommand}"
+                        Width="70"
+                        IsDefault="True"
+                        HorizontalContentAlignment="Center"/> <!-- 突出显示确定按钮 -->
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</Window>

@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:UniversalHost.ViewModels.Documents"
+             x:Class="UniversalHost.Views.Documents.BitsMonitorView"
+             x:DataType="vm:BitsMonitorViewModel"
+             mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="200"
+             >
+
+    <StackPanel Orientation="Vertical">
+        <!--  顶部菜单栏  -->
+        <Menu Padding="0" Height="25" HorizontalAlignment="Left">
+            <MenuItem Header="🔽" Padding="1" ToolTip.Tip="选择显示项">
+                <CheckBox Content="变量名" IsChecked="{Binding Layout.IsNameVisible}"/>
+                <CheckBox Content="别名" IsChecked="{Binding Layout.IsAliasVisible}"/>
+                <CheckBox Content="值" IsChecked="{Binding Layout.IsValueVisible}"/>
+            </MenuItem>
+            <MenuItem
+            Header="➕"
+            Padding="1"
+            ToolTip.Tip="添加监控变量"
+            Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+            Cursor="Hand"/>
+        </Menu>
+
+        <ItemsControl ItemsSource="{Binding Layout.BitsMonitorSymbols}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <!--  第一层：Expander  -->
+                    <Expander
+                    VerticalAlignment="Top"
+                    Padding="0"
+                    HorizontalContentAlignment="Left"
+                    MinWidth="20"
+                    IsExpanded="{Binding IsExpanded}"
+                    Background="Transparent">
+                        <Expander.Resources>
+                            <!-- 将默认的最小高度（通常为 48）覆盖为你想要的紧凑高度，例如 32 -->
+                            <x:Double x:Key="ExpanderMinHeight">32</x:Double>
+                        </Expander.Resources>
+                        <!--  Header  -->
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <StackPanel.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem
+                                        Header="添加变量"
+                                        Command="{Binding $parent[UserControl].DataContext.OpenAddDisplaySymbolWindowCommand}"/>
+                                        <MenuItem
+                                        Header="移除变量"
+                                        Command="{Binding $parent[UserControl].DataContext.RemoveSelectedSymbolCommand}"
+                                        CommandParameter="{Binding}"/>
+                                        <MenuItem
+                                        Header="清空变量"
+                                        Command="{Binding $parent[UserControl].DataContext.ClearSelectedSymbolsCommand}"/>
+                                        <MenuItem
+                                        Header="复制变量名"
+                                        Click="CopySymbolNameClickAsync"/>
+                                        <MenuItem
+                                        Header="复制变量值"
+                                        Click="CopySymbolValueClickAsync"/>
+                                    </ContextMenu>
+                                </StackPanel.ContextMenu>
+                                <TextBlock
+                                Text="{Binding Runtime.Symbol.Name}"
+                                Padding="0,0,5,0"
+                                IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsNameVisible}"/>
+                                <TextBlock
+                                Text="{Binding Runtime.Symbol.Alias}"
+                                Padding="0,0,5,0"
+                                IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsAliasVisible}"/>
+                                <TextBlock
+                                Text="{Binding Runtime.ValueString}"
+                                IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsValueVisible}"/>
+                            </StackPanel>
+                        </Expander.Header>
+
+                        <!--  第二层：Bits  -->
+                        <ItemsControl ItemsSource="{Binding Bits}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Vertical"
+                                               Height="{Binding PanelHeight}"
+                                               HorizontalAlignment="Left"
+                                               MinWidth="20"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                    Padding="0"
+                                    HorizontalAlignment="Stretch"
+                                    BorderThickness="0,0,1,0.6"
+                                    Background="{Binding BackgroundBrush}"
+                                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <!-- Name -->
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Name}"
+                                                       Width="36"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Left"                                                           IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsNameVisible}"/>
+                                            <!-- Alias -->
+                                            <TextBox Grid.Column="1"
+                                                     Width="110"
+                                                     MinHeight="18.6"
+                                                     Height="18.6"
+                                                     IsReadOnly="False"
+                                                     Padding="0,0"
+                                                     BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                     CornerRadius="0"
+                                                     BorderThickness="0.5,0,0.5,0"
+                                                     Text="{Binding Alias}"
+                                                     IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsAliasVisible}"/>
+                                            <!-- Value -->
+                                            <TextBlock
+                                            Grid.Column="2"
+                                            Text="{Binding ValueString}"
+                                            Width="10"
+                                            TextAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsValueVisible}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>
