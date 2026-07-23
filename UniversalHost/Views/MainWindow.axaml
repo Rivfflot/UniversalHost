@@ -250,7 +250,7 @@ x:DataType="vm:MainWindowViewModel"
 			Cursor="Hand"
 			ToolTip.Tip="重新加载符号表"
 			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}" />
+			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
 
 			<Separator
 			Height="NaN"
@@ -266,7 +266,7 @@ x:DataType="vm:MainWindowViewModel"
 			FontSize="18"
 			ToolTip.Tip="开始监控"
 			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
+			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanStartMonitor}" />
 
 			<MenuItem
 			Command="{Binding StopMonitorCommand}"

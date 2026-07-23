@@ -1,3 +1,4 @@
+using ReactiveUI;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -11,9 +12,49 @@ using static UniversalHost.Models.XcpProtocol;
 
 namespace UniversalHost.Services.Communication;
 
-public class XcpService()
+public static class XcpService
 {
     public static XcpClient? Client = null;
+
+    static XcpService()
+    {
+        GlobalStatus.Instance.WhenAnyValue(x => x.IsConnected)
+            .Subscribe(async isConnected =>
+            {
+                if (!isConnected && Client != null)
+                {
+                    if (Client != null)
+                    {
+                        await Client.DisposeAsync();
+                        Client = null;
+                    }
+                    GlobalStatus.Instance.IsMonitoring = false;
+                    NotificationService.Show("设备已断开", "", NotificationType.Warning);
+                }
+            });
+    }
+
+    public static async Task CreateClientAsync()
+    {
+        if (Client != null)
+        {
+            await Client.DisposeAsync();
+        }
+        Client?.DisposeAsync().AsTask().Wait();
+        Client = new XcpClient();
+    }
+
+    public static async Task DisposeClientAsync()
+    {
+        if (Client != null)
+        {
+            await Client.DisposeAsync();
+            Client = null;
+        }
+        Debug.WriteLine("Client已清理");
+        GlobalStatus.Instance.IsConnected = false;
+        GlobalStatus.Instance.IsMonitoring = false;
+    }
 }
 
 public class XcpClient : IAsyncDisposable
@@ -390,6 +431,7 @@ public class XcpClient : IAsyncDisposable
             int len = await _comm.ReceiveAsync(owner.Memory, _cts.Token);
             if (len <= 0)
             {
+                owner.Dispose();
                 continue;
             }
 
@@ -490,8 +532,6 @@ public class XcpClient : IAsyncDisposable
                     Debug.WriteLine($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
                     Serilog.Log.Debug($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
                     GlobalStatus.Instance.IsConnected = false;
-                    GlobalStatus.Instance.IsMonitoring = false;
-                    await this.DisposeAsync();
                     break;
                 }
             }
@@ -502,7 +542,6 @@ public class XcpClient : IAsyncDisposable
                 Debug.WriteLine($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
                 Serilog.Log.Debug($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
                 GlobalStatus.Instance.IsConnected = false;
-                GlobalStatus.Instance.IsMonitoring = false;
                 break;
             }
         }

@@ -334,15 +334,10 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private async Task ConnectDevice()
     {
-        if (XcpService.Client != null)
-        {
-            await XcpService.Client.DisposeAsync();
-            XcpService.Client = null;
-        }
-        XcpService.Client = new XcpClient();
+        await XcpService.CreateClientAsync();
         try
         {
-            await XcpService.Client.ConnectAsync();
+            await XcpService.Client!.ConnectAsync();
             Serilog.Log.Information($"设备连接成功");
             NotificationService.Show("设备已连接", "", NotificationType.Success);
         }
@@ -350,15 +345,13 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             Serilog.Log.Error($"设备连接超时");
             NotificationService.Show("设备连接错误", "连接超时", NotificationType.Error);
-            await XcpService.Client.DisposeAsync();
-            XcpService.Client = null;
+            await XcpService.DisposeClientAsync();
         }
         catch (Exception ex)
         {
             Serilog.Log.Error($"设备连接错误，{ex.Message}");
             NotificationService.Show("设备连接错误", ex.Message, NotificationType.Error);
-            await XcpService.Client.DisposeAsync();
-            XcpService.Client = null;
+            await XcpService.DisposeClientAsync();
         }
     }
     [ReactiveCommand]
@@ -376,13 +369,6 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             Serilog.Log.Error($"设备断开连接错误，{ex.Message}");
             NotificationService.Show("设备断开连接错误", ex.Message, NotificationType.Error);
-        }
-        finally
-        {
-            await XcpService.Client.DisposeAsync();
-            Serilog.Log.Information($"设备已断开连接");
-            NotificationService.Show("设备已断开连接", "", NotificationType.Success);
-            XcpService.Client = null;
         }
     }
 

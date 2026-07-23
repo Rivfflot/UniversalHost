@@ -26,8 +26,12 @@ public partial class GlobalStatus : ReactiveObject
     [Reactive] private bool _isMonitoring = false;
     [Reactive] private bool _isConnected = false;
 
+
     private readonly ObservableAsPropertyHelper<bool> _canEditMonitorSymbol;
     public bool CanEditMonitorSymbol => _canEditMonitorSymbol.Value;
+
+    private readonly ObservableAsPropertyHelper<bool> _canStartMonitor;
+    public bool CanStartMonitor => _canStartMonitor.Value;
     private GlobalStatus()
     {
         this.WhenAnyValue(
@@ -37,6 +41,14 @@ public partial class GlobalStatus : ReactiveObject
             .ToProperty(this,
                         x => x.CanEditMonitorSymbol,
                         out _canEditMonitorSymbol);
+
+        this.WhenAnyValue(
+                x => x.IsConnected,
+                x => x.IsMonitoring,
+                (connected, monitoring) => connected && !monitoring)
+            .ToProperty(this,
+                        x => x.CanStartMonitor,
+                        out _canStartMonitor);
     }
 }
 public class ProjectSaveService : ReactiveObject

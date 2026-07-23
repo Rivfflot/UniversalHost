@@ -472,6 +472,30 @@ public partial class ProjectSettings : ReactiveObject
             }
         });
 
+        this.CalibrateConfig.CalibratedSymbols.Edit(list =>
+        {
+            foreach (var userSymbol in list.Items)
+            {
+                var key = (userSymbol.SourceFileName, userSymbol.Name);
+                if (symbolLookup.TryGetValue(key, out var updated_symbol))
+                {
+                    // 直接修改对象属性，这些更改会反映在原始集合中。
+                    userSymbol.Address = updated_symbol.Address;
+                    userSymbol.Size = updated_symbol.Size;
+                }
+                else
+                {
+                    removedSymbols.Add(userSymbol);
+                    Debug.WriteLine($"Warning: Symbol not found for {userSymbol.SourceFileName}:{userSymbol.Name}");
+                }
+            }
+            // 批量移除不需要的项
+            foreach (var item in removedSymbols)
+            {
+                list.Remove(item);
+            }
+        });
+
         return removedSymbols;
     }
 }
