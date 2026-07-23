@@ -267,33 +267,27 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     /// <returns>表示转换后值的字节数组</returns>
     public override byte[]? StringToValue()
     {
-        if (string.IsNullOrEmpty(ValueString)) return null;
+        if (string.IsNullOrEmpty(ValueString)) throw new ArgumentNullException(nameof(ValueString), "输入数值为空");
 
-        try
+        double val = double.Parse(ValueString);
+        if (Symbol.MaxValue.HasValue && val > Symbol.MaxValue)
         {
-            double val = double.Parse(ValueString);
-            if (Symbol.MaxValue.HasValue && val > Symbol.MaxValue)
-            {
-                throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {ValueString} 大于上限 {Symbol.MaxValue}");
-            }
-            else if (Symbol.MinValue.HasValue && val < Symbol.MinValue)
-            {
-                throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {ValueString} 小于上限 {Symbol.MaxValue}");
-            }
-
-            T parsedValue = (T)Convert.ChangeType(ValueString, typeof(T));
-            Value = parsedValue;
-            _valuesHistory.PushBack(Value);
-            byte[] bytes = new byte[ValueSizeInBytes];
-
-            MemoryMarshal.Write(bytes, in parsedValue);
-
-            return bytes;
+            throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {ValueString} 大于上限 {Symbol.MaxValue}");
         }
-        catch
+        else if (Symbol.MinValue.HasValue && val < Symbol.MinValue)
         {
-            return null;
+            throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {ValueString} 小于上限 {Symbol.MaxValue}");
         }
+
+        T parsedValue = (T)Convert.ChangeType(ValueString, typeof(T));
+        Value = parsedValue;
+        ValueToString();
+        _valuesHistory.PushBack(Value);
+        byte[] bytes = new byte[ValueSizeInBytes];
+
+        MemoryMarshal.Write(bytes, in parsedValue);
+
+        return bytes;
     }
 
     public override string ValueToString()
