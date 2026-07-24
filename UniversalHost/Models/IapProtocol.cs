@@ -297,6 +297,7 @@ public class IapProtocol
         {
             return data[6] switch
             {
+                0xFF => Status.Success,
                 0x00 => Status.DeviceStartErase,
                 0x01 => Status.DeviceStartWrite,
                 0x02 => Status.DeviceStartFalshCheck,

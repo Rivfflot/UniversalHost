@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using UniversalHost.Models;
 
@@ -29,6 +30,9 @@ public class FaultRecordService
 
     public async Task<string> RunFaultRecordSequence()
     {
+#if DEBUG
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
         var client = XcpService.Client!;
         _progress.Report(0);
 
@@ -97,6 +101,10 @@ public class FaultRecordService
 
         var path = DataSaveService.SaveToCsv(faultRecord.RecordSymbolRuntimes, "fault");
         _progress.Report(100.0);
+#if DEBUG
+        watch.Stop();
+        Debug.WriteLine($"故障录波耗时: {watch.ElapsedMilliseconds} ms");
+#endif
         return path;
     }
 

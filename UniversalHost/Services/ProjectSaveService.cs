@@ -375,8 +375,9 @@ public static class DataSaveService
     }
     public static string SaveToCsv(IReadOnlyList<SymbolRuntime> runtimes, string fileName)
     {
+#if DEBUG
         var watch = System.Diagnostics.Stopwatch.StartNew();
-
+#endif
         string savePath = Path.Combine(Path.GetDirectoryName(ProjectSaveService.Instance.ProjectFilePath)!,
                                                       $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
@@ -431,10 +432,10 @@ public static class DataSaveService
         }
 
         writer.Flush();
-
+#if DEBUG
         watch.Stop();
         Debug.WriteLine($"写入CSV耗时: {watch.ElapsedMilliseconds} ms");
-
+#endif
         return savePath;
     }
 }

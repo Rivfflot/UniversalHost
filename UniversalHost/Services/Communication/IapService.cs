@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using static UniversalHost.Models.IapProtocol;
 
 namespace UniversalHost.Services.Communication;
 
@@ -66,7 +67,7 @@ public class IapService
 
         //阶段1：握手
         _stage.Report("开始握手");
-        Serilog.Log.Debug("IAP 开始握手");
+        Serilog.Log.Verbose("IAP 开始握手");
 
         await RunHandShakeAsync(comm, protocol, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds), ct);
 
@@ -74,13 +75,13 @@ public class IapService
 
         //阶段2：发送信息，包括总帧数和每帧字节数
         _stage.Report("发送信息");
-        Serilog.Log.Debug("IAP 开始发送信息");
+        Serilog.Log.Verbose("IAP 开始发送信息");
         await RunStageAsync(comm, protocol, IapProtocol.Stage.SendInformation, retryTimes, ct);
         _progress.Report((double)StageProgress.Infomation);//IAP信息发送完成
 
         //阶段3：发送数据，帧数=文件大小/每帧字节数。最后一帧可变长度。
         _stage.Report("发送数据");
-        Serilog.Log.Debug("IAP 开始发送数据");
+        Serilog.Log.Verbose("IAP 开始发送数据");
         await RunDataFramesAsync(comm, protocol, retryTimes, ct);
 
 
@@ -92,33 +93,31 @@ public class IapService
         {
             _progress.Report((double)StageProgress.StartErase);
             _stage.Report("开始擦除");
-            Serilog.Log.Debug("IAP 开始擦除");
+            Serilog.Log.Verbose("IAP 开始擦除");
             //等待擦除开始信号
             await WaitForStatusWithTimeoutAsync(comm, protocol, IapProtocol.Status.DeviceStartErase, TimeSpan.FromSeconds(1), ct);
 
             //等待擦除完成后的写入开始信号，等待时间 = 擦除时间
             _progress.Report((double)StageProgress.StartWrite);
             _stage.Report("开始写入");
-            Serilog.Log.Debug("IAP 开始写入");
+            Serilog.Log.Verbose("IAP 开始写入");
             await WaitForStatusWithTimeoutAsync(comm, protocol, IapProtocol.Status.DeviceStartWrite, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForWriteTimeoutSeconds), ct);
         }
 
         _progress.Report((double)StageProgress.StartCheck);
 
         _stage.Report("开始校验");
-        Serilog.Log.Debug("IAP 开始校验");
+        Serilog.Log.Verbose("IAP 开始校验");
         //等待校验开始信号。等待时间=写入时间。逐帧写入时等待时间≈0
         await WaitForStatusWithTimeoutAsync(comm, protocol, IapProtocol.Status.DeviceStartFalshCheck, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForCheckTimeoutSeconds), ct);
 
         //等待重启开始信号。等待时间=校验时间
         _stage.Report("开始重启");
-        Serilog.Log.Debug("IAP 开始重启");
+        Serilog.Log.Verbose("IAP 开始重启");
         await WaitForStatusWithTimeoutAsync(comm, protocol, IapProtocol.Status.DeviceStartReboot, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootStartTimeoutSeconds), ct);
         _progress.Report((double)StageProgress.StartReboot);
 
         //等待重启开始开始后的重启完成信号，等待时间 = 重启+初始化时间
-        _stage.Report("重启完成");
-        Serilog.Log.Debug("IAP 重启完成");
         await WaitForStatusWithTimeoutAsync(comm, protocol, IapProtocol.Status.DeviceRebootComplete, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootCompleteTimeoutSeconds), ct);
         _progress.Report((double)StageProgress.RebootComplete);
     }
