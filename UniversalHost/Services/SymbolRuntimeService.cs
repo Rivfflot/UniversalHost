@@ -83,6 +83,37 @@ public static class SymbolRuntimeService
                     })
                     .DisposeWith(_disposables);
 
+        ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols
+                   .Connect()
+                   .AutoRefresh(x => x.DataType)
+                   .WhereReasonsAre(ChangeReason.Refresh)
+                   .Subscribe(changes =>
+                   {
+                       foreach (var change in changes)
+                       {
+                           var symbolRuntime = _calibrateSymbolRuntimesSource.Lookup(change.Current.Id);
+                           if (symbolRuntime.HasValue)
+                           {
+                               var newRuntime = SymbolRuntime.CreateSymbolRuntime(symbolRuntime.Value.Symbol,
+                                                                   ProjectSaveService.Instance.Settings.MonitorConfig.MaxSaveLen);
+                               _calibrateSymbolRuntimesSource.AddOrUpdate(newRuntime);
+                               //更新后刷新UI。
+                               var vms = DockableRegistry.GridCalibrateDocuments.Values
+                                       .Where(x => x.KeysSource.Items.Contains(change.Current.Id));
+
+                               foreach (var view in vms)
+                               {
+                                   view.RefreshDisplay();
+                               }
+                           }
+                           else
+                           {
+                               return;
+                           }
+                       }
+                   })
+                   .DisposeWith(_disposables);
+
         //ValueString 5Hz更新
         Observable.Interval(TimeSpan.FromMilliseconds(200), System.Reactive.Concurrency.TaskPoolScheduler.Default)
                    .Subscribe(_ =>

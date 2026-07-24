@@ -184,7 +184,7 @@ public class XcpClient : IAsyncDisposable
     {
         _comm = ProjectSaveService.Instance.Settings.DeviceConfig.Mode switch
         {
-            CommunicationMode.UDP => new UdpService(ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort, ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort, ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds),
+            CommunicationMode.UDP => new UdpService(ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort, ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort, ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds * 10),
             //CommunicationMode.Serial => new SerialService(ProjectSaveService.Instance.Settings.SerialConfig),//TODO : 串口通信
             _ => throw new Exception("Unsupported communication Mode")
         };
@@ -310,6 +310,10 @@ public class XcpClient : IAsyncDisposable
     {
         byte agLen = CalculateAgLenOfValue(DeviceStatus.ConnectRes.Granularity, lenInByte);
         return await Std.ShortUploadAsync(agLen, addr);
+    }
+    public Task<byte[]> UploadAgAsync(byte agNumber, uint agAddress)
+    {
+        return Std.ShortUploadAsync(agNumber, agAddress);
     }
     /// <summary>
     /// 将标定值下载至设备。同时根据UI字符串更新Value值和ValueHistory。

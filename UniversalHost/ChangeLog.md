@@ -164,3 +164,5 @@
 
 2026-07-24
 - `XcpClient`的心跳包由固定1s间隔发送改为未收到有效数据1s后发送。
+- `XcpClient`中初始化的通信超时改为2倍以免与服务类的超时冲突。
+- 修复`CalibratedSymbols`的`DataType`改变后UI不变更的问题。

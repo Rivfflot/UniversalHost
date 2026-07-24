@@ -510,6 +510,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             {
                 await XcpService.Client!.UploadSymbol(item);
             }
+            NotificationService.Show("上传标定变量成功", $"共上传{SymbolRuntimeService.CalibrateSymbolRuntimesSource.Count}个变量", NotificationType.Success);
         }
         catch (Exception ex)
         {

@@ -17,7 +17,7 @@ internal class FaultRecord
 
     public void HeaderPacketAnalysis(ReadOnlySpan<byte> packet)
     {
-        if (packet.Length != 50)
+        if (packet.Length < 50)
         {
             throw new ArgumentException("故障录波 Header长度错误");
         }
@@ -62,12 +62,7 @@ internal class FaultRecord
             DataType = symbolDataType
         };
         var runtime = SymbolRuntime.CreateSymbolRuntime(userSymbolInfo, (int)RecordLength);
-        //预先填充，使环形缓冲区从CurrentIndex开始，便于后续解析
-        byte[] temp = new byte[runtime.ValueSizeInBytes];
-        for (int i = 0; i < CurrentIndex; i++)
-        {
-            runtime.UpdateValueFromBytes(temp, true);
-        }
+
         RecordSymbolRuntimes.Add(runtime);
     }
 
