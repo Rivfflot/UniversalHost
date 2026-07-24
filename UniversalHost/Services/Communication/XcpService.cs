@@ -4,6 +4,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -359,7 +360,7 @@ public class XcpClient : IAsyncDisposable
 
         await Daq.SetDaqListModeAsync();
 
-        byte firstPid = await Daq.SelectDaqListAsync(0);
+        byte firstPid = await Daq.SelectDaqListAsync();
         await Daq.StartSynchAsync();
         layout.Pid = (byte)(firstPid + layout.Odt);
         _pidOdtMap.Add(layout.Pid, layout);
@@ -421,6 +422,16 @@ public class XcpClient : IAsyncDisposable
         }
         // response 在 ReceiverLoop 处理
     }
+    /// <summary>
+    /// 记录上一次收到有效数据包的时间，用于间隔1s发送心跳。
+    /// </summary>
+    private long _lastActivityTimestamp = Stopwatch.GetTimestamp();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ResetHeartbeatTimer()
+    {
+        Interlocked.Exchange(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
+    }
     private async Task ReceiverLoop()
     {
         while (!_cts.IsCancellationRequested)
@@ -434,6 +445,9 @@ public class XcpClient : IAsyncDisposable
                 owner.Dispose();
                 continue;
             }
+
+            // 收到有效数据后
+            ResetHeartbeatTimer();
 
             ushort xcp_payload_len = BinaryPrimitives.ReadUInt16LittleEndian(owner.Memory.Span.Slice(0, 2));
 
@@ -499,35 +513,52 @@ public class XcpClient : IAsyncDisposable
 
     private async Task HeartbeatLoop()
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        long intervalTicks = Stopwatch.Frequency; // 1 秒对应的 ticks
 
-        while (await timer.WaitForNextTickAsync(_cts.Token))
+        while (!_cts.IsCancellationRequested)
         {
             try
             {
-                // 间隔一秒发送标准的保活心跳 GET_STATUS
-                DeviceStatus.GetStatusRes = await Std.GetStatusAsync();
+                await Task.Delay(50, _cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
 
-                // 成功通信，显式维持连接状态
+            long now = Stopwatch.GetTimestamp();
+            long last = Interlocked.Read(ref _lastActivityTimestamp);
+
+            // 1 秒内有过通信，跳过
+            if ((now - last) < intervalTicks)
+                continue;
+
+            // 发送前再次确认，消除 50ms 轮询窗口的竞态
+            if ((Stopwatch.GetTimestamp() - Interlocked.Read(ref _lastActivityTimestamp)) < intervalTicks)
+                continue;
+
+            try
+            {
+                DeviceStatus.GetStatusRes = await Std.GetStatusAsync();
                 GlobalStatus.Instance.IsConnected = true;
+
+                // 心跳本身也是一次有效通信，更新时间戳避免连续发送
+                Interlocked.Exchange(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
             }
             catch (Exception ex) when (ex is TimeoutException || ex is OperationCanceledException)
             {
-                // 当收到包的间隔大于设定超时（SendCtoAsync 抛出超时异常）时触发
                 Debug.WriteLine($"[心跳警告] GET_STATUS 响应超时，正在尝试通过 SYNCH 命令复位协议状态机... 异常详情: {ex.Message}");
 
                 try
                 {
-                    // 发送复位同步命令
-                    var syncRecv = await Std.SyncAsync();
-
+                    await Std.SyncAsync();
                     Debug.WriteLine("[心跳成功] 协议重新同步成功，链路恢复健康。");
                     GlobalStatus.Instance.IsConnected = true;
 
+                    Interlocked.Exchange(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
                 }
                 catch (Exception syncEx)
                 {
-                    // SYNCH 超时
                     NotificationService.Show("设备断开", $"设备连接超时, {syncEx.Message}", NotificationType.Error);
                     Debug.WriteLine($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
                     Serilog.Log.Debug($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
@@ -537,7 +568,6 @@ public class XcpClient : IAsyncDisposable
             }
             catch (Exception unkownEx)
             {
-                // 捕获其他非超时类非预期异常（如 Socket 硬件接口被强行 Dispose）
                 NotificationService.Show("设备断开", $"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}", NotificationType.Error);
                 Debug.WriteLine($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
                 Serilog.Log.Debug($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");

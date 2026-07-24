@@ -161,3 +161,6 @@
 - 修复了`XCP Client`释放资源的问题。
 - 修复重载ELF文件时标定变量地址不更新的问题。
 - `SymbolRuntime`的`StringToValue`方法去掉`try catch`以在输入数据字符串和数据类型不匹配时直接报错。
+
+2026-07-24
+- `XcpClient`的心跳包由固定1s间隔发送改为未收到有效数据1s后发送。
