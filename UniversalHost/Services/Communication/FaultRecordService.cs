@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using static UniversalHost.Models.IapProtocol;
 
 namespace UniversalHost.Services.Communication;
 
@@ -10,6 +11,7 @@ public class FaultRecordService
     private readonly SymbolInfo _recordStatusSymbol;
     private readonly SymbolInfo _recordDataSymbol;
     private readonly IProgress<double> _progress;
+    private readonly IProgress<string> _stage;
 
     private enum RecorderStatus : byte
     {
@@ -21,11 +23,12 @@ public class FaultRecordService
     private const int HeaderBytes = 50;
     private const int ChannelInfoBytes = 38;
 
-    public FaultRecordService(SymbolInfo recordStatus, SymbolInfo recordData, IProgress<double> progress)
+    public FaultRecordService(SymbolInfo recordStatus, SymbolInfo recordData, IProgress<double> progress, IProgress<string> stage)
     {
         _recordStatusSymbol = recordStatus;
         _recordDataSymbol = recordData;
         _progress = progress;
+        _stage = stage;
     }
 
     public async Task<string> RunFaultRecordSequence()
@@ -34,22 +37,31 @@ public class FaultRecordService
         var watch = System.Diagnostics.Stopwatch.StartNew();
 #endif
         var client = XcpService.Client!;
+        _stage.Report("获取录波状态");
         _progress.Report(0);
-
         // 检查录波状态
         var recorderStatus = await client.UploadSymbol(1, _recordStatusSymbol.Address);
         if (recorderStatus == null || recorderStatus.Length == 0)
+        {
+            _stage.Report("录波状态错误");
             throw new InvalidOperationException("录波状态错误");
+        }
         if (recorderStatus[0] != (byte)RecorderStatus.Finish)
+        {
+            _stage.Report("录波未完成");
             throw new InvalidOperationException("录波未完成");
+        }
+        _stage.Report("获取录波变量数据");
         _progress.Report(1.0);
-
         // 读取 Header
         byte headerAgLen = client.CalculateAgLen(HeaderBytes);
         uint agOffset = 0;
         byte[] header = await client.UploadAgAsync(headerAgLen, _recordDataSymbol.Address + agOffset);
         if (header == null || header.Length < HeaderBytes)
+        {
+            _stage.Report("录波数据帧头长度错误");
             throw new InvalidOperationException("录波数据帧头长度错误");
+        }
 
         FaultRecord faultRecord = new();
         faultRecord.HeaderPacketAnalysis(header);
@@ -61,7 +73,10 @@ public class FaultRecordService
         {
             byte[] channelInfo = await client.UploadAgAsync(channelAgLen, _recordDataSymbol.Address + agOffset);
             if (channelInfo == null || channelInfo.Length < ChannelInfoBytes)
+            {
+                _stage.Report($"录波第 {i} 通道信息长度错误");
                 throw new InvalidOperationException($"录波第 {i} 通道信息长度错误");
+            }
 
             var name = channelInfo.AsSpan()[..20];
             ushort dataType = client.ReadUInt16(channelInfo.AsSpan()[20..22]);
@@ -75,6 +90,7 @@ public class FaultRecordService
 
         for (int i = 0; i < faultRecord.RecordSymbolRuntimes.Count; i++)
         {
+            _stage.Report($"上传第 {i} / {faultRecord.RecordSymbolRuntimes.Count} 个变量");
             var runtime = faultRecord.RecordSymbolRuntimes[i];
             byte elementAg = client.CalculateAgLen(runtime.ValueSizeInBytes);
             uint totalElements = faultRecord.RecordLength;
@@ -100,6 +116,7 @@ public class FaultRecordService
         }
 
         var path = DataSaveService.SaveToCsv(faultRecord.RecordSymbolRuntimes, "fault");
+        _stage.Report("录波完成");
         _progress.Report(100.0);
 #if DEBUG
         watch.Stop();

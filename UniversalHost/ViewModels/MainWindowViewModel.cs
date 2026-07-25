@@ -168,7 +168,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         //开启IAP窗口            
         OpenIapWindowCommand = ReactiveCommand.Create(() =>
         {
-            var tool = Factory.FindDockable(Layout, x => x.Id == "IapTool");
+            var tool = Factory.FindDockable(Layout, x => x.Id == DockableRegistry.IapToolId);
 
             if (tool == null)
             {
@@ -176,7 +176,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 {
                     foreach (var item in Layout.HiddenDockables)
                     {
-                        if (item.Id == "IapTool")
+                        if (item.Id == DockableRegistry.IapToolId)
                         {
                             tool = item;
                             break;
@@ -563,22 +563,52 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     }
     #endregion
     [ReactiveCommand]
-    private async Task UploadFaultRecorderData()
+    private async Task OpenFaultRecordTool()
     {
-        var recordProgress = new Progress<double>();
-        try
+        var tool = Factory.FindDockable(Layout, x => x.Id == DockableRegistry.FaultRecordToolId);
+
+        if (tool == null)
         {
-            var recordStatus = ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Items.First(s => s.Name == "fault_recorder_state");
-            var recordData = ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Items.First(s => s.Name == "recorder_data");
-            FaultRecordService faultRecordService = new FaultRecordService(recordStatus, recordData, recordProgress);
-            var path = await Task.Run(() => faultRecordService.RunFaultRecordSequence());
-            NotificationService.Show("故障数据上传成功", $"保存至 {path}", NotificationType.Success);
-            Serilog.Log.Information($"故障录波数据上传成功，保存至 {path}");
+            if (Layout.HiddenDockables != null)
+            {
+                foreach (var item in Layout.HiddenDockables)
+                {
+                    if (item.Id == DockableRegistry.FaultRecordToolId)
+                    {
+                        tool = item;
+                        break;
+                    }
+                }
+            }
         }
-        catch (Exception ex)
+
+        var activeTab = Factory.FirstOrDefaultActiveTab(Layout);
+        if (activeTab == null) return;
+
+        if (tool == null)
         {
-            NotificationService.Show("故障数据上传失败", ex.Message, NotificationType.Warning);
-            Serilog.Log.Warning($"故障数据上传失败 : {ex.Message}");
+            tool = Factory.CreateFaultRecordTool();
+            Factory.AddDockable(activeTab, tool);
+            Factory.SetActiveDockable(tool);
+        }
+        else
+        {
+            if (tool.Owner is IDock parentDock)
+            {
+                var visibleList = parentDock.VisibleDockables;
+
+                if (visibleList!.Contains(tool))
+                {
+                    Factory.HideDockable(tool);
+
+                }
+                else
+                {
+                    Factory.RestoreDockable(tool);
+                    Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
+                    Factory.SetActiveDockable(tool);
+                }
+            }
         }
     }
 

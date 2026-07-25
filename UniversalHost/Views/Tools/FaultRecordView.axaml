@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:UniversalHost.ViewModels.Tools"
+             xmlns:services="clr-namespace:UniversalHost.Services"
+             mc:Ignorable="d" d:DesignWidth="256" d:DesignHeight="63"
+             x:Class="UniversalHost.Views.Tools.FaultRecordView"
+             x:DataType="vm:FaultRecordViewModel"
+             >
+
+    <StackPanel Orientation="Vertical" Margin="5">
+        <TextBlock
+        Text="{Binding Stage}"
+        HorizontalAlignment="Left"
+        Height="22"
+        MaxWidth="100"/>
+
+        <StackPanel Orientation="Horizontal">
+            <Button
+            Content="开始"
+            Command="{Binding UploadFaultDataCommand}"
+            IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
+            ToolTip.Tip="未连接时无法使用"
+            ToolTip.ShowOnDisabled="True"
+            />
+            <ProgressBar
+            Value="{Binding ProgressVal}"
+            Height="25"
+            Maximum="100"
+            Minimum="0"
+            />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

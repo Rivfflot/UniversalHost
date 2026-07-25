@@ -3,7 +3,6 @@
 - IAP修改为使用XCP PGM实现。
 - 日志显示。
 - 远程控制。
-- 添加故障录波 Tool 窗口显示录波通信进度。
 
 ---
 
@@ -167,3 +166,6 @@
 - 修复`CalibratedSymbols`的`DataType`改变后UI不变更的问题。
 - 修复故障录波地址累加错误，顺序问题。
 - 修复`IapProtocol`中`SendComplete`阶段解析问题。
+
+2026-07-25
+- 添加故障录波 Tool 窗口显示录波通信进度。

@@ -39,6 +39,9 @@ public static class DockableRegistry
     //IAP tool
     public const string IapToolId = "IapTool";
     public static IapViewModel IapToolViewModel { get; } = new IapViewModel();
+    //FaultRecord tool
+    public const string FaultRecordToolId = "FaultRecordTool";
+    public static FaultRecordViewModel FaultRecordViewModel { get; } = new FaultRecordViewModel();
     public static void ClearAllDocuments()
     {
         GridMonitorDocuments.Clear();
@@ -202,8 +205,10 @@ public static class DockableRegistry
             switch (tool.Id)
             {
                 case IapToolId:
-
                     tool.Context = IapToolViewModel;
+                    break;
+                case FaultRecordToolId:
+                    tool.Context = FaultRecordViewModel;
                     break;
             }
         }

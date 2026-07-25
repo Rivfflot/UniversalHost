@@ -168,11 +168,30 @@ public class DockFactory : Factory
             Context = DockableRegistry.IapToolViewModel
         };
     }
+
+    public Tool CreateFaultRecordTool()
+    {
+        return new Tool
+        {
+            Id = DockableRegistry.FaultRecordToolId,
+            Title = "故障录波",
+            CanClose = true,
+            CanFloat = false,
+            CanPin = true,
+            MdiBounds = new DockRect(0, 0, 260, 100),
+            MinWidth = 260,
+            MinHeight = 100,
+            MaxHeight = 100,
+            Context = DockableRegistry.FaultRecordViewModel
+        };
+    }
+
     public override void InitLayout(IDockable layout)
     {
         DockableLocator = new Dictionary<string, Func<IDockable?>>
         {
-            ["IapTool"] = () => CreateIapTool(),
+            [DockableRegistry.IapToolId] = () => CreateIapTool(),
+            [DockableRegistry.FaultRecordToolId] = () => CreateFaultRecordTool(),
         };
 
         HostWindowLocator = new Dictionary<string, Func<IHostWindow?>>

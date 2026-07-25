@@ -95,6 +95,14 @@ x:DataType="vm:MainWindowViewModel"
 				InputGesture="Ctrl+Shift+K"
 				HotKey="Ctrl+Shift+K"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
+				<MenuItem
+				Command="{Binding OpenIapWindowCommand}"
+				Header="在线升级"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				<MenuItem
+				Command="{Binding OpenFaultRecordToolCommand}"
+				Header="故障录波"
+				/>
 			</MenuItem>
 			<MenuItem
 			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
@@ -191,10 +199,7 @@ x:DataType="vm:MainWindowViewModel"
 				HotKey="Alt+D"/>
 
 			</MenuItem>
-			<MenuItem
-			Command="{Binding OpenIapWindowCommand}"
-			Header="在线升级"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+
 			<MenuItem Header="关于">
 				<MenuItem Header="当前工程">
 					<MenuItem.HeaderTemplate>
@@ -408,15 +413,26 @@ x:DataType="vm:MainWindowViewModel"
 			Margin="2,5"/>
 
 			<MenuItem
-			Command="{Binding UploadFaultRecorderDataCommand}"
+			Command="{Binding OpenFaultRecordToolCommand}"
 			Header="💿"
 			Cursor="Hand"
 			FontFamily="Apple Color Emoji, Noto Color Emoji"
 			FontSize="18"
 			Padding="0"
-			ToolTip.Tip="上传故障录波数据"
+			ToolTip.Tip="打开故障录波窗口"
 			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
+			/>
+
+			<MenuItem
+			Command="{Binding OpenIapWindowCommand}"
+			Header="⬇️"
+			Cursor="Hand"
+			FontFamily="Apple Color Emoji, Noto Color Emoji"
+			FontSize="18"
+			Padding="0"
+			ToolTip.Tip="打开在线升级窗口"
+			ToolTip.ShowOnDisabled="True"
+			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
 			/>
 
 			<!-- 主题项，在最右边 -->
