@@ -142,6 +142,10 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
 
             try
             {
+                foreach (var item in SymbolRuntimeService.MonitorSymbolRuntimesSource.Items)
+                {
+                    item.ClearHistory();
+                }
                 await XcpService.Client!.StartDaq(SymbolRuntimeService.MonitorSymbolRuntimesSource.Items);
                 Serilog.Log.Information("监控开始");
                 NotificationService.Show("监控开始", "", NotificationType.Info);

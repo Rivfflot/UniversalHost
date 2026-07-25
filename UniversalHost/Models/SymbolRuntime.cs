@@ -23,7 +23,12 @@ public sealed class RingBuffer<T>
 
         _buffer = new T[capacity];
     }
-
+    public void Clear()
+    {
+        Array.Clear(_buffer, 0, _buffer.Length);
+        _writeIndex = 0;
+        Count = 0;
+    }
     // =========================
     // Write (wrap index)
     // =========================
@@ -105,6 +110,7 @@ public abstract partial class SymbolRuntime : ReactiveObject
     {
         Symbol = symbol;
     }
+    public abstract void ClearHistory();
     public abstract bool UpdateValueFromBytes(ReadOnlySpan<byte> data, bool isLittleEndian);
     public abstract byte[]? StringToValue();
     public abstract string ValueToString();
@@ -148,6 +154,11 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     {
         _valuesHistory = new CircularBuffer.CircularBuffer<T>(maxSaveLen);
         _plotHistory = new RingBuffer<double>(maxSaveLen);
+    }
+    public override void ClearHistory()
+    {
+        _valuesHistory.Clear();
+        _plotHistory.Clear();
     }
     /// <summary>
     /// 获取指定位置的String。保存CSV使用。

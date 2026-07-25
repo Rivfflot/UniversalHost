@@ -9,6 +9,7 @@ xmlns:sys="clr-namespace:System;assembly=System.Runtime"
 Title="UniversalHost"
 Width="1000"
 Height="700"
+WindowState="Maximized"
 x:DataType="vm:MainWindowViewModel"
 >
 

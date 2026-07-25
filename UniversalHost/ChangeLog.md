@@ -169,3 +169,4 @@
 
 2026-07-25
 - 添加故障录波 Tool 窗口显示录波通信进度。
+- `SymbolRuntime`增加`ClearHistory`方法并在每次监控开始前调用。
