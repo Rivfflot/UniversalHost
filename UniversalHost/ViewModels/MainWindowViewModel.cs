@@ -212,7 +212,14 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                     else
                     {
                         Factory.RestoreDockable(tool);
-                        Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
+                        if (tool.Owner == null)
+                        {
+                            Factory.AddDockable(activeTab, tool);
+                        }
+                        else
+                        {
+                            Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
+                        }
                         Factory.SetActiveDockable(tool);
                     }
                 }
@@ -609,7 +616,14 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 else
                 {
                     Factory.RestoreDockable(tool);
-                    Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
+                    if (tool.Owner == null)
+                    {
+                        Factory.AddDockable(activeTab, tool);
+                    }
+                    else
+                    {
+                        Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
+                    }
                     Factory.SetActiveDockable(tool);
                 }
             }
