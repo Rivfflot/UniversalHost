@@ -172,58 +172,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         //开启IAP窗口            
         OpenIapWindowCommand = ReactiveCommand.Create(() =>
         {
-            var tool = Factory.FindDockable(Layout, x => x.Id == DockableRegistry.IapToolId);
-
-            if (tool == null)
-            {
-                if (Layout.HiddenDockables != null)
-                {
-                    foreach (var item in Layout.HiddenDockables)
-                    {
-                        if (item.Id == DockableRegistry.IapToolId)
-                        {
-                            tool = item;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            var activeTab = Factory.FirstOrDefaultActiveTab(Layout);
-            if (activeTab == null) return;
-
-            if (tool == null)
-            {
-                tool = Factory.CreateIapTool();
-                Factory.AddDockable(activeTab, tool);
-                Factory.SetActiveDockable(tool);
-            }
-            else
-            {
-                if (tool.Owner is IDock parentDock)
-                {
-                    var visibleList = parentDock.VisibleDockables;
-
-                    if (visibleList!.Contains(tool))
-                    {
-                        Factory.HideDockable(tool);
-
-                    }
-                    else
-                    {
-                        Factory.RestoreDockable(tool);
-                        if (tool.Owner == null)
-                        {
-                            Factory.AddDockable(activeTab, tool);
-                        }
-                        else
-                        {
-                            Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
-                        }
-                        Factory.SetActiveDockable(tool);
-                    }
-                }
-            }
+            Factory.ShowOrCreateTool(Layout, DockableRegistry.IapToolId);
         });
     }
     #region 文件指令
@@ -576,58 +525,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private async Task OpenFaultRecordTool()
     {
-        var tool = Factory.FindDockable(Layout, x => x.Id == DockableRegistry.FaultRecordToolId);
-
-        if (tool == null)
-        {
-            if (Layout.HiddenDockables != null)
-            {
-                foreach (var item in Layout.HiddenDockables)
-                {
-                    if (item.Id == DockableRegistry.FaultRecordToolId)
-                    {
-                        tool = item;
-                        break;
-                    }
-                }
-            }
-        }
-
-        var activeTab = Factory.FirstOrDefaultActiveTab(Layout);
-        if (activeTab == null) return;
-
-        if (tool == null)
-        {
-            tool = Factory.CreateFaultRecordTool();
-            Factory.AddDockable(activeTab, tool);
-            Factory.SetActiveDockable(tool);
-        }
-        else
-        {
-            if (tool.Owner is IDock parentDock)
-            {
-                var visibleList = parentDock.VisibleDockables;
-
-                if (visibleList!.Contains(tool))
-                {
-                    Factory.HideDockable(tool);
-
-                }
-                else
-                {
-                    Factory.RestoreDockable(tool);
-                    if (tool.Owner == null)
-                    {
-                        Factory.AddDockable(activeTab, tool);
-                    }
-                    else
-                    {
-                        Factory.MoveDockable((IDock)tool.Owner, activeTab, tool, null);
-                    }
-                    Factory.SetActiveDockable(tool);
-                }
-            }
-        }
+        Factory.ShowOrCreateTool(Layout, DockableRegistry.FaultRecordToolId);
     }
 
     private CancellationTokenSource randomCts = new();

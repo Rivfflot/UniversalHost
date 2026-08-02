@@ -3,6 +3,7 @@ using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI;
 using Dock.Model.ReactiveUI.Controls;
+using ScottPlot;
 using System;
 using System.Collections.Generic;
 using UniversalHost.Services;
@@ -69,10 +70,10 @@ public class DockFactory : Factory
         tabDock.VisibleDockables!.Add(newTab);
     }
     /// <summary>
-    /// 寻找激活的或第一个TAB dock
+    /// 寻找激活的或第一个TAB layout
     /// </summary>
     /// <param name="layout">rootdock</param>
-    /// <returns>输入错误或不存在为null。激活的或第一个TAB dock。</returns>
+    /// <returns>输入错误或不存在为null。激活的或第一个TAB layout。</returns>
     public DocumentDock? FirstOrDefaultActiveTab(IRootDock layout)
     {
         if (layout.DefaultDockable is not DocumentDock tabDock) return null;
@@ -250,5 +251,70 @@ public class DockFactory : Factory
             }
         }
         base.OnDockableClosed(dockable);
+    }
+
+    public void ShowOrCreateTool(IRootDock layout, string id)
+    {
+        var tool = base.FindDockable(layout, x => x.Id == id);
+
+        if (tool == null)
+        {
+            if (layout.HiddenDockables != null)
+            {
+                foreach (var item in layout.HiddenDockables)
+                {
+                    if (item.Id == DockableRegistry.IapToolId)
+                    {
+                        tool = item;
+                        break;
+                    }
+                }
+            }
+        }
+        var activeTab = FirstOrDefaultActiveTab(layout);
+        if (activeTab == null) return;
+
+        if (tool == null)
+        {
+            switch (id)
+            {
+                case DockableRegistry.IapToolId:
+                    tool = CreateIapTool();
+                    break;
+                case DockableRegistry.FaultRecordToolId:
+                    tool = CreateFaultRecordTool();
+                    break;
+                default:
+                    return;
+            }
+            AddDockable(activeTab, tool);
+            SetActiveDockable(tool);
+        }
+        else
+        {
+            if (tool.Owner is IDock parentDock)
+            {
+                var visibleList = parentDock.VisibleDockables;
+
+                if (visibleList!.Contains(tool))
+                {
+                    HideDockable(tool);
+
+                }
+                else
+                {
+                    RestoreDockable(tool);
+                    if (tool.Owner == null)
+                    {
+                        AddDockable(activeTab, tool);
+                    }
+                    else
+                    {
+                        MoveDockable((IDock)tool.Owner, activeTab, tool, null);
+                    }
+                    SetActiveDockable(tool);
+                }
+            }
+        }
     }
 }
