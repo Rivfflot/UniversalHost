@@ -59,7 +59,7 @@ public class IapService
         };
 
         // 创建IAP协议
-        var protocol = new IapProtocol(ProjectSaveService.Instance.Settings.IapConfig, ProjectSaveService.Instance.Settings.DeviceConfig);
+        var protocol = new IapProtocol(ProjectSaveService.Instance.Settings.IapConfig.IapFilePath, ProjectSaveService.Instance.Settings.DeviceConfig.DeviceID);
         // 读取BIN
         _stage.Report("读取文件");
         protocol.ReadFile();
@@ -108,7 +108,7 @@ public class IapService
 
         _stage.Report("开始校验");
         Serilog.Log.Verbose("IAP 开始校验");
-        //等待校验开始信号。等待时间=写入时间。逐帧写入时等待时间≈0
+        //等待校验开始信号。等待时间=写入时间
         await WaitForStatusWithTimeoutAsync(comm, protocol, IapProtocol.Status.DeviceStartFalshCheck, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForCheckTimeoutSeconds), ct);
 
         //等待重启开始信号。等待时间=校验时间

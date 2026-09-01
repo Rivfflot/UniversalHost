@@ -40,27 +40,26 @@ public class IapProtocol
 
     private const byte IAP_HANDSHAKE_INFORMATION = 0xAA;
 
-    private readonly IapConfig _iapConfig;
-    private readonly DeviceConfig _deviceConfig;
+    private readonly string _iapFilePath;
+    private readonly byte _deviceID;
 
     private byte[]? readBinData;
     private UInt32 fileCrc32 = 0;
+    private UInt16 bytesPerFrame = 0;
     public UInt32 FrameNum { get; private set; } = 0;
     public bool IsRebootBeforeIapRequired { get; private set; } = false;
     public bool IsFlashPerFrame { get; private set; } = false;
-    public IapProtocol(IapConfig iapConfig, DeviceConfig deviceConfig)
+    public IapProtocol(string iapFilePath, byte deviceID)
     {
-        _iapConfig = iapConfig;
-        _deviceConfig = deviceConfig;
+        _iapFilePath = iapFilePath;
+        _deviceID = deviceID;
     }
 
     public void ReadFile()
     {
-        using (FileStream fs = new FileStream(_iapConfig.IapFilePath, FileMode.Open, FileAccess.Read))
+        using (FileStream fs = new FileStream(_iapFilePath, FileMode.Open, FileAccess.Read))
         {
             int fileLen = (int)fs.Length;
-
-            FrameNum = (uint)Math.Ceiling((double)fileLen / _iapConfig.BytesPerFrame);
             readBinData = new byte[fileLen];
             fs.ReadExactly(readBinData, 0, fileLen);
             // 计算 Crc
@@ -123,7 +122,7 @@ public class IapProtocol
                         _ => Status.DeviceFrameCheckError,
                     };
                 }
-                else if (data[4] != _deviceConfig.DeviceID)
+                else if (data[4] != _deviceID)
                 {
                     throw new Exception($"IAP 从站地址错误。当前连接的设备从站地址为{data[4]}");
                 }
@@ -153,7 +152,7 @@ public class IapProtocol
         data[1] = (byte)Stage.Handshake;
         data[2] = 0x00;
         data[3] = 0x02;
-        data[4] = _deviceConfig.DeviceID;
+        data[4] = _deviceID;
         data[5] = IAP_HANDSHAKE_INFORMATION;
         data[6] = IAP_HANDSHAKE_INFORMATION;
         // 7 8
@@ -168,14 +167,17 @@ public class IapProtocol
         {
             IsFlashPerFrame = (data[6] & 0b0000_0001) != 0;
             IsRebootBeforeIapRequired = (data[6] & 0b0000_0010) != 0;
-
+            bytesPerFrame = BinaryPrimitives.ReadUInt16BigEndian(data[7..9]);
+            if (bytesPerFrame == 0 || bytesPerFrame > 1372)
+            {
+                throw new Exception($"每帧字节数不支持：{bytesPerFrame}，最大1372。");
+            }
             return Status.Success;
         }
         else
         {
             throw new Exception("IAP 设备忙，当前无法升级");
         }
-
     }
 
     private int SendInformationPacket(Span<byte> data)
@@ -185,41 +187,27 @@ public class IapProtocol
         // 2 3 数据区长度
         data[2] = 0x00;
         data[3] = 0x0E;//14
-        data[4] = _deviceConfig.DeviceID;
+        data[4] = _deviceID;
         // 数据区
+        FrameNum = (uint)Math.Ceiling((double)readBinData!.Length / bytesPerFrame);
         // 5 6 7 8 总帧数
         BinaryPrimitives.WriteUInt32BigEndian(data[5..9], FrameNum);
-        // 9 10 每帧字节数
-        BinaryPrimitives.WriteUInt16BigEndian(data[9..11], _iapConfig.BytesPerFrame);
-        // 11 12 13 14 ROM长度
-        BinaryPrimitives.WriteInt32BigEndian(data[11..15], readBinData!.Length);
-        // 15 16 17 18 ROM Crc32
-        BinaryPrimitives.WriteUInt32BigEndian(data[15..19], fileCrc32);
-        // 19 20
-        var crc = Crc.Crc16Modbus.Calculate(data, 19);
-        BinaryPrimitives.WriteUInt16BigEndian(data[19..21], crc);
-        return 21;
+        // 9 10 11 12 ROM长度
+        BinaryPrimitives.WriteInt32BigEndian(data[9..13], readBinData!.Length);
+        // 13 14 15 16 ROM Crc32
+        BinaryPrimitives.WriteUInt32BigEndian(data[13..17], fileCrc32);
+        // 17 18
+        var crc = Crc.Crc16Modbus.Calculate(data, 17);
+        BinaryPrimitives.WriteUInt16BigEndian(data[17..19], crc);
+        return 19;
     }
 
     private Status ReceiveInformationPacketAnalysis(ReadOnlySpan<byte> data)
     {
-        var deviceCondition = data[5];
-        if (deviceCondition == 0x00)
-        {
-            return Status.Success;
-        }
-        else
-        {
-            var receiveBytesPerFrame = BinaryPrimitives.ReadUInt16BigEndian(data[6..8]);
-            if (deviceCondition == 0x01)
-            {
-                throw new Exception($"IAP 每帧字节数过大，当前/设备最大 = {_iapConfig.BytesPerFrame}/{receiveBytesPerFrame}");
-            }
-            else
-            {
-                throw new Exception($"IAP 每帧字节数不合法，当前/设备支持 = {_iapConfig.BytesPerFrame}/{receiveBytesPerFrame}");
-            }
-        }
+        //var deviceCondition = data[5];
+
+        return Status.Success;
+
     }
     private int SendDataPacket(Span<byte> data, UInt32 sendFrameIndex)
     {
@@ -234,8 +222,8 @@ public class IapProtocol
         else
         {
             bool isLastFrame = (sendFrameIndex == FrameNum - 1);
-            int offset = (int)(sendFrameIndex * _iapConfig.BytesPerFrame);
-            int currentPayloadLen = isLastFrame ? (readBinData.Length - offset) : _iapConfig.BytesPerFrame;
+            int offset = (int)(sendFrameIndex * bytesPerFrame);
+            int currentPayloadLen = isLastFrame ? (readBinData.Length - offset) : bytesPerFrame;
             //                   0          1         2  3            4              5 6 7 8      ...
             //数组长度 = 帧头5(功能码1 + 当前阶段1 + 数据区长度 + 设备ID 1) + 数据区(当前帧号4 + 每帧字节数) + 2CRC
             //         = 每帧字节数 + 帧信息9 + 2CRC
@@ -247,7 +235,7 @@ public class IapProtocol
             // 2 3 数据区长度 = 当前帧号4 + 每帧字节数
             BinaryPrimitives.WriteUInt16BigEndian(data[2..4], (ushort)(currentPayloadLen + 4));
             // 4
-            data[4] = _deviceConfig.DeviceID;
+            data[4] = _deviceID;
             // 5 6 7 8
             BinaryPrimitives.WriteUInt32BigEndian(data[5..9], sendFrameIndex);
 
@@ -282,7 +270,7 @@ public class IapProtocol
         data[1] = (byte)Stage.SendComplete;
         data[2] = 0x00;
         data[3] = 0x02;
-        data[4] = _deviceConfig.DeviceID;
+        data[4] = _deviceID;
         data[5] = 0x00;
         data[6] = 0x00;
         // 7 8

@@ -108,7 +108,6 @@ public partial class SettingWindowViewModel : ReactiveObject
     // IAP设置
     [Reactive] private string? _iapFilePathTemp;
     [Reactive] private string? _iapFilePathError;
-    [Reactive] private UInt16? _iapBytesPerFrameTemp;
     [Reactive] private UInt16? _waitForHandShakeTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForWriteTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForCheckTimeoutSecondsTemp;
@@ -370,13 +369,12 @@ public partial class SettingWindowViewModel : ReactiveObject
                 IapFilePathError = "请输入合法路径";
             }
         });
-        IapBytesPerFrameTemp = ProjectSaveService.Instance.Settings.IapConfig.BytesPerFrame;
+
         WaitForHandShakeTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds;
         WaitForWriteTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForWriteTimeoutSeconds;
         WaitForCheckTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForCheckTimeoutSeconds;
         WaitForRebootStartTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootStartTimeoutSeconds;
         WaitForRebootCompleteTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootCompleteTimeoutSeconds;
-        this.BindWithDefault(x => x.IapBytesPerFrameTemp, v => ProjectSaveService.Instance.Settings.IapConfig.BytesPerFrame = v, (UInt16)256);
 
         this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)10);
 
