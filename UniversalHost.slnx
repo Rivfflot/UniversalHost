@@ -1,3 +1,7 @@
 <Solution>
+  <Folder Name="/解决方案项/">
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="UniversalHost/UniversalHost.csproj" />
 </Solution>
