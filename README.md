@@ -36,7 +36,7 @@ UniversalHost 用于与支持 XCP 或自定义 IAP 协议的设备进行通信�
 
 2. 使用 Visual Studio 打开解决方案：
 
-   找到并打开 `UniversalHost.sln` 文件。
+   找到并打开 `UniversalHost.slnx` 文件。
 
 3. 还原依赖并编译项目：
 

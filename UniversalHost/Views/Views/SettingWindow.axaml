@@ -1,16 +1,16 @@
 <Window
-x:Class="UniversalHost.Views.Views.SettingWindow"
-xmlns="https://github.com/avaloniaui"
-xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-xmlns:models="using:UniversalHost.Models"
-xmlns:vm="using:UniversalHost.ViewModels.Views"
-Title="设置"
-Width="800"
-Height="600"
-x:DataType="vm:SettingWindowViewModel"
-mc:Ignorable="d">
+	x:Class="UniversalHost.Views.Views.SettingWindow"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:models="using:UniversalHost.Models"
+	xmlns:vm="using:UniversalHost.ViewModels.Views"
+	Title="设置"
+	Width="800"
+	Height="600"
+	x:DataType="vm:SettingWindowViewModel"
+	mc:Ignorable="d">
 
 
 
@@ -18,81 +18,81 @@ mc:Ignorable="d">
 		<!--  通用设置  -->
 		<TabItem Header="设备">
 			<ScrollViewer
-			HorizontalScrollBarVisibility="Auto"
-			VerticalScrollBarVisibility="Auto">
+				HorizontalScrollBarVisibility="Auto"
+				VerticalScrollBarVisibility="Auto">
 				<Grid
-				Margin="0,5"
-				ColumnDefinitions="Auto,*"
-				RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+					Margin="0,5"
+					ColumnDefinitions="Auto,*"
+					RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 					<!--  第 1 行 通信模式  -->
 					<TextBlock
-					Grid.Row="0"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="通信模式" />
+						Grid.Row="0"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="通信模式" />
 					<ComboBox
-					Grid.Row="0"
-					Grid.Column="1"
-					ItemsSource="{Binding AvailableCommunicationModes}"
-					IsEnabled="{Binding !GlobalStatusInstance.IsConnected}"
-					SelectedItem="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode}" />
+						Grid.Row="0"
+						Grid.Column="1"
+						ItemsSource="{Binding AvailableCommunicationModes}"
+						IsEnabled="{Binding !GlobalStatusInstance.IsConnected}"
+						SelectedItem="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode}" />
 					<!--  第 2 行 设备ID  -->
 					<TextBlock
-					Grid.Row="1"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					ToolTip.Tip="范围为 0–255"
-					Text="设备IDℹ" />
+						Grid.Row="1"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						ToolTip.Tip="范围为 0–255"
+						Text="设备IDℹ" />
 					<NumericUpDown
-					Grid.Row="1"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="255"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					IsEnabled="{Binding !GlobalStatusInstance.IsConnected}"
-					Value="{Binding DeviceIDTemp}" />
+						Grid.Row="1"
+						Grid.Column="1"
+						Width="80"
+						HorizontalAlignment="Left"
+						Maximum="255"
+						Minimum="0"
+						ParsingNumberStyle="Integer"
+						ShowButtonSpinner="False"
+						IsEnabled="{Binding !GlobalStatusInstance.IsConnected}"
+						Value="{Binding DeviceIDTemp}" />
 					<!--  第 3 行 -->
 					<TextBlock
-					Grid.Row="2"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="符号表"/>
+						Grid.Row="2"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="符号表"/>
 					<StackPanel
-					Grid.Row="2"
-					Grid.Column="1"
-					Orientation="Horizontal" >
+						Grid.Row="2"
+						Grid.Column="1"
+						Orientation="Horizontal" >
 						<Button
-						Content="重载ELF"
-						Command="{Binding ReloadSymbolFileCommand}"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							Content="重载ELF"
+							Command="{Binding ReloadSymbolFileCommand}"
+							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
 						<Button
-						Content="添加ELF"
-						Command="{Binding SelectSymbolFileCommand}"
-						CommandParameter="{Binding $parent[Window]}"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							Content="添加ELF"
+							Command="{Binding SelectSymbolFileCommand}"
+							CommandParameter="{Binding $parent[Window]}"
+							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
 						<Button
-						Content="清空ELF"
-						Command="{Binding ClearSymbolFilePathsCommand}"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							Content="清空ELF"
+							Command="{Binding ClearSymbolFilePathsCommand}"
+							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
 						<Button
-						Content="清空符号表"
-						Command="{Binding ClearSymbolsCommand}"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							Content="清空符号表"
+							Command="{Binding ClearSymbolsCommand}"
+							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
 					</StackPanel>
 					<!--  第 7 行 -->
 					<TabControl Grid.Row="6"
 								Grid.ColumnSpan="2">
 						<TabItem Header="ELF" FontSize="15" Margin="-4">
 							<ListBox
-							ItemsSource="{Binding SymbolFilePaths}"
-							MaxHeight="200"
-							Margin="0,1,0,0">
+								ItemsSource="{Binding SymbolFilePaths}"
+								MaxHeight="200"
+								Margin="0,1,0,0">
 								<ListBox.ItemTemplate>
 									<DataTemplate x:DataType="x:String">
 										<ContentPresenter Content="{Binding}">
@@ -129,6 +129,7 @@ mc:Ignorable="d">
 										 HorizontalAlignment="Left"
 										 Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
 								<DataGrid ItemsSource="{Binding FilteredSymbols}"
+										  CanUserResizeColumns="True"
 										  AutoGenerateColumns="False"
 										  CanUserSortColumns="True"
 										  IsReadOnly="True"
@@ -166,20 +167,20 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="串口选择" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="串口选择" />
 						<StackPanel
-						Grid.Column="1"
-						Orientation="Horizontal">
+							Grid.Column="1"
+							Orientation="Horizontal">
 							<Button
-							Command="{Binding RefreshPortsCommand}"
-							Content="刷新" />
+								Command="{Binding RefreshPortsCommand}"
+								Content="刷新" />
 							<ComboBox
-							Margin="8,0,0,0"
-							ItemsSource="{Binding AvailableSerialPorts}"
-							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort}" />
+								Margin="8,0,0,0"
+								ItemsSource="{Binding AvailableSerialPorts}"
+								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort}" />
 						</StackPanel>
 
 					</Grid>
@@ -191,19 +192,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="波特率" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="波特率" />
 						<NumericUpDown
-						Grid.Column="1"
-						Width="120"
-						HorizontalAlignment="Left"
-						Maximum="10000000"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding BaudRateTemp}" />
+							Grid.Column="1"
+							Width="120"
+							HorizontalAlignment="Left"
+							Maximum="10000000"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding BaudRateTemp}" />
 
 					</Grid>
 					<!--   校验位  -->
@@ -214,14 +215,14 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="校验位" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="校验位" />
 						<ComboBox
-						Grid.Column="1"
-						ItemsSource="{Binding AvailableParities}"
-						SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.ParitySetting}" />
+							Grid.Column="1"
+							ItemsSource="{Binding AvailableParities}"
+							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.ParitySetting}" />
 
 					</Grid>
 					<!--  数据位  -->
@@ -232,14 +233,14 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="停止位" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="停止位" />
 						<ComboBox
-						Grid.Column="1"
-						ItemsSource="{Binding AvailableStopBits}"
-						SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.StopBitsSetting}" />
+							Grid.Column="1"
+							ItemsSource="{Binding AvailableStopBits}"
+							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.StopBitsSetting}" />
 
 					</Grid>
 					<!--  超时时间  -->
@@ -250,20 +251,20 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="超时时间ℹ"
-						ToolTip.Tip="单位 ms"/>
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="超时时间ℹ"
+							ToolTip.Tip="单位 ms"/>
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding SerialTimeoutTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding SerialTimeoutTemp}" />
 
 					</Grid>
 					<!-- 重试次数 -->
@@ -274,19 +275,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="重试次数" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="重试次数" />
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding SerialRetryTimesTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding SerialRetryTimesTemp}" />
 
 					</Grid>
 				</StackPanel>
@@ -304,20 +305,20 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="本地IP" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="本地IP" />
 						<StackPanel
-						Grid.Column="1"
-						Orientation="Horizontal">
+							Grid.Column="1"
+							Orientation="Horizontal">
 							<Button
-							Command="{Binding RefreshIPCommand}"
-							Content="刷新" />
+								Command="{Binding RefreshIPCommand}"
+								Content="刷新" />
 							<ComboBox
-							Margin="8,0,0,0"
-							ItemsSource="{Binding AvailableIPv4Addresses}"
-							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress}" />
+								Margin="8,0,0,0"
+								ItemsSource="{Binding AvailableIPv4Addresses}"
+								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress}" />
 						</StackPanel>
 
 					</Grid>
@@ -329,17 +330,17 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="远程IP" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="远程IP" />
 						<TextBox
-						Grid.Column="1"
-						MinWidth="130"
-						HorizontalAlignment="Left"
-						VerticalContentAlignment="Center"
-						InnerRightContent="{Binding RemoteAddressError}"
-						Text="{Binding RemoteAddressTemp, Mode=TwoWay}" />
+							Grid.Column="1"
+							MinWidth="130"
+							HorizontalAlignment="Left"
+							VerticalContentAlignment="Center"
+							InnerRightContent="{Binding RemoteAddressError}"
+							Text="{Binding RemoteAddressTemp, Mode=TwoWay}" />
 
 					</Grid>
 					<!--  IAP本地端口  -->
@@ -350,19 +351,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="IAP本地端口" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="IAP本地端口" />
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding IapLocalPortTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding IapLocalPortTemp}" />
 
 					</Grid>
 					<!--  IAP远程端口  -->
@@ -373,19 +374,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="IAP远程端口" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="IAP远程端口" />
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding IapRemotePortTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding IapRemotePortTemp}" />
 
 					</Grid>
 					<!--  XCP本地端口  -->
@@ -396,19 +397,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="XCP本地端口" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="XCP本地端口" />
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding XcpLocalPortTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding XcpLocalPortTemp}" />
 
 					</Grid>
 					<!--  XCP远程端口  -->
@@ -419,19 +420,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="XCP远程端口" />
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="XCP远程端口" />
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding XcpRemotePortTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding XcpRemotePortTemp}" />
 
 					</Grid>
 					<!--  超时时间  -->
@@ -442,20 +443,20 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="超时时间ℹ"
-						ToolTip.Tip="单位 ms"/>
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="超时时间ℹ"
+							ToolTip.Tip="单位 ms"/>
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding UdpTimeoutTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding UdpTimeoutTemp}" />
 
 					</Grid>
 					<!--  重试次数  -->
@@ -466,19 +467,19 @@ mc:Ignorable="d">
 						</Grid.ColumnDefinitions>
 
 						<TextBlock
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="重试次数"/>
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="重试次数"/>
 						<NumericUpDown
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="65535"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding UdpRetryTimesTemp}" />
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding UdpRetryTimesTemp}" />
 
 					</Grid>
 				</StackPanel>
@@ -488,61 +489,61 @@ mc:Ignorable="d">
 		<TabItem Header="监控">
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
 				<Grid
-				IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
-				ColumnDefinitions="Auto,*"
-				RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+					IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
+					ColumnDefinitions="Auto,*"
+					RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 					<!--  第 1 行  -->
 					<TextBlock
-					Grid.Row="0"
-					Grid.Column="0"
-					Text="记录数据长度ℹ"
-					VerticalAlignment="Center"
-					ToolTip.ShowOnDisabled="True"
-					ToolTip.Tip="上位机保存的数据长度"
-					/>
-					<StackPanel
-					Grid.Row="0"
-					Grid.Column="1"
-					Orientation="Horizontal">
-						<NumericUpDown
-						Width="100"
-						HorizontalAlignment="Left"
-						Maximum="1000000"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						Value="{Binding MaxSaveLenTemp}"/>
-						<Button
-						Content="应用ℹ"
+						Grid.Row="0"
+						Grid.Column="0"
+						Text="记录数据长度ℹ"
+						VerticalAlignment="Center"
 						ToolTip.ShowOnDisabled="True"
-						ToolTip.Tip="会删除之前的数据"
-						Command="{Binding ApplyChangeSaveLengthCommand}"
+						ToolTip.Tip="上位机保存的数据长度"
 						/>
+					<StackPanel
+						Grid.Row="0"
+						Grid.Column="1"
+						Orientation="Horizontal">
+						<NumericUpDown
+							Width="100"
+							HorizontalAlignment="Left"
+							Maximum="1000000"
+							Minimum="0"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding MaxSaveLenTemp}"/>
+						<Button
+							Content="应用ℹ"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="会删除之前的数据"
+							Command="{Binding ApplyChangeSaveLengthCommand}"
+							/>
 					</StackPanel>
 					<!--  第 2 行  -->
 					<TextBlock
-					Grid.Row="1"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="符号表"/>
+						Grid.Row="1"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="符号表"/>
 					<StackPanel
-					Grid.Row="1"
-					Grid.Column="1"
-					Orientation="Horizontal" >
+						Grid.Row="1"
+						Grid.Column="1"
+						Orientation="Horizontal" >
 						<Button
-						Content="重载ELF"
-						Command="{Binding ReloadSymbolFileCommand}"
-						ToolTip.ShowOnDisabled="True"
-						ToolTip.Tip="不存在于新ELF中的变量将被移除"/>
+							Content="重载ELF"
+							Command="{Binding ReloadSymbolFileCommand}"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="不存在于新ELF中的变量将被移除"/>
 						<Button
-						Content="清空监控变量"
-						Command="{Binding ClearMonitorSymbolsCommand}"/>
+							Content="清空监控变量"
+							Command="{Binding ClearMonitorSymbolsCommand}"/>
 						<Button
-						Content="删除重复监控变量"
-						ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
-						Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
-						ToolTip.ShowOnDisabled="True"/>
+							Content="删除重复监控变量"
+							ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
+							Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
+							ToolTip.ShowOnDisabled="True"/>
 					</StackPanel>
 					<!--  第 3 行  -->
 					<TabControl Grid.Row="2"
@@ -556,6 +557,7 @@ mc:Ignorable="d">
 										 Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
 								<DataGrid ItemsSource="{Binding FilteredSymbols}"
 										  AutoGenerateColumns="False"
+										  CanUserResizeColumns="True"
 										  CanUserSortColumns="True"
 										  IsReadOnly="True"
 										  GridLinesVisibility="All"
@@ -568,12 +570,12 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<Button
-													Background="Transparent"
-													Padding="1"
-													Content="➕"
-													ToolTip.Tip="添加至监控变量"
-													Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}"
-													CommandParameter="{Binding}">
+														Background="Transparent"
+														Padding="1"
+														Content="➕"
+														ToolTip.Tip="添加至监控变量"
+														Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}"
+														CommandParameter="{Binding}">
 													</Button>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -595,6 +597,7 @@ mc:Ignorable="d">
 								<DataGrid ItemsSource="{Binding FilteredMonitorSymbols}"
 										  AutoGenerateColumns="False"
 										  CanUserSortColumns="True"
+										  CanUserResizeColumns="True"
 										  GridLinesVisibility="All"
 										  VerticalScrollBarVisibility="Auto"
 										  Height="500"
@@ -606,25 +609,25 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.HeaderTemplate>
 												<DataTemplate>
 													<Button
-													Background="Transparent"
-													Padding="0"
-													Margin="-10.5,0,-14,0"
-													FontSize="15"
-													Content="❌"
-													ToolTip.Tip="移除所有监控变量"
-													Command="{Binding $parent[Window].DataContext.ClearMonitorSymbolsCommand}">
+														Background="Transparent"
+														Padding="0"
+														Margin="-10.5,0,-14,0"
+														FontSize="15"
+														Content="❌"
+														ToolTip.Tip="移除所有监控变量"
+														Command="{Binding $parent[Window].DataContext.ClearMonitorSymbolsCommand}">
 													</Button>
 												</DataTemplate>
 											</DataGridTemplateColumn.HeaderTemplate>
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<Button
-													Background="Transparent"
-													Padding="1"
-													Content="❌"
-													ToolTip.Tip="移除出监控变量"
-													Command="{Binding $parent[Window].DataContext.RemoveMonitorSymbolCommand}"
-													CommandParameter="{Binding}">
+														Background="Transparent"
+														Padding="1"
+														Content="❌"
+														ToolTip.Tip="移除出监控变量"
+														Command="{Binding $parent[Window].DataContext.RemoveMonitorSymbolCommand}"
+														CommandParameter="{Binding}">
 													</Button>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -646,9 +649,9 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<ComboBox
-													ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
-													SelectedItem="{Binding DataType, Mode=TwoWay}"
-													/>
+														ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
+														SelectedItem="{Binding DataType, Mode=TwoWay}"
+														/>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
 										</DataGridTemplateColumn>
@@ -658,13 +661,13 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<NumericUpDown
-													HorizontalAlignment="Stretch"
-													Maximum="4294967295"
-													Minimum="0"
-													PlaceholderText="0"
-													ParsingNumberStyle="Integer"
-													ShowButtonSpinner="False"
-													Value="{Binding Offset,Mode = TwoWay}" >
+														HorizontalAlignment="Stretch"
+														Maximum="4294967295"
+														Minimum="0"
+														PlaceholderText="0"
+														ParsingNumberStyle="Integer"
+														ShowButtonSpinner="False"
+														Value="{Binding Offset,Mode = TwoWay}" >
 													</NumericUpDown>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -685,34 +688,34 @@ mc:Ignorable="d">
 		<TabItem Header="标定">
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
 				<Grid
-				ColumnDefinitions="Auto,*"
-				RowDefinitions="Auto,Auto">
+					ColumnDefinitions="Auto,*"
+					RowDefinitions="Auto,Auto">
 					<!--  第 1 行  -->
 					<TextBlock
-					Grid.Row="0"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="符号表"/>
+						Grid.Row="0"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="符号表"/>
 					<StackPanel
-					Grid.Row="0"
-					Grid.Column="1"
-					Orientation="Horizontal" >
+						Grid.Row="0"
+						Grid.Column="1"
+						Orientation="Horizontal" >
 						<Button
-						Content="重载ELF"
-						Command="{Binding ReloadSymbolFileCommand}"
-						ToolTip.ShowOnDisabled="True"
-						ToolTip.Tip="不存在于新ELF中的变量将被移除"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
-						/>
+							Content="重载ELF"
+							Command="{Binding ReloadSymbolFileCommand}"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="不存在于新ELF中的变量将被移除"
+							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
+							/>
 						<Button
-						Content="清空标定变量"
-						Command="{Binding ClearCalibrateSymbolsCommand}"/>
+							Content="清空标定变量"
+							Command="{Binding ClearCalibrateSymbolsCommand}"/>
 						<Button
-						Content="删除重复标定变量"
-						ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
-						Command="{Binding RemoveDuplicateCalibrateSymbolsCommand}"
-						ToolTip.ShowOnDisabled="True"/>
+							Content="删除重复标定变量"
+							ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
+							Command="{Binding RemoveDuplicateCalibrateSymbolsCommand}"
+							ToolTip.ShowOnDisabled="True"/>
 					</StackPanel>
 					<!--  第 2 行  -->
 					<TabControl Grid.Row="1"
@@ -728,6 +731,7 @@ mc:Ignorable="d">
 										  AutoGenerateColumns="False"
 										  CanUserSortColumns="True"
 										  IsReadOnly="True"
+										  CanUserResizeColumns="True"
 										  GridLinesVisibility="All"
 										  VerticalScrollBarVisibility="Auto"
 										  Height="500"
@@ -738,11 +742,11 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<Button
-													Background="Transparent"
-													Padding="1"
-													Content="➕"
-													Command="{Binding $parent[Window].DataContext.AddCalibrateSymbolCommand}"
-													CommandParameter="{Binding}">
+														Background="Transparent"
+														Padding="1"
+														Content="➕"
+														Command="{Binding $parent[Window].DataContext.AddCalibrateSymbolCommand}"
+														CommandParameter="{Binding}">
 													</Button>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -764,6 +768,7 @@ mc:Ignorable="d">
 								<DataGrid ItemsSource="{Binding FilteredCalibrateSymbols}"
 										  AutoGenerateColumns="False"
 										  CanUserSortColumns="True"
+										  CanUserResizeColumns="True"
 										  GridLinesVisibility="All"
 										  VerticalScrollBarVisibility="Auto"
 										  Height="500"
@@ -774,24 +779,24 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.HeaderTemplate>
 												<DataTemplate>
 													<Button
-													Background="Transparent"
-													Padding="0"
-													Margin="-10.5,0,-14,0"
-													FontSize="15"
-													Content="❌"
-													ToolTip.Tip="移除所有标定变量"
-													Command="{Binding $parent[Window].DataContext.ClearCalibrateSymbolsCommand}">
+														Background="Transparent"
+														Padding="0"
+														Margin="-10.5,0,-14,0"
+														FontSize="15"
+														Content="❌"
+														ToolTip.Tip="移除所有标定变量"
+														Command="{Binding $parent[Window].DataContext.ClearCalibrateSymbolsCommand}">
 													</Button>
 												</DataTemplate>
 											</DataGridTemplateColumn.HeaderTemplate>
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<Button
-													Background="Transparent"
-													Padding="1"
-													Content="❌"
-													Command="{Binding $parent[Window].DataContext.RemoveCalibrateSymbolCommand}"
-													CommandParameter="{Binding}">
+														Background="Transparent"
+														Padding="1"
+														Content="❌"
+														Command="{Binding $parent[Window].DataContext.RemoveCalibrateSymbolCommand}"
+														CommandParameter="{Binding}">
 													</Button>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -802,9 +807,9 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<ComboBox
-													ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
-													SelectedItem="{Binding DataType, Mode=TwoWay}"
-													/>
+														ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
+														SelectedItem="{Binding DataType, Mode=TwoWay}"
+														/>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
 										</DataGridTemplateColumn>
@@ -815,11 +820,11 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<NumericUpDown
-													HorizontalAlignment="Stretch"
-													PlaceholderText="-inf"
-													ParsingNumberStyle="Number"
-													ShowButtonSpinner="False"
-													Value="{Binding MinValue,Mode = TwoWay}" >
+														HorizontalAlignment="Stretch"
+														PlaceholderText="-inf"
+														ParsingNumberStyle="Number"
+														ShowButtonSpinner="False"
+														Value="{Binding MinValue,Mode = TwoWay}" >
 													</NumericUpDown>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -829,11 +834,11 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<NumericUpDown
-													HorizontalAlignment="Stretch"
-													PlaceholderText="inf"
-													ParsingNumberStyle="Number"
-													ShowButtonSpinner="False"
-													Value="{Binding MaxValue,Mode = TwoWay}" >
+														HorizontalAlignment="Stretch"
+														PlaceholderText="inf"
+														ParsingNumberStyle="Number"
+														ShowButtonSpinner="False"
+														Value="{Binding MaxValue,Mode = TwoWay}" >
 													</NumericUpDown>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -845,13 +850,13 @@ mc:Ignorable="d">
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
 													<NumericUpDown
-													HorizontalAlignment="Stretch"
-													Maximum="4294967295"
-													Minimum="0"
-													PlaceholderText="0"
-													ParsingNumberStyle="Integer"
-													ShowButtonSpinner="False"
-													Value="{Binding Offset,Mode = TwoWay}" >
+														HorizontalAlignment="Stretch"
+														Maximum="4294967295"
+														Minimum="0"
+														PlaceholderText="0"
+														ParsingNumberStyle="Integer"
+														ShowButtonSpinner="False"
+														Value="{Binding Offset,Mode = TwoWay}" >
 													</NumericUpDown>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
@@ -873,9 +878,9 @@ mc:Ignorable="d">
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
 				<StackPanel Orientation="Vertical">
 					<Button
-					Content="清空指令"
-					ToolTip.Tip="清空指令名称及描述"
-					Command="{Binding $parent[Window].DataContext.ClearUserCommandsCommand}"/>
+						Content="清空指令"
+						ToolTip.Tip="清空指令名称及描述"
+						Command="{Binding $parent[Window].DataContext.ClearUserCommandsCommand}"/>
 
 					<TextBox PlaceholderText="搜索 指令码/名称/描述"
 							 MaxWidth="650"
@@ -886,6 +891,7 @@ mc:Ignorable="d">
 							  AutoGenerateColumns="False"
 							  CanUserSortColumns="True"
 							  GridLinesVisibility="All"
+							  CanUserResizeColumns="True"
 							  VerticalScrollBarVisibility="Auto"
 							  Height="500"
 							  Margin="0,5,0,0"
@@ -903,168 +909,168 @@ mc:Ignorable="d">
 		<!--  IAP设置  -->
 		<TabItem Header="IAP">
 			<Grid
-			ColumnDefinitions="Auto,*"
-			RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+				ColumnDefinitions="Auto,*"
+				RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 				<!--  第 1 行  -->
 				<TextBlock
-				Grid.Row="0"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="文件路径" />
+					Grid.Row="0"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="文件路径" />
 				<TextBox
-				Grid.Row="0"
-				Grid.Column="1"
-				MinWidth="130"
-				HorizontalAlignment="Left"
-				VerticalContentAlignment="Center"
-				InnerRightContent="{Binding IapFilePathError}"
-				Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
+					Grid.Row="0"
+					Grid.Column="1"
+					MinWidth="130"
+					HorizontalAlignment="Left"
+					VerticalContentAlignment="Center"
+					InnerRightContent="{Binding IapFilePathError}"
+					Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
 				<!--  第 2 行  -->
 				<TextBlock
-				Grid.Row="1"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="等待握手超时ℹ"
-				ToolTip.Tip="单位 s"/>
+					Grid.Row="1"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="等待握手超时ℹ"
+					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-				Grid.Row="1"
-				Grid.Column="1"
-				Width="80"
-				HorizontalAlignment="Left"
-				Maximum="65535"
-				Minimum="0"
-				ParsingNumberStyle="Integer"
-				ShowButtonSpinner="False"
-				Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
+					Grid.Row="1"
+					Grid.Column="1"
+					Width="80"
+					HorizontalAlignment="Left"
+					Maximum="65535"
+					Minimum="0"
+					ParsingNumberStyle="Integer"
+					ShowButtonSpinner="False"
+					Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
 				<!--  第 3 行  -->
 				<TextBlock
-				Grid.Row="2"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="等待擦除超时ℹ"
-				ToolTip.Tip="单位 s"/>
+					Grid.Row="2"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="等待擦除超时ℹ"
+					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-				Grid.Row="2"
-				Grid.Column="1"
-				Width="80"
-				HorizontalAlignment="Left"
-				Maximum="65535"
-				Minimum="0"
-				ParsingNumberStyle="Integer"
-				ShowButtonSpinner="False"
-				Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
+					Grid.Row="2"
+					Grid.Column="1"
+					Width="80"
+					HorizontalAlignment="Left"
+					Maximum="65535"
+					Minimum="0"
+					ParsingNumberStyle="Integer"
+					ShowButtonSpinner="False"
+					Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
 				<!--  第 4 行  -->
 				<TextBlock
-				Grid.Row="3"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="等待写入超时ℹ"
-				ToolTip.Tip="单位 s"/>
+					Grid.Row="3"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="等待写入超时ℹ"
+					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-				Grid.Row="3"
-				Grid.Column="1"
-				Width="80"
-				HorizontalAlignment="Left"
-				Maximum="65535"
-				Minimum="0"
-				ParsingNumberStyle="Integer"
-				ShowButtonSpinner="False"
-				Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
+					Grid.Row="3"
+					Grid.Column="1"
+					Width="80"
+					HorizontalAlignment="Left"
+					Maximum="65535"
+					Minimum="0"
+					ParsingNumberStyle="Integer"
+					ShowButtonSpinner="False"
+					Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
 				<!--  第 5 行  -->
 				<TextBlock
-				Grid.Row="4"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="等待校验超时ℹ"
-				ToolTip.Tip="单位 s"/>
+					Grid.Row="4"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="等待校验超时ℹ"
+					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-				Grid.Row="4"
-				Grid.Column="1"
-				Width="80"
-				HorizontalAlignment="Left"
-				Maximum="65535"
-				Minimum="0"
-				ParsingNumberStyle="Integer"
-				ShowButtonSpinner="False"
-				Value="{Binding WaitForRebootStartTimeoutSecondsTemp}" />
+					Grid.Row="4"
+					Grid.Column="1"
+					Width="80"
+					HorizontalAlignment="Left"
+					Maximum="65535"
+					Minimum="0"
+					ParsingNumberStyle="Integer"
+					ShowButtonSpinner="False"
+					Value="{Binding WaitForRebootStartTimeoutSecondsTemp}" />
 				<!--  第 6 行  -->
 				<TextBlock
-				Grid.Row="5"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="等待重启超时ℹ"
-				ToolTip.Tip="单位 s"/>
+					Grid.Row="5"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="等待重启超时ℹ"
+					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-				Grid.Row="5"
-				Grid.Column="1"
-				Width="80"
-				HorizontalAlignment="Left"
-				Maximum="65535"
-				Minimum="0"
-				ParsingNumberStyle="Integer"
-				ShowButtonSpinner="False"
-				Value="{Binding WaitForRebootCompleteTimeoutSecondsTemp}" />
+					Grid.Row="5"
+					Grid.Column="1"
+					Width="80"
+					HorizontalAlignment="Left"
+					Maximum="65535"
+					Minimum="0"
+					ParsingNumberStyle="Integer"
+					ShowButtonSpinner="False"
+					Value="{Binding WaitForRebootCompleteTimeoutSecondsTemp}" />
 			</Grid>
 		</TabItem>
 
 		<!--  日志设置  -->
 		<TabItem Header="日志">
 			<Grid
-			Margin="0,5"
-			ColumnDefinitions="Auto,*"
-			RowDefinitions="Auto,Auto,Auto,Auto">
+				Margin="0,5"
+				ColumnDefinitions="Auto,*"
+				RowDefinitions="Auto,Auto,Auto,Auto">
 				<!--  第 1 行 记录开关  -->
 				<TextBlock
-				Grid.Row="0"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="日志开关" />
+					Grid.Row="0"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="日志开关" />
 
 				<ToggleSwitch
-				Grid.Row="0"
-				Grid.Column="1"
-				VerticalAlignment="Center"
-				Margin="0"
-				OnContent=""
-				OffContent=""
-				IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEnabled}"
-				/>
+					Grid.Row="0"
+					Grid.Column="1"
+					VerticalAlignment="Center"
+					Margin="0"
+					OnContent=""
+					OffContent=""
+					IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEnabled}"
+					/>
 				<!--  第 2 行 保存至文件  -->
 				<TextBlock
-				Grid.Row="1"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="保存至文件ℹ"
-				ToolTip.Tip="文件路径为工程路径"/>
+					Grid.Row="1"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="保存至文件ℹ"
+					ToolTip.Tip="文件路径为工程路径"/>
 				<ToggleSwitch
-				Grid.Row="1"
-				Grid.Column="1"
-				VerticalAlignment="Center"
-				Margin="0,0,10,0"
-				OnContent=""
-				OffContent=""
-				IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogWriteToFileEnabled}"
-				/>
+					Grid.Row="1"
+					Grid.Column="1"
+					VerticalAlignment="Center"
+					Margin="0,0,10,0"
+					OnContent=""
+					OffContent=""
+					IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogWriteToFileEnabled}"
+					/>
 				<!--  第 3 行 记录等级  -->
 				<TextBlock
-				Grid.Row="2"
-				Grid.Column="0"
-				Margin="0,0,10,0"
-				VerticalAlignment="Center"
-				Text="记录等级" />
+					Grid.Row="2"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="记录等级" />
 				<ComboBox
-				Grid.Row="2"
-				Grid.Column="1"
-				ItemsSource="{Binding AvaliableLogEventLevel}"
-				SelectedItem="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEventLevelSetting}" />
+					Grid.Row="2"
+					Grid.Column="1"
+					ItemsSource="{Binding AvaliableLogEventLevel}"
+					SelectedItem="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEventLevelSetting}" />
 			</Grid>
 		</TabItem>
 

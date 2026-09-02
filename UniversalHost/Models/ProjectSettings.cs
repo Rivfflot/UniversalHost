@@ -134,7 +134,6 @@ public partial class SerialConfig : ReactiveObject
 public partial class IapConfig : ReactiveObject
 {
     [Reactive] private string _iapFilePath = Path.Combine(AppContext.BaseDirectory);
-    [Reactive] private UInt16 _bytesPerFrame = 256;
     [Reactive] private UInt16 _waitForHandShakeTimeoutSeconds = 10;
     [Reactive] private UInt16 _waitForWriteTimeoutSeconds = 10;
     [Reactive] private UInt16 _waitForCheckTimeoutSeconds = 10;
