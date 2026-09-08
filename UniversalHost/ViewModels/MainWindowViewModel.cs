@@ -294,9 +294,9 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private async Task ConnectDevice()
     {
-        await XcpService.CreateClientAsync();
         try
         {
+            await XcpService.CreateClientAsync();
             await XcpService.Client!.ConnectAsync();
             Serilog.Log.Information($"设备连接成功");
             NotificationService.Show("设备已连接", "", NotificationType.Success);
