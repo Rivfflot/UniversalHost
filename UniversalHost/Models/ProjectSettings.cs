@@ -1,7 +1,7 @@
 using DynamicData;
 using ELFSharp.ELF;
 using ELFSharp.ELF.Sections;
-using ReactiveUI;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;

@@ -4,7 +4,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Dock.Model.Controls;
 using Dock.Model.Core;
-using ReactiveUI;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;

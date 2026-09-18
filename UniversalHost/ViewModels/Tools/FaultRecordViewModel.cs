@@ -1,4 +1,4 @@
-﻿using ReactiveUI;
+﻿using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Threading.Tasks;

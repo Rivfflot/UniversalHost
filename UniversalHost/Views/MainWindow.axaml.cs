@@ -1,5 +1,5 @@
-using ReactiveUI;
-using ReactiveUI.Avalonia;
+using ReactiveUI.Reactive;
+using ReactiveUI.Avalonia.Reactive;
 using System.Reactive.Disposables.Fluent;
 using UniversalHost.Services;
 using UniversalHost.ViewModels;

@@ -1,7 +1,7 @@
 ﻿using Avalonia.Input.Platform;
 using DynamicData;
-using ReactiveUI;
-using ReactiveUI.Avalonia;
+using ReactiveUI.Reactive;
+using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;

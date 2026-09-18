@@ -1,8 +1,8 @@
 ﻿using Avalonia.Media;
 using DynamicData;
 using DynamicData.Kernel;
-using ReactiveUI;
-using ReactiveUI.Avalonia;
+using ReactiveUI.Reactive;
+using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
