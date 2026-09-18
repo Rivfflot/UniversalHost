@@ -17,7 +17,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using UniversalHost.Models;
 using UniversalHost.Services;
-using UniversalHost.ViewModels.Views;
+using UniversalHost.ViewModels.Windows;
 
 namespace UniversalHost.ViewModels.Documents;
 
@@ -240,8 +240,8 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
     private async Task OpenAddDisplaySymbolWindow()
     {
         SelectWindowViewModel.Instance.UpdateDocumentId(Id);
-        UniversalHost.Views.Views.SelectSymbolWindow.Window.Show();
-        UniversalHost.Views.Views.SelectSymbolWindow.Window.Activate();
+        UniversalHost.Views.Windows.SelectSymbolWindow.Window.Show();
+        UniversalHost.Views.Windows.SelectSymbolWindow.Window.Activate();
     }
     /// <summary>
     /// 手动删除选中变量的按钮命令

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
-using UniversalHost.ViewModels.Views;
+using UniversalHost.ViewModels.Windows;
 
-namespace UniversalHost.Views.Views;
+namespace UniversalHost.Views.Windows;
 
 public partial class SelectSymbolWindow : Window
 {

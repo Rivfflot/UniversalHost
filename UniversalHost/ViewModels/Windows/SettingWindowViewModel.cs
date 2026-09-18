@@ -24,7 +24,7 @@ using UniversalHost.Models;
 using UniversalHost.Services;
 
 
-namespace UniversalHost.ViewModels.Views;
+namespace UniversalHost.ViewModels.Windows;
 
 public partial class SettingWindowViewModel : ReactiveObject
 {

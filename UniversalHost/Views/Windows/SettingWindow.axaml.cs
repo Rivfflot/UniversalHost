@@ -4,10 +4,10 @@ using ReactiveUI.Avalonia.Reactive;
 using ReactiveUI.Primitives.Reactive.Disposables;
 using System;
 using UniversalHost.Services;
-using UniversalHost.ViewModels.Views;
+using UniversalHost.ViewModels.Windows;
 
 
-namespace UniversalHost.Views.Views;
+namespace UniversalHost.Views.Windows;
 
 public partial class SettingWindow : ReactiveWindow<SettingWindowViewModel>
 {

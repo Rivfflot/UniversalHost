@@ -3,7 +3,7 @@ using ReactiveUI.SourceGenerators;
 using System.Reactive;
 
 
-namespace UniversalHost.ViewModels.Views;
+namespace UniversalHost.ViewModels.Windows;
 
 public partial class RenameWindowViewModel : ReactiveObject
 {

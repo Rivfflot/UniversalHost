@@ -18,8 +18,8 @@ using System.Threading.Tasks;
 using UniversalHost.Models;
 using UniversalHost.Services;
 using UniversalHost.Services.Communication;
-using UniversalHost.ViewModels.Views;
-using UniversalHost.Views.Views;
+using UniversalHost.ViewModels.Windows;
+using UniversalHost.Views.Windows;
 
 namespace UniversalHost.ViewModels;
 

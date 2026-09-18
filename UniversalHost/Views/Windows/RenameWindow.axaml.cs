@@ -3,9 +3,9 @@ using ReactiveUI.Reactive;
 using ReactiveUI.Avalonia.Reactive;
 using System;
 using System.Reactive.Disposables.Fluent;
-using UniversalHost.ViewModels.Views;
+using UniversalHost.ViewModels.Windows;
 
-namespace UniversalHost.Views.Views;
+namespace UniversalHost.Views.Windows;
 
 public partial class RenameWindow : ReactiveWindow<RenameWindowViewModel>
 {

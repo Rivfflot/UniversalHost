@@ -14,7 +14,7 @@ using System.Reactive.Linq;
 using UniversalHost.Models;
 using UniversalHost.Services;
 
-namespace UniversalHost.ViewModels.Views;
+namespace UniversalHost.ViewModels.Windows;
 
 public class SelectedConverter : IMultiValueConverter
 {

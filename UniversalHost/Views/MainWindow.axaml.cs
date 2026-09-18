@@ -3,8 +3,8 @@ using ReactiveUI.Avalonia.Reactive;
 using System.Reactive.Disposables.Fluent;
 using UniversalHost.Services;
 using UniversalHost.ViewModels;
-using UniversalHost.ViewModels.Views;
-using UniversalHost.Views.Views;
+using UniversalHost.ViewModels.Windows;
+using UniversalHost.Views.Windows;
 
 namespace UniversalHost.Views
 {
