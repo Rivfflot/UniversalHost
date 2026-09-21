@@ -300,6 +300,10 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             await XcpService.Client!.ConnectAsync();
             Serilog.Log.Information($"设备连接成功");
             NotificationService.Show("设备已连接", "", NotificationType.Success);
+            if (SymbolRuntimeService.CalibrateSymbolRuntimesSource.Items.Count > 0)
+            {
+                await UploadValuesAsync();
+            }
         }
         catch (TaskCanceledException)
         {
