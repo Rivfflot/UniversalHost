@@ -109,6 +109,7 @@ public partial class SettingWindowViewModel : ReactiveObject
     [Reactive] private string? _iapFilePathTemp;
     [Reactive] private string? _iapFilePathError;
     [Reactive] private UInt16? _waitForHandShakeTimeoutSecondsTemp;
+    [Reactive] private UInt16? _waitForInformationTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForWriteTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForCheckTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForRebootStartTimeoutSecondsTemp;
@@ -371,12 +372,15 @@ public partial class SettingWindowViewModel : ReactiveObject
         });
 
         WaitForHandShakeTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds;
+        WaitForInformationTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForInformationTimeoutSeconds;
         WaitForWriteTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForWriteTimeoutSeconds;
         WaitForCheckTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForCheckTimeoutSeconds;
         WaitForRebootStartTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootStartTimeoutSeconds;
         WaitForRebootCompleteTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootCompleteTimeoutSeconds;
 
         this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)10);
+
+        this.BindWithDefault(x => x.WaitForInformationTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForInformationTimeoutSeconds = v, (UInt16)10);
 
         this.BindWithDefault(x => x.WaitForWriteTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForWriteTimeoutSeconds = v, (UInt16)10);
 

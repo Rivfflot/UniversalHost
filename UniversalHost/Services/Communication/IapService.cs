@@ -76,7 +76,12 @@ public class IapService
         //阶段2：发送信息，包括总帧数和每帧字节数
         _stage.Report("发送信息");
         Serilog.Log.Verbose("IAP 开始发送信息");
-        await RunStageAsync(comm, protocol, IapProtocol.Stage.SendInformation, retryTimes, ct);
+        await RunInformationStageAsync(
+            comm,
+            protocol,
+            retryTimes,
+            TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForInformationTimeoutSeconds),
+            ct);
         _progress.Report((double)StageProgress.Infomation);//IAP信息发送完成
 
         //阶段3：发送数据，帧数=文件大小/每帧字节数。最后一帧可变长度。
@@ -159,6 +164,55 @@ public class IapService
         }
         Serilog.Log.Debug($"IAP 阶段 HandShake 超时");
         throw new Exception($"IAP 阶段 HandShake 超时");
+    }
+
+    // 逐帧写入设备会在收到信息包后擦除 Flash，擦除完成后才返回信息 ACK。
+    // 擦除期间不能重发信息包，因此只发送一次，并使用独立的阶段超时持续等待。
+    // 整体写入设备此时不擦除，仍沿用通用的快速 ACK 和重试逻辑。
+    private async Task RunInformationStageAsync(
+        ICommService comm,
+        IapProtocol protocol,
+        int retryLimit,
+        TimeSpan timeout,
+        CancellationToken ct)
+    {
+        if (!protocol.IsFlashPerFrame)
+        {
+            await RunStageAsync(comm, protocol, IapProtocol.Stage.SendInformation, retryLimit, ct);
+            return;
+        }
+
+        var sendDataLen = protocol.GetSendPacket(_sendBuffer, IapProtocol.Stage.SendInformation, 0);
+        ReadOnlyMemory<byte> sendData = _sendBuffer.AsMemory(0, sendDataLen);
+        await comm.SendAsync(sendData, ct);
+        _stage.Report("等待擦除完成");
+        Serilog.Log.Verbose("IAP 已向逐帧写入设备发送信息，等待擦除完成及信息 ACK");
+
+        var sw = Stopwatch.StartNew();
+        var lastUpdateTime = TimeSpan.Zero;
+
+        while (sw.Elapsed < timeout)
+        {
+            var receivedDataLen = await comm.ReceiveAsync(_receiveBuffer, ct);
+            if (receivedDataLen <= 0)
+            {
+                if (sw.Elapsed - lastUpdateTime >= TimeSpan.FromSeconds(1))
+                {
+                    Serilog.Log.Verbose($"IAP 阶段 SendInformation 等待擦除完成及信息 ACK，已等待 {sw.Elapsed.TotalSeconds:F0} s");
+                    lastUpdateTime = sw.Elapsed;
+                }
+                continue;
+            }
+
+            ReadOnlySpan<byte> recvData = _receiveBuffer.AsSpan(0, receivedDataLen);
+            var status = protocol.ReceivePacketAnalysis(IapProtocol.Stage.SendInformation, recvData, 0);
+            Serilog.Log.Verbose($"IAP 阶段 SendInformation 等待擦除完成及信息 ACK，状态: {status}");
+            if (status == IapProtocol.Status.Success)
+                return;
+        }
+
+        Serilog.Log.Debug($"IAP 阶段 SendInformation 等待擦除完成及信息 ACK 超过 {timeout.TotalSeconds} 秒");
+        throw new TimeoutException($"IAP 信息阶段等待超时（{timeout.TotalSeconds} 秒）");
     }
 
     // 通用阶段执行

@@ -950,8 +950,8 @@
 					Grid.Column="0"
 					Margin="0,0,10,0"
 					VerticalAlignment="Center"
-					Text="等待擦除超时ℹ"
-					ToolTip.Tip="单位 s"/>
+					Text="等待信息超时ℹ"
+					ToolTip.Tip="逐帧写入设备等待擦除完成并返回信息 ACK 的最长时间，单位 s"/>
 				<NumericUpDown
 					Grid.Row="2"
 					Grid.Column="1"
@@ -961,17 +961,35 @@
 					Minimum="0"
 					ParsingNumberStyle="Integer"
 					ShowButtonSpinner="False"
-					Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
+					Value="{Binding WaitForInformationTimeoutSecondsTemp}" />
 				<!--  第 4 行  -->
 				<TextBlock
 					Grid.Row="3"
 					Grid.Column="0"
 					Margin="0,0,10,0"
 					VerticalAlignment="Center"
-					Text="等待写入超时ℹ"
+					Text="等待擦除超时ℹ"
 					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
 					Grid.Row="3"
+					Grid.Column="1"
+					Width="80"
+					HorizontalAlignment="Left"
+					Maximum="65535"
+					Minimum="0"
+					ParsingNumberStyle="Integer"
+					ShowButtonSpinner="False"
+					Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
+				<!--  第 5 行  -->
+				<TextBlock
+					Grid.Row="4"
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					VerticalAlignment="Center"
+					Text="等待写入超时ℹ"
+					ToolTip.Tip="单位 s"/>
+				<NumericUpDown
+					Grid.Row="4"
 					Grid.Column="1"
 					Width="80"
 					HorizontalAlignment="Left"
@@ -980,16 +998,16 @@
 					ParsingNumberStyle="Integer"
 					ShowButtonSpinner="False"
 					Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
-				<!--  第 5 行  -->
+				<!--  第 6 行  -->
 				<TextBlock
-					Grid.Row="4"
+					Grid.Row="5"
 					Grid.Column="0"
 					Margin="0,0,10,0"
 					VerticalAlignment="Center"
 					Text="等待校验超时ℹ"
 					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-					Grid.Row="4"
+					Grid.Row="5"
 					Grid.Column="1"
 					Width="80"
 					HorizontalAlignment="Left"
@@ -998,16 +1016,16 @@
 					ParsingNumberStyle="Integer"
 					ShowButtonSpinner="False"
 					Value="{Binding WaitForRebootStartTimeoutSecondsTemp}" />
-				<!--  第 6 行  -->
+				<!--  第 7 行  -->
 				<TextBlock
-					Grid.Row="5"
+					Grid.Row="6"
 					Grid.Column="0"
 					Margin="0,0,10,0"
 					VerticalAlignment="Center"
 					Text="等待重启超时ℹ"
 					ToolTip.Tip="单位 s"/>
 				<NumericUpDown
-					Grid.Row="5"
+					Grid.Row="6"
 					Grid.Column="1"
 					Width="80"
 					HorizontalAlignment="Left"
