@@ -185,7 +185,7 @@ public class IapService
         var sendDataLen = protocol.GetSendPacket(_sendBuffer, IapProtocol.Stage.SendInformation, 0);
         ReadOnlyMemory<byte> sendData = _sendBuffer.AsMemory(0, sendDataLen);
         await comm.SendAsync(sendData, ct);
-        _stage.Report("等待擦除完成");
+        _stage.Report("等待擦除");
         Serilog.Log.Verbose("IAP 已向逐帧写入设备发送信息，等待擦除完成及信息 ACK");
 
         var sw = Stopwatch.StartNew();
