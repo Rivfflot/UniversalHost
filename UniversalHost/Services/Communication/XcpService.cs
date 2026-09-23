@@ -296,7 +296,7 @@ public class XcpClient : IAsyncDisposable
         Span<byte> buffer = stackalloc byte[8];
 
         byte agLen = CalculateAgLenOfValue(DeviceStatus.ConnectRes.Granularity, symbolRuntime.ValueSizeInBytes);
-        buffer = await Std.ShortUploadAsync(agLen, symbolRuntime.Symbol.Address);
+        buffer = await Std.ShortUploadAsync(agLen, symbolRuntime.Symbol.ActualAddress);
         symbolRuntime.UpdateValueFromBytes(buffer, DeviceStatus.ConnectRes.IsLittleEndian);
         symbolRuntime.ValueToString();
     }
@@ -329,7 +329,7 @@ public class XcpClient : IAsyncDisposable
         {
             return false;
         }
-        await Cal.ShortDownloadAsync(symbolRuntime.Symbol.Address, symbolRuntime.StringToValue());
+        await Cal.ShortDownloadAsync(symbolRuntime.Symbol.ActualAddress, symbolRuntime.StringToValue());
         Serilog.Log.Information($"CAL {symbolRuntime.Symbol.Name}({symbolRuntime.Symbol.Alias}) : {OldValue} -> {NewValue}");
         return true;
     }
@@ -354,7 +354,7 @@ public class XcpClient : IAsyncDisposable
         foreach (var item in symbolRuntimes)
         {
             byte sizeInAg = CalculateAgLenOfValue(DeviceStatus.ConnectRes.Granularity, item.ValueSizeInBytes);
-            await Daq.WriteDaqAsync(sizeInAg, item.Symbol.Address);
+            await Daq.WriteDaqAsync(sizeInAg, item.Symbol.ActualAddress);
             layout.Entries.Add(new DaqEntry()
             {
                 Size = CalculateByteLenOfValue(DeviceStatus.ConnectRes.Granularity, item.ValueSizeInBytes),

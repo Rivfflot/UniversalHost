@@ -85,6 +85,7 @@ public partial class UserSymbolInfo : SymbolInfo
             this.RaiseAndSetIfChanged(ref _offset, value ?? 0);
         }
     }
+    [JsonIgnore] public uint ActualAddress => Address + _offset ?? 0;
     //用于标定变量限制的最大值/最小值。监控变量不需要。
     [Reactive] private double? _maxValue;
     [Reactive] private double? _minValue;
