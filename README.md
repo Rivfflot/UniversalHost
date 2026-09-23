@@ -20,8 +20,6 @@ UniversalHost 用于与支持 XCP 或自定义 IAP 协议的设备进行通信�
 
 ## 开发环境
 
-- Windows
-- Visual Studio 2026
 - .NET 10
 - C#
 
@@ -34,17 +32,9 @@ UniversalHost 用于与支持 XCP 或自定义 IAP 协议的设备进行通信�
    cd UniversalHost
    ```
 
-2. 使用 Visual Studio 打开解决方案：
+2. 运行 dotnet publish 编译。
 
-   找到并打开 `UniversalHost.slnx` 文件。
-
-3. 还原依赖并编译项目：
-
-   在 Visual Studio 中，右键单击解决方案，选择“还原 NuGet 包”，然后选择“生成解决方案”。
-
-4. 运行项目：
-
-   按下 F5 键或者点击“启动”按钮运行项目。
+3. 运行。
 
 ## TODO
 
