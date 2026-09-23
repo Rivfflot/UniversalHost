@@ -451,16 +451,6 @@ public partial class SettingWindowViewModel : ReactiveObject
             Address = symbol.Address,
             Size = symbol.Size
         };
-        foreach (var existSymbol in ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.Items)
-        {
-            if (userSymbol.SourceFileName == existSymbol.SourceFileName &&
-                userSymbol.Name == existSymbol.Name &&
-                userSymbol.Offset == existSymbol.Offset)
-            {
-                NotificationService.Show("符号已存在", $"{userSymbol.SourceFileName} : {userSymbol.Name} , offset : {userSymbol.Offset} 已存在于标定变量列表", NotificationType.Warning);
-                return;
-            }
-        }
         ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.AddOrUpdate(userSymbol);
         NotificationService.Show("符号已添加至监控列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
     }
@@ -489,16 +479,6 @@ public partial class SettingWindowViewModel : ReactiveObject
             Address = symbol.Address,
             Size = symbol.Size
         };
-        foreach (var existSymbol in ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Items)
-        {
-            if (userSymbol.SourceFileName == existSymbol.SourceFileName &&
-                userSymbol.Name == existSymbol.Name &&
-                userSymbol.Offset == existSymbol.Offset)
-            {
-                NotificationService.Show("符号已存在", $"{userSymbol.SourceFileName} : {userSymbol.Name} , offset : {userSymbol.Offset} 已存在于监控变量列表", NotificationType.Warning);
-                return;
-            }
-        }
         ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.AddOrUpdate(userSymbol);
         NotificationService.Show("符号已添加至标定列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
     }
