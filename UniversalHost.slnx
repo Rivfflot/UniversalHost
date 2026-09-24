@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/解决方案项/">
+    <File Path="AGENTS.md" />
     <File Path="LICENSE" />
     <File Path="README.md" />
   </Folder>
