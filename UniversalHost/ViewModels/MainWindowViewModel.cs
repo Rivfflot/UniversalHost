@@ -295,12 +295,14 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             await XcpService.CreateClientAsync();
             await XcpService.Client!.ConnectAsync();
+            // 新连接清空标定值，以免迷惑用户。
+            foreach (var runtime in SymbolRuntimeService.CalibrateSymbolRuntimesSource.Items)
+            {
+                runtime.ClearHistory();
+                runtime.ValueString = string.Empty;
+            }
             Serilog.Log.Information($"设备连接成功");
             NotificationService.Show("设备已连接", "", NotificationType.Success);
-            if (SymbolRuntimeService.CalibrateSymbolRuntimesSource.Items.Count > 0)
-            {
-                await UploadValuesAsync();
-            }
         }
         catch (TaskCanceledException)
         {
