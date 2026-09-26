@@ -17,6 +17,8 @@ using System.Linq.Expressions;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -26,9 +28,11 @@ using UniversalHost.Services;
 
 namespace UniversalHost.ViewModels.Windows;
 
-public partial class SettingWindowViewModel : ReactiveObject
+public partial class SettingWindowViewModel : ReactiveObject, IDisposable
 {
     public static SettingWindowViewModel Instance { get; private set; } = new SettingWindowViewModel();
+    private readonly CompositeDisposable _disposables = [];
+    private readonly CompositeDisposable _projectSubscriptions = [];
 
     [Reactive] private int _selectedSettingTab = 0;
     public ProjectSaveService ProjectSaveServiceInstance => ProjectSaveService.Instance;//用于UI绑定
@@ -123,35 +127,44 @@ public partial class SettingWindowViewModel : ReactiveObject
     {
 
         //符号表路径
-        ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Connect()
+        // 使用 DynamicData 的 Switch：切换工程时退订旧集合，并清除旧项。
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.DeviceConfig.SymbolFilePaths)
+                                                .Select(source => source.Connect())
+                                                .Switch()
                                                 .Bind(out _symbolFilePaths)
                                                 .RefCount()
-                                                .Subscribe();
+                                                .Subscribe().DisposeWith(_disposables);
         // 符号过滤逻辑
         var symbolFilter = this.WhenValueChanged(x => x.SymbolSearchText)
                               .Throttle(TimeSpan.FromMilliseconds(100))
                               .Select(SymbolInfo.CreateSymbolInfoSearchFilter);
 
-        ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.DeviceConfig.Symbols)
+                    .Select(source => source.Connect())
+                    .Switch()
                     .Filter(symbolFilter)
                     .ObserveOn(AvaloniaScheduler.Instance)
                     .Bind(out _filteredSymbols)
-                    .Subscribe();
+                    .Subscribe().DisposeWith(_disposables);
         // 监控符号过滤逻辑
         var monitorSymbolFilter = this.WhenValueChanged(x => x.MonitorSymbolSearchText)
                                      .Throttle(TimeSpan.FromMilliseconds(100))
                                      .Select(UserSymbolInfo.CreateUserSymbolInfoSearchFilter);
 
-        ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.MonitorConfig.MonitoredSymbols)
+                           .Select(source => source.Connect())
+                           .Switch()
                            .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .Filter(monitorSymbolFilter)
                            .ObserveOn(AvaloniaScheduler.Instance)
                            .Bind(out _filteredMonitorSymbols)
-                           .Subscribe();
+                           .Subscribe().DisposeWith(_disposables);
 
         // 在 ViewModel 初始化时，订阅列表变化以自动更新“全选框”的状态
-        ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.MonitorConfig.MonitoredSymbols)
+                            .Select(source => source.Connect())
+                            .Switch()
                             .AutoRefresh(symbol => symbol.IsMonitored, changeSetBuffer: TimeSpan.FromMilliseconds(100))
                             .QueryWhenChanged(cache =>
                             {
@@ -178,19 +191,21 @@ public partial class SettingWindowViewModel : ReactiveObject
                             .Subscribe(state =>
                             {
                                 SelectAllMonitorSymbolsBox = state;
-                            });
+                            }).DisposeWith(_disposables);
         //CAL
         var clibrateSymbolFilter = this.WhenValueChanged(x => x.CalibrateSymbolSearchText)
                                      .Throttle(TimeSpan.FromMilliseconds(100))
                                      .Select(UserSymbolInfo.CreateUserSymbolInfoSearchFilter);
 
-        ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.CalibrateConfig.CalibratedSymbols)
+                          .Select(source => source.Connect())
+                          .Switch()
                           .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                           .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                           .Filter(clibrateSymbolFilter)
                           .ObserveOn(AvaloniaScheduler.Instance)
                           .Bind(out _filteredCalibrateSymbols)
-                          .Subscribe();
+                          .Subscribe().DisposeWith(_disposables);
 
         // 初始化串口列表
         _serialPortSource = new SourceList<string>();
@@ -198,7 +213,7 @@ public partial class SettingWindowViewModel : ReactiveObject
         _serialPortSource.Connect()
                        .ObserveOn(AvaloniaScheduler.Instance)
                        .Bind(out _availableSerialPorts)
-                       .Subscribe();
+                       .Subscribe().DisposeWith(_disposables);
 
         // 初始化本地IP列表
         _localIPSource = new SourceList<string>();
@@ -206,7 +221,7 @@ public partial class SettingWindowViewModel : ReactiveObject
         _localIPSource.Connect()
                     .ObserveOn(AvaloniaScheduler.Instance)
                     .Bind(out _availableIPv4Addresses)
-                    .Subscribe();
+                    .Subscribe().DisposeWith(_disposables);
 
         ReloadSymbolFileCommand = ReactiveCommand.Create(() =>
         {
@@ -276,60 +291,8 @@ public partial class SettingWindowViewModel : ReactiveObject
             }
         });
 
-        // 串口相关
-        DeviceIDTemp = ProjectSaveService.Instance.Settings.DeviceConfig.DeviceID;
-        BaudRateTemp = ProjectSaveService.Instance.Settings.SerialConfig.BaudRate;
-        SerialTimeoutTemp = ProjectSaveService.Instance.Settings.SerialConfig.TimeoutMilliseconds;
-        SerialRetryTimesTemp = ProjectSaveService.Instance.Settings.SerialConfig.RetryTimes;
-
-        this.BindWithDefault(x => x.DeviceIDTemp, v => ProjectSaveService.Instance.Settings.DeviceConfig.DeviceID = v, (byte)0);
         RefreshPortsCommand = ReactiveCommand.Create(RefreshPorts);
-        this.BindWithDefault(x => x.BaudRateTemp, v => ProjectSaveService.Instance.Settings.SerialConfig.BaudRate = v, 115200);
-        this.BindWithDefault(x => x.SerialTimeoutTemp, v => ProjectSaveService.Instance.Settings.SerialConfig.TimeoutMilliseconds = v, (UInt16)50);
-        this.BindWithDefault(x => x.SerialRetryTimesTemp, v => ProjectSaveService.Instance.Settings.SerialConfig.RetryTimes = v, (UInt16)10);
-
-        // UDP相关
         RefreshIPCommand = ReactiveCommand.Create(RefreshIPs);
-        // 检查UI输入的IP是否合法
-        RemoteAddressTemp = ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress;
-        this.WhenAnyValue<SettingWindowViewModel, string?>(x => x.RemoteAddressTemp)
-        .Subscribe((Action<string?>)(ip =>
-        {
-            if (string.IsNullOrWhiteSpace(ip))
-            {
-                ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress = "127.0.0.1";
-                RemoteAddressError = null;
-            }
-            else if (IsStrictIPv4(ip))
-            {
-                ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress = ip;
-                RemoteAddressError = null;
-            }
-            else
-            {
-                // 如果不合法则不做任何操作
-                RemoteAddressError = "请输入合法的 IPv4 地址";
-            }
-        }));
-
-        // init
-        IapLocalPortTemp = ProjectSaveService.Instance.Settings.UdpConfig.IapLocalPort;
-        IapRemotePortTemp = ProjectSaveService.Instance.Settings.UdpConfig.IapRemotePort;
-        XcpLocalPortTemp = ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort;
-        XcpRemotePortTemp = ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort;
-        UdpTimeoutTemp = ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds;
-        UdpRetryTimesTemp = ProjectSaveService.Instance.Settings.UdpConfig.RetryTimes;
-
-        // check
-        this.BindWithDefault(x => x.IapLocalPortTemp, v => ProjectSaveService.Instance.Settings.UdpConfig.IapLocalPort = v, 50002);
-        this.BindWithDefault(x => x.IapRemotePortTemp, v => ProjectSaveService.Instance.Settings.UdpConfig.IapRemotePort = v, 50001);
-        this.BindWithDefault(x => x.XcpLocalPortTemp, v => ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort = v, 50010);
-        this.BindWithDefault(x => x.XcpRemotePortTemp, v => ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort = v, 50011);
-        this.BindWithDefault(x => x.UdpTimeoutTemp, v => ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds = v, 50);
-        this.BindWithDefault(x => x.UdpRetryTimesTemp, v => ProjectSaveService.Instance.Settings.UdpConfig.RetryTimes = v, (UInt16)10);
-        // 监控
-        MaxSaveLenTemp = ProjectSaveService.Instance.Settings.MonitorConfig.MaxSaveLen;
-        this.BindWithDefault(x => x.MaxSaveLenTemp, v => ProjectSaveService.Instance.Settings.MonitorConfig.MaxSaveLen = v, 100000);
 
         ClearMonitorSymbolsCommand = ReactiveCommand.Create(() =>
         {
@@ -347,21 +310,97 @@ public partial class SettingWindowViewModel : ReactiveObject
             ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Remove(symbol);
             NotificationService.Show("符号已移除出监控列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
         });
+        // 用户指令过滤
+        var userCommandFilter = this.WhenValueChanged(x => x.UserCommandSearchText)
+                                        .Throttle(TimeSpan.FromMilliseconds(100))
+                                        .Select(UserCommand.CreateUserSymbolInfoSearchFilter);
+
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.UserCommandConfig.UserCommands)
+                           .Select(source => source.Connect())
+                           .Switch()
+                           .AutoRefresh(c => c.Name, changeSetBuffer: TimeSpan.FromSeconds(1))
+                           .AutoRefresh(c => c.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
+                           .Filter(userCommandFilter)
+                           .ObserveOn(AvaloniaScheduler.Instance)
+                           .Bind(out _filteredUserCommands)
+                           .Subscribe().DisposeWith(_disposables);
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings)
+            .Subscribe(BindProjectSettings)
+            .DisposeWith(_disposables);
+    }
+
+    private void BindProjectSettings(ProjectSettings settings)
+    {
+        // 先停止旧输入回写，再读取新工程；所有回写都捕获本次工程的设置。
+        _projectSubscriptions.Clear();
+        // 串口相关
+        DeviceIDTemp = settings.DeviceConfig.DeviceID;
+        BaudRateTemp = settings.SerialConfig.BaudRate;
+        SerialTimeoutTemp = settings.SerialConfig.TimeoutMilliseconds;
+        SerialRetryTimesTemp = settings.SerialConfig.RetryTimes;
+
+        this.BindWithDefault(x => x.DeviceIDTemp, v => settings.DeviceConfig.DeviceID = v, (byte)0).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.BaudRateTemp, v => settings.SerialConfig.BaudRate = v, 115200).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.SerialTimeoutTemp, v => settings.SerialConfig.TimeoutMilliseconds = v, (UInt16)50).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.SerialRetryTimesTemp, v => settings.SerialConfig.RetryTimes = v, (UInt16)10).DisposeWith(_projectSubscriptions);
+
+        // UDP相关
+        // 检查UI输入的IP是否合法
+        RemoteAddressTemp = settings.UdpConfig.RemoteAddress;
+        this.WhenAnyValue<SettingWindowViewModel, string?>(x => x.RemoteAddressTemp)
+        .Subscribe((Action<string?>)(ip =>
+        {
+            if (string.IsNullOrWhiteSpace(ip))
+            {
+                settings.UdpConfig.RemoteAddress = "127.0.0.1";
+                RemoteAddressError = null;
+            }
+            else if (IsStrictIPv4(ip))
+            {
+                settings.UdpConfig.RemoteAddress = ip;
+                RemoteAddressError = null;
+            }
+            else
+            {
+                // 如果不合法则不做任何操作
+                RemoteAddressError = "请输入合法的 IPv4 地址";
+            }
+        })).DisposeWith(_projectSubscriptions);
+
+        // init
+        IapLocalPortTemp = settings.UdpConfig.IapLocalPort;
+        IapRemotePortTemp = settings.UdpConfig.IapRemotePort;
+        XcpLocalPortTemp = settings.UdpConfig.XcpLocalPort;
+        XcpRemotePortTemp = settings.UdpConfig.XcpRemotePort;
+        UdpTimeoutTemp = settings.UdpConfig.TimeoutMilliseconds;
+        UdpRetryTimesTemp = settings.UdpConfig.RetryTimes;
+
+        // check
+        this.BindWithDefault(x => x.IapLocalPortTemp, v => settings.UdpConfig.IapLocalPort = v, 50002).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.IapRemotePortTemp, v => settings.UdpConfig.IapRemotePort = v, 50001).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.XcpLocalPortTemp, v => settings.UdpConfig.XcpLocalPort = v, 50010).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.XcpRemotePortTemp, v => settings.UdpConfig.XcpRemotePort = v, 50011).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.UdpTimeoutTemp, v => settings.UdpConfig.TimeoutMilliseconds = v, 50).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.UdpRetryTimesTemp, v => settings.UdpConfig.RetryTimes = v, (UInt16)10).DisposeWith(_projectSubscriptions);
+        // 监控
+        MaxSaveLenTemp = settings.MonitorConfig.MaxSaveLen;
+        this.BindWithDefault(x => x.MaxSaveLenTemp, v => settings.MonitorConfig.MaxSaveLen = v, 100000).DisposeWith(_projectSubscriptions);
+
         // IAP相关
-        IapFilePathTemp = ProjectSaveService.Instance.Settings.IapConfig.IapFilePath;
+        IapFilePathTemp = settings.IapConfig.IapFilePath;
         this.WhenAnyValue(x => x.IapFilePathTemp)
         .Subscribe(path =>
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 // 空路径 → 使用应用程序当前地址
-                ProjectSaveService.Instance.Settings.IapConfig.IapFilePath = AppContext.BaseDirectory;
+                settings.IapConfig.IapFilePath = AppContext.BaseDirectory;
                 IapFilePathError = null;
             }
             else if (IsValidPath(path))
             {
                 // 合法路径 → 同步
-                ProjectSaveService.Instance.Settings.IapConfig.IapFilePath = path;
+                settings.IapConfig.IapFilePath = path;
                 IapFilePathError = null;
             }
             else
@@ -369,39 +408,39 @@ public partial class SettingWindowViewModel : ReactiveObject
                 // 非法路径 → 提示错误
                 IapFilePathError = "请输入合法路径";
             }
-        });
+        }).DisposeWith(_projectSubscriptions);
 
-        WaitForHandShakeTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds;
-        WaitForInformationTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForInformationTimeoutSeconds;
-        WaitForWriteTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForWriteTimeoutSeconds;
-        WaitForCheckTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForCheckTimeoutSeconds;
-        WaitForRebootStartTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootStartTimeoutSeconds;
-        WaitForRebootCompleteTimeoutSecondsTemp = ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootCompleteTimeoutSeconds;
+        WaitForHandShakeTimeoutSecondsTemp = settings.IapConfig.WaitForHandShakeTimeoutSeconds;
+        WaitForInformationTimeoutSecondsTemp = settings.IapConfig.WaitForInformationTimeoutSeconds;
+        WaitForWriteTimeoutSecondsTemp = settings.IapConfig.WaitForWriteTimeoutSeconds;
+        WaitForCheckTimeoutSecondsTemp = settings.IapConfig.WaitForCheckTimeoutSeconds;
+        WaitForRebootStartTimeoutSecondsTemp = settings.IapConfig.WaitForRebootStartTimeoutSeconds;
+        WaitForRebootCompleteTimeoutSecondsTemp = settings.IapConfig.WaitForRebootCompleteTimeoutSeconds;
 
-        this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)10);
+        this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForInformationTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForInformationTimeoutSeconds = v, (UInt16)10);
+        this.BindWithDefault(x => x.WaitForInformationTimeoutSecondsTemp, v => settings.IapConfig.WaitForInformationTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForWriteTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForWriteTimeoutSeconds = v, (UInt16)10);
+        this.BindWithDefault(x => x.WaitForWriteTimeoutSecondsTemp, v => settings.IapConfig.WaitForWriteTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForCheckTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForCheckTimeoutSeconds = v, (UInt16)10);
+        this.BindWithDefault(x => x.WaitForCheckTimeoutSecondsTemp, v => settings.IapConfig.WaitForCheckTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForRebootStartTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootStartTimeoutSeconds = v, (UInt16)10);
+        this.BindWithDefault(x => x.WaitForRebootStartTimeoutSecondsTemp, v => settings.IapConfig.WaitForRebootStartTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForRebootCompleteTimeoutSecondsTemp, v => ProjectSaveService.Instance.Settings.IapConfig.WaitForRebootCompleteTimeoutSeconds = v, (UInt16)30);
+        this.BindWithDefault(x => x.WaitForRebootCompleteTimeoutSecondsTemp, v => settings.IapConfig.WaitForRebootCompleteTimeoutSeconds = v, (UInt16)30).DisposeWith(_projectSubscriptions);
 
-        // 用户指令过滤
-        var userCommandFilter = this.WhenValueChanged(x => x.UserCommandSearchText)
-                                        .Throttle(TimeSpan.FromMilliseconds(100))
-                                        .Select(UserCommand.CreateUserSymbolInfoSearchFilter);
+        // 升级工具也可以选择文件，设置窗口同步显示同一份路径。
+        settings.IapConfig.WhenAnyValue(x => x.IapFilePath)
+            .Subscribe(path => IapFilePathTemp = path)
+            .DisposeWith(_projectSubscriptions);
+    }
 
-        ProjectSaveService.Instance.Settings.UserCommandConfig.UserCommands.Connect()
-                           .AutoRefresh(c => c.Name, changeSetBuffer: TimeSpan.FromSeconds(1))
-                           .AutoRefresh(c => c.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
-                           .Filter(userCommandFilter)
-                           .ObserveOn(AvaloniaScheduler.Instance)
-                           .Bind(out _filteredUserCommands)
-                           .Subscribe();
+    public void Dispose()
+    {
+        _disposables.Dispose();
+        _projectSubscriptions.Dispose();
+        _serialPortSource.Dispose();
+        _localIPSource.Dispose();
     }
     #region MEA
     [ReactiveCommand]

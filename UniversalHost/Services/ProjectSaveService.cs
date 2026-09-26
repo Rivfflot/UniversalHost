@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
+using System.Reactive.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -87,10 +88,12 @@ public class ProjectSaveService : ReactiveObject
     private const string LayoutEntryName = "layout.json";//布局
     private const string ContextEntryName = "context.json";//窗口上下文
 
-    public static async Task SaveSettingsAsync()
+    public static Task SaveSettingsAsync() => SaveSettingsAsync(Instance.ProjectFilePath, Instance.Settings);
+
+    private static async Task SaveSettingsAsync(string path, ProjectSettings settings)
     {
         await using var fileStream = new FileStream(
-            Instance.ProjectFilePath,
+            path,
             FileMode.OpenOrCreate,
             FileAccess.ReadWrite,
             FileShare.None,
@@ -112,7 +115,7 @@ public class ProjectSaveService : ReactiveObject
         {
             await JsonSerializer.SerializeAsync(
                 stream,
-                Instance.Settings,
+                settings,
                 _jsonOptions);
         }
     }
@@ -176,9 +179,7 @@ public class ProjectSaveService : ReactiveObject
                 options);
         }
     }
-    //顺序：读取settings，若读取失败则报错。读取成功后更新工程路径，销毁之前的订阅，订阅自动保存，
-    //      初始化日志，订阅日志设置更新，重建监控标定变量集合，读取布局上下文，重建ViewModel，
-    //      读取布局，重建布局。
+    // 先完整读取工程，再释放旧文档、切换设置和运行时，最后重建文档。
     public static IRootDock? LoadProject(string path)
     {
         using var fileStream = new FileStream(path, FileMode.Open);
@@ -202,12 +203,7 @@ public class ProjectSaveService : ReactiveObject
 
             settings = JsonSerializer.Deserialize<ProjectSettings>(settingsJson);
         }
-        if (settings != null)
-        {
-            Instance.Settings = settings;
-            Update(path);
-        }
-        else
+        if (settings == null)
         {
             throw new System.Exception("读取设置错误");
         }
@@ -226,12 +222,11 @@ public class ProjectSaveService : ReactiveObject
             {
                 contextJson = reader.ReadToEnd();
             }
+            // 此阶段只读取显示项 Id 和布局数据；运行时关联由 VM 重建时完成。
             context = JsonSerializer.Deserialize<DockableRegistry.ContextSaveClass>(contextJson);
         }
         if (context != null)
         {
-            //重建VM
-            DockableRegistry.RebuildViewModels(context);
             // 读取 layout.json
             var layoutEntry = archive.GetEntry(LayoutEntryName);
             if (layoutEntry != null)
@@ -247,36 +242,53 @@ public class ProjectSaveService : ReactiveObject
                 layout = _dockSerializer.Deserialize<IRootDock>(layoutJson);
             }
         }
-        else
-        {
-            DockableRegistry.RebuildViewModels(new DockableRegistry.ContextSaveClass());
-        }
+        DockableRegistry.ClearAllDocuments();
+        Update(path, settings);
+        // Update 已建立新工程运行时，现在才能恢复各文档的变量引用。
+        DockableRegistry.RebuildViewModels(context ?? new DockableRegistry.ContextSaveClass());
         return layout;
     }
-    public static void Update(string path)
+    public static void Update(string path, ProjectSettings? settings = null)
     {
         Instance._disposables.Clear();
         Instance.ProjectFilePath = path;
-        // 自动保存设置
-        Instance.Settings.SubscribeToAllChanges(async () =>
+        if (settings != null)
         {
-            await SaveSettingsAsync();
+            Instance.Settings = settings;
+        }
+        var currentSettings = Instance.Settings;
+        // 自动保存设置
+        currentSettings.SubscribeToAllChanges(async () =>
+        {
+            // 捕获所属工程，避免旧工程的延迟回调保存到新工程路径。
+            try
+            {
+                await SaveSettingsAsync(path, currentSettings);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "自动保存设置失败: {ProjectPath}", path);
+            }
         }).DisposeWith(Instance._disposables);
         //日志初始化
         LogService.LogServiceConfig(System.IO.Path.GetDirectoryName(Instance.ProjectFilePath)!,
                      Instance.Settings.LogConfig.LogWriteToFileEnabled, Instance._disposables);
         //订阅日志设置更新
-        Instance.Settings.LogConfig.SubscribeToAllChanges(() =>
+        currentSettings.LogConfig.WhenAnyValue(
+            x => x.LogEnabled,
+            x => x.LogEventLevelSetting,
+            x => x.LogWriteToFileEnabled)
+        .Subscribe(values =>
         {
-            if (Instance.Settings.LogConfig.LogEnabled)
+            if (values.Item1)
             {
-                LogService.SetLogLevel(Instance.Settings.LogConfig.LogEventLevelSetting);
+                LogService.SetLogLevel(values.Item2);
             }
             else
             {
                 LogService.SetLogLevel(Serilog.Events.LogEventLevel.Fatal + 1);
             }
-            LogService.IsWriteToFileEnabled = Instance.Settings.LogConfig.LogWriteToFileEnabled;
+            LogService.IsWriteToFileEnabled = values.Item3;
         }).DisposeWith(Instance._disposables);
         //重建变量集合
         SymbolRuntimeService.RebuildSymbolRuntimes();

@@ -10,6 +10,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using UniversalHost.Models;
 using UniversalHost.Services;
@@ -36,8 +38,9 @@ public class SelectedConverter : IMultiValueConverter
         return false;
     }
 }
-public partial class SelectWindowViewModel : ReactiveObject
+public partial class SelectWindowViewModel : ReactiveObject, IDisposable
 {
+    private readonly CompositeDisposable _disposables = [];
     private enum DocumentType
     {
         GridMonitor,
@@ -68,11 +71,22 @@ public partial class SelectWindowViewModel : ReactiveObject
     public ReadOnlyObservableCollection<UserCommand> FilteredUserCommands => _filteredUserCommands;
     public SelectWindowViewModel()
     {
+        // 工程切换后必须重新选择目标文档，即使两份工程包含相同的文档 Id。
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings)
+            .Subscribe(_ =>
+            {
+                _documentId = string.Empty;
+                SelectionRefreshVersion++;
+            })
+            .DisposeWith(_disposables);
+
         var monitorSymbolFilter = this.WhenValueChanged(x => x.MonitorSymbolSearchText)
                                         .Throttle(TimeSpan.FromMilliseconds(100))
                                         .Select(UserSymbolInfo.CreateUserSymbolInfoSearchFilter);
 
-        ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.MonitorConfig.MonitoredSymbols)
+                                .Select(source => source.Connect())
+                                .Switch()
                                 .AutoRefresh(symbol => symbol.IsMonitored, changeSetBuffer: TimeSpan.FromMilliseconds(100))
                                 .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                                 .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
@@ -80,31 +94,38 @@ public partial class SelectWindowViewModel : ReactiveObject
                                 .Filter(monitorSymbolFilter)
                                 .ObserveOn(AvaloniaScheduler.Instance)
                                 .Bind(out _filteredMonitorSymbols)
-                                .Subscribe(_ => { SelectionRefreshVersion++; });
+                                .Subscribe(_ => { SelectionRefreshVersion++; })
+                                .DisposeWith(_disposables);
 
         var calibrateSymbolFilter = this.WhenValueChanged(x => x.CalibrateSymbolSearchText)
                                         .Throttle(TimeSpan.FromMilliseconds(100))
                                         .Select(UserSymbolInfo.CreateUserSymbolInfoSearchFilter);
 
-        ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.CalibrateConfig.CalibratedSymbols)
+                               .Select(source => source.Connect())
+                               .Switch()
                                .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                                .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                                .Filter(calibrateSymbolFilter)
                                .ObserveOn(AvaloniaScheduler.Instance)
                                .Bind(out _filteredCalibrateSymbols)
-                               .Subscribe();
+                               .Subscribe()
+                               .DisposeWith(_disposables);
 
         var userCommandFilter = this.WhenValueChanged(x => x.UserCommandSearchText)
                                         .Throttle(TimeSpan.FromMilliseconds(100))
                                         .Select(UserCommand.CreateUserSymbolInfoSearchFilter);
         _filteredUserCommands = new ReadOnlyObservableCollection<UserCommand>([]);
-        ProjectSaveService.Instance.Settings.UserCommandConfig.UserCommands.Connect()
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.UserCommandConfig.UserCommands)
+                           .Select(source => source.Connect())
+                           .Switch()
                            .AutoRefresh(c => c.Name, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .AutoRefresh(c => c.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .Filter(userCommandFilter)
                            .ObserveOn(AvaloniaScheduler.Instance)
                            .Bind(out _filteredUserCommands)
-                           .Subscribe();
+                           .Subscribe()
+                           .DisposeWith(_disposables);
     }
 
     public void UpdateDocumentId(string id)
@@ -233,4 +254,6 @@ public partial class SelectWindowViewModel : ReactiveObject
             vm.AddOrRemove(key);
         SelectionRefreshVersion++;
     }
+
+    public void Dispose() => _disposables.Dispose();
 }

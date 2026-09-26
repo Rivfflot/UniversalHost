@@ -44,6 +44,11 @@ public static class DockableRegistry
     public static FaultRecordViewModel FaultRecordViewModel { get; } = new FaultRecordViewModel();
     public static void ClearAllDocuments()
     {
+        foreach (var vm in GridMonitorDocuments.Values) vm.Dispose();
+        foreach (var vm in CurveMonitorDocuments.Values) vm.Dispose();
+        foreach (var vm in BitsMonitorDocuments.Values) vm.Dispose();
+        foreach (var vm in GridCalibrateDocuments.Values) vm.Dispose();
+        foreach (var vm in UserCommandDocuments.Values) vm.Dispose();
         GridMonitorDocuments.Clear();
         CurveMonitorDocuments.Clear();
         BitsMonitorDocuments.Clear();

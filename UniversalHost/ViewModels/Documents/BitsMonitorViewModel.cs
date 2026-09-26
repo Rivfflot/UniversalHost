@@ -83,49 +83,43 @@ public partial class BitsMonitorLayout : ReactiveObject
     }
     [JsonIgnore] private readonly ObservableCollection<BitsMonitorSymbol> _bitsMonitorSymbols = new([]);
     [JsonIgnore] public ObservableCollection<BitsMonitorSymbol> BitsMonitorSymbols => _bitsMonitorSymbols;
+    private List<BitsMonitorSymbol>? _pendingSymbols;
 
     [JsonPropertyName("BitsMonitorSymbols")]
     public List<BitsMonitorSymbol> BitsSourceStorage
     {
-        get => BitsMonitorSymbols.ToList(); // 保存时：从 SourceList 转换到 List
-        set
+        get => _pendingSymbols ?? BitsMonitorSymbols.ToList();
+        // 反序列化时新工程的运行时尚未建立，只保留保存数据。
+        set => _pendingSymbols = value ?? [];
+    }
+
+    internal void RestoreRuntimes(IObservableCache<SymbolRuntime, Guid> runtimes)
+    {
+        if (_pendingSymbols == null) return;
+
+        BitsMonitorSymbols.Clear();
+        foreach (var storage in _pendingSymbols)
         {
-            _bitsMonitorSymbols!.AddRange(value
-                        .Select(storage =>
-                        {
-                            var lookup = SymbolRuntimeService
-                                .MonitorSymbolRuntimesSource
-                                .Lookup(storage.Id);
+            var lookup = runtimes.Lookup(storage.Id);
+            if (!lookup.HasValue) continue;
 
-                            if (!lookup.HasValue)
-                                return null;
-
-                            var item = new BitsMonitorSymbol(lookup.Value)
-                            {
-                                Bits = storage.Bits,
-                                IsExpanded = storage.IsExpanded,
-                            };
-
-                            int oldBitNum = item.Bits.Count;
-                            int newBitNum = lookup.Value.ValueSizeInBytes * 8;
-                            if (oldBitNum > newBitNum)
-                            {
-                                for (int i = newBitNum; i < oldBitNum; i++)
-                                {
-                                    item.Bits.RemoveAt(newBitNum);
-                                }
-                            }
-                            else if (newBitNum > oldBitNum)
-                            {
-                                for (int i = oldBitNum; i < newBitNum; i++)
-                                {
-                                    item.Bits.Add(new BitsMonitorLayout.BitStyle($"Bit {i}"));
-                                }
-                            }
-                            return item;
-                        })
-                        .Where(x => x != null)!);
+            var item = new BitsMonitorSymbol(lookup.Value)
+            {
+                Bits = storage.Bits,
+                IsExpanded = storage.IsExpanded,
+            };
+            int newBitNum = lookup.Value.ValueSizeInBytes * 8;
+            while (item.Bits.Count > newBitNum)
+            {
+                item.Bits.RemoveAt(newBitNum);
+            }
+            while (item.Bits.Count < newBitNum)
+            {
+                item.Bits.Add(new BitStyle($"Bit {item.Bits.Count}"));
+            }
+            BitsMonitorSymbols.Add(item);
         }
+        _pendingSymbols = null;
     }
     [Reactive] private bool _isNameVisible = true;
     [Reactive] private bool _isAliasVisible = true;
@@ -146,6 +140,7 @@ public partial class BitsMonitorViewModel : ReactiveObject, IDisposable
     {
         Id = id;
         Layout = layout;
+        Layout.RestoreRuntimes(SymbolRuntimeService.MonitorSymbolRuntimesSource);
 
         //源移除变量时移除此窗口的相应变量
         SymbolRuntimeService.MonitorSymbolRuntimesSource.Connect()

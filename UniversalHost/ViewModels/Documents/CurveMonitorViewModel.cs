@@ -73,40 +73,40 @@ public partial class CurveMonitorLayout : ReactiveObject
     }
     [JsonIgnore] private readonly SourceList<CurveItem> _curvesSource = new();
     [JsonIgnore] public ISourceList<CurveItem> CurvesSource => _curvesSource;
+    private List<CurveItemStorage>? _pendingCurves;
 
+    // 保留已有工程文件使用的字段名。
     [JsonPropertyName("BitsMonitorSymbols")]
     public List<CurveItemStorage> CurvesSourceStorage
     {
-        get => CurvesSource.Items.Select(
+        get => _pendingCurves ?? CurvesSource.Items.Select(
                             x => new CurveItemStorage
                             {
                                 Id = x.Id,
                                 IsVisible = x.IsVisible,
                             }).ToList(); // 保存时：从 SourceList 转换到 List
-        set
+        // 反序列化只保存 Id 和样式，不能查询上一工程或尚未建立的运行时。
+        set => _pendingCurves = value ?? [];
+    }
+
+    internal void RestoreRuntimes(IObservableCache<SymbolRuntime, Guid> runtimes)
+    {
+        if (_pendingCurves == null) return;
+
+        _curvesSource.Edit(list =>
         {
-            _curvesSource.Edit(list =>
+            list.Clear();
+            foreach (var storage in _pendingCurves)
             {
-                list.Clear();
-                list.AddRange(value
-                            .Select(storage =>
-                            {
-                                var lookup = SymbolRuntimeService
-                                    .MonitorSymbolRuntimesSource
-                                    .Lookup(storage.Id);
+                var lookup = runtimes.Lookup(storage.Id);
+                if (!lookup.HasValue) continue;
 
-                                if (!lookup.HasValue)
-                                    return null;
-
-                                var item = new CurveItem(lookup.Value);
-
-                                item.ApplyStorage(storage);
-
-                                return item;
-                            })
-                            .Where(x => x != null)!);
-            });
-        }
+                var item = new CurveItem(lookup.Value);
+                item.ApplyStorage(storage);
+                list.Add(item);
+            }
+        });
+        _pendingCurves = null;
     }
     //页面布局保存项
     [JsonIgnore][Reactive] private GridLength _leftPanelLength = new(150);
@@ -142,6 +142,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
     {
         Id = id;
         CurvesLayout = layout;
+        CurvesLayout.RestoreRuntimes(SymbolRuntimeService.MonitorSymbolRuntimesSource);
 
         //源移除变量时移除此窗口的相应变量
         SymbolRuntimeService.MonitorSymbolRuntimesSource.Connect()

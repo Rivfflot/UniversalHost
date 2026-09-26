@@ -195,12 +195,10 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             {
                 _disposables.Clear();
                 //创建默认设置
-                ProjectSaveService.Instance.Settings = new ProjectSettings();
                 ResetDockLayout();
+                ProjectSaveService.Update(result.Path.LocalPath, new ProjectSettings());
 
-                await ProjectSaveService.SaveProjectAsync(result.Path.AbsolutePath, Layout);
-
-                ProjectSaveService.Update(result.Path.AbsolutePath);
+                await ProjectSaveService.SaveProjectAsync(result.Path.LocalPath, Layout);
 
                 GlobalStatus.Instance.IsProjectOpened = true;
                 Serilog.Log.Information($"新建工程成功，路径: {result.Path.AbsolutePath}");
@@ -233,7 +231,6 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             try
             {
                 _disposables.Clear();
-                DockableRegistry.GridMonitorDocuments.Clear();
                 var layout = ProjectSaveService.LoadProject(path);
                 if (layout == null)
                 {
