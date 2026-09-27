@@ -7,6 +7,7 @@ using ReactiveUI.Avalonia.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
 using ScottPlot;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
@@ -19,6 +20,8 @@ namespace UniversalHost.Views.Documents;
 public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewModel>
 {
     private ListBoxItem? _currentHoveredItem;
+    private readonly Dictionary<CurveMonitorLayout.CurveItem,
+        (ScottPlot.Plottables.Signal Signal, ScottPlot.AxisPanels.LeftAxis YAxis)> _curves = [];
     private static readonly DataFormat<CurveMonitorLayout.CurveItem> RowFormat =
     DataFormat<CurveMonitorLayout.CurveItem>.CreateInProcessFormat<CurveMonitorLayout.CurveItem>("CurveItemRow");
     public CurveMonitorView()
@@ -27,52 +30,72 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         SymbolList.AddHandler(PointerPressedEvent, FirstRow_PointerPressed, handledEventsToo: true);
         SymbolList.AddHandler(DragDrop.DragOverEvent, ListBox_DragOver);
         SymbolList.AddHandler(DragDrop.DragLeaveEvent, ListBox_DragLeave);
-
-
-
         this.WhenActivated(disposables =>
         {
-            ViewModel!.RemoveCurve += (c) =>
-            {
-                RemoveCurve(c);
-            };
-            ViewModel!.AddCurve += (c) =>
-            {
-                AddCurve(c);
-            };
-            ViewModel.RefreshCurve += () =>
-            {
-                CurvePlot.Refresh();
-            };
+            var viewModel = ViewModel;
+            if (viewModel == null) return;
+
+            var subscriptions = new CompositeDisposable();
+            Action<CurveMonitorLayout.CurveItem> removeCurveHandler = RemoveCurve;
+            Action<CurveMonitorLayout.CurveItem> addCurveHandler = AddCurve;
+            Action refreshCurveHandler = () => CurvePlot.Refresh();
+            var themeChangedHandler = new EventHandler((s, e) => ApplyPlotTheme());
+            viewModel.RemoveCurve += removeCurveHandler;
+            viewModel.AddCurve += addCurveHandler;
+            viewModel.RefreshCurve += refreshCurveHandler;
+            ActualThemeVariantChanged += themeChangedHandler;
             var scanLine = CurvePlot.Plot.Add.VerticalLine(0, 0.95f, Colors.Red);
-            foreach (var item in ViewModel!.DisplayCurves)
+
+            Disposable.Create(() =>
+            {
+                viewModel.RemoveCurve -= removeCurveHandler;
+                viewModel.AddCurve -= addCurveHandler;
+                viewModel.RefreshCurve -= refreshCurveHandler;
+                ActualThemeVariantChanged -= themeChangedHandler;
+                subscriptions.Dispose();
+
+                // 清理本视图创建的对象，也覆盖停用前已从显示集合移除的项。
+                foreach (var item in _curves.Keys.ToArray())
+                {
+                    RemoveCurve(item);
+                }
+                CurvePlot.Plot.Remove(scanLine);
+                _currentHoveredItem?.Classes.Remove("drag-hover");
+                _currentHoveredItem = null;
+            }).DisposeWith(disposables);
+
+            foreach (var item in viewModel.DisplayCurves)
             {
                 AddCurve(item);
             }
             //右边留一个小间隔以显示最后一个横坐标
             CurvePlot.Plot.Axes.Margins(0, 1e-4, 0.05, 0.05);
             CurvePlot.Plot.Axes.Left.IsVisible = false;
-            if (ViewModel!.DisplayCurves.Any())
+            var selectedCurve = viewModel.SelectedCurveItem ?? viewModel.DisplayCurves.FirstOrDefault();
+            foreach (var item in viewModel.DisplayCurves)
             {
-                ViewModel!.DisplayCurves[0].YAxis?.IsVisible = true;
+                item.YAxis?.IsVisible = item == selectedCurve;
             }
             Observable.Interval(TimeSpan.FromMilliseconds(50))
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Where(_ => GlobalStatus.Instance.IsMonitoring && this.IsVisible)
                 .Subscribe(_ =>
                 {
-                    if (ViewModel!.DisplayCurves.Count > 0)
+                    if (viewModel.DisplayCurves.Count > 0)
                     {
                         scanLine.IsVisible = true;
-                        scanLine.X = ViewModel!.DisplayCurves[0].Runtime.PlotHistory.WriteIndex - 1;
+                        scanLine.X = viewModel.DisplayCurves[0].Runtime.PlotHistory.WriteIndex - 1;
                     }
                     else
                     {
                         scanLine.IsVisible = false;
                     }
-                    CurvePlot.Plot.MoveToTop(ViewModel!.SelectedCurveItem?.Signal!);
+                    if (viewModel.SelectedCurveItem is { } selected && _curves.TryGetValue(selected, out var curve))
+                    {
+                        CurvePlot.Plot.MoveToTop(curve.Signal);
+                    }
                     CurvePlot.Refresh();
-                }).DisposeWith(disposables);
+                }).DisposeWith(subscriptions);
 
             Observable.Interval(TimeSpan.FromMilliseconds(200))
                .Select(_ => GlobalStatus.Instance.IsMonitoring)
@@ -82,10 +105,10 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 {
                     if (!state)
                     {
-                        if (ViewModel!.DisplayCurves.Count > 0)
+                        if (viewModel.DisplayCurves.Count > 0)
                         {
                             scanLine.IsVisible = true;
-                            scanLine.X = ViewModel!.DisplayCurves[0].Runtime.PlotHistory.WriteIndex - 1;
+                            scanLine.X = viewModel.DisplayCurves[0].Runtime.PlotHistory.WriteIndex - 1;
                         }
                         else
                         {
@@ -93,15 +116,9 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                         }
                         CurvePlot.Refresh();
                     }
-                }).DisposeWith(disposables);
+                }).DisposeWith(subscriptions);
 
             ApplyPlotTheme();
-            var themeChangedHandler = new EventHandler((s, e) => ApplyPlotTheme());
-            this.ActualThemeVariantChanged += themeChangedHandler;
-            Disposable.Create(() =>
-            {
-                this.ActualThemeVariantChanged -= themeChangedHandler;
-            }).DisposeWith(disposables);
         });
     }
     private void ApplyPlotTheme()
@@ -132,11 +149,9 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     }
     private void AddCurve(CurveMonitorLayout.CurveItem item)
     {
-        bool isFirst = false;
-        if (CurvePlot.Plot.PlottableList.Count == 1)
-        {
-            isFirst = true;
-        }
+        if (_curves.ContainsKey(item)) return;
+
+        bool isFirst = _curves.Count == 0;
         item.Signal = CurvePlot.Plot.Add.Signal(item.Runtime.PlotHistory.Buffer);
         item.Signal.IsVisible = item.IsVisible;
         item.Color = Avalonia.Media.Color.FromUInt32(item.Signal.Color.ARGB);
@@ -147,13 +162,17 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         item.YAxis.IsVisible = isFirst;
         item.Signal.Axes.XAxis = CurvePlot.Plot.Axes.Bottom;
         item.Signal.Axes.YAxis = item.YAxis;
+        _curves.Add(item, (item.Signal, item.YAxis));
         ApplyPlotTheme();
     }
     private void RemoveCurve(CurveMonitorLayout.CurveItem item)
     {
-        CurvePlot.Plot.Remove(item.Signal!);
-        //CurvePlot.Plot.Remove(item.ScanLine!);
-        CurvePlot.Plot.Remove(item.YAxis!);
+        if (!_curves.Remove(item, out var curve)) return;
+
+        CurvePlot.Plot.Remove(curve.Signal);
+        CurvePlot.Plot.Remove(curve.YAxis);
+        if (ReferenceEquals(item.Signal, curve.Signal)) item.Signal = null;
+        if (ReferenceEquals(item.YAxis, curve.YAxis)) item.YAxis = null;
     }
     private void ListBox_DragOver(object? sender, DragEventArgs e)
     {
