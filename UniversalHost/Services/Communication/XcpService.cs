@@ -113,7 +113,8 @@ public class XcpClient : IAsyncDisposable
         }
     }
 
-    private readonly Dictionary<byte, OdtLayout> _pidOdtMap = [];
+    // 在发送 START 前一次性发布完整布局，避免 DAQ 读取线程看到布局被修改。
+    private volatile Dictionary<byte, OdtLayout> _pidOdtMap = [];
 
     private volatile TaskCompletionSource<byte[]>? _ctoTcs;
 
@@ -151,13 +152,8 @@ public class XcpClient : IAsyncDisposable
 
     private readonly MemoryPool<byte> _pool = MemoryPool<byte>.Shared;
 
-    private readonly Channel<DaqFrame> _daqChannel = Channel.CreateBounded<DaqFrame>(
-            new BoundedChannelOptions(256)
-            {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.DropOldest
-            }, itemDropped: frame => frame.Dispose());
+    private readonly Channel<DaqFrame> _daqChannel;
+    public XcpReceiveStatistics ReceiveStatistics { get; } = new();
 
     private int _ctr;
 
@@ -182,9 +178,21 @@ public class XcpClient : IAsyncDisposable
 
     public XcpClient()
     {
+        // 1024帧队列，10kHz下0.1s
+        _daqChannel = Channel.CreateBounded<DaqFrame>(
+            new BoundedChannelOptions(1024)
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.DropOldest
+            }, itemDropped: frame =>
+            {
+                ReceiveStatistics.RecordQueueDrop();
+                frame.Dispose();
+            });
         _comm = ProjectSaveService.Instance.Settings.DeviceConfig.Mode switch
         {
-            CommunicationMode.UDP => new UdpService(ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort, ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort, ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds * 10),
+            CommunicationMode.UDP => new UdpService(ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort, ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort, ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds * 10, receiveBufferSize: 4 * 1024 * 1024),
             //CommunicationMode.Serial => new SerialService(ProjectSaveService.Instance.Settings.SerialConfig),//TODO : 串口通信
             _ => throw new Exception("Unsupported communication Mode")
         };
@@ -346,7 +354,6 @@ public class XcpClient : IAsyncDisposable
 
     public async Task StartDaq(IReadOnlyList<SymbolRuntime> symbolRuntimes)
     {
-        _pidOdtMap.Clear();
         OdtLayout layout = new OdtLayout();
         layout.DaqList = 0;
         layout.Odt = 0;
@@ -375,9 +382,9 @@ public class XcpClient : IAsyncDisposable
         await Daq.SetDaqListModeAsync();
 
         byte firstPid = await Daq.SelectDaqListAsync();
-        await Daq.StartSynchAsync();
         layout.Pid = (byte)(firstPid + layout.Odt);
-        _pidOdtMap.Add(layout.Pid, layout);
+        _pidOdtMap = new Dictionary<byte, OdtLayout> { [layout.Pid] = layout };
+        await Daq.StartSynchAsync();
         GlobalStatus.Instance.IsMonitoring = true;
     }
 
@@ -448,12 +455,13 @@ public class XcpClient : IAsyncDisposable
     }
     private async Task ReceiverLoop()
     {
+        using IMemoryOwner<byte> owner = _pool.Rent(1600);
         while (!_cts.IsCancellationRequested)
         {
-            using IMemoryOwner<byte> owner = _pool.Rent(1600);
             int len = await _comm.ReceiveAsync(owner.Memory, _cts.Token);
             if (len <= 0)
                 continue;
+            ReceiveStatistics.RecordDatagram();
 
             // 下位机会将多个带 LEN/CTR 的 XCP 帧合并在同一个 UDP 数据报中。
             int offset = 0;
@@ -461,6 +469,7 @@ public class XcpClient : IAsyncDisposable
             {
                 if (len - offset < 5)
                 {
+                    ReceiveStatistics.RecordMalformedDatagram();
                     Serilog.Log.Warning("XCP 数据报帧头不完整：长度 {Length}，偏移 {Offset}", len, offset);
                     break;
                 }
@@ -468,12 +477,16 @@ public class XcpClient : IAsyncDisposable
                 int payloadLength = BinaryPrimitives.ReadUInt16LittleEndian(owner.Memory.Span.Slice(offset, 2));
                 if (payloadLength == 0 || payloadLength > len - offset - 4)
                 {
+                    ReceiveStatistics.RecordMalformedDatagram();
                     Serilog.Log.Warning("XCP 数据报帧长度无效：LEN={PayloadLength}，长度 {Length}，偏移 {Offset}", payloadLength, len, offset);
                     break;
                 }
 
                 int frameLength = payloadLength + 4;
                 ReadOnlyMemory<byte> frame = owner.Memory.Slice(offset, frameLength);
+                // One counter per XCP message, including CRM/EV/SERV and every
+                // message inside an accumulated UDP datagram. ushort wraps normally.
+                ReceiveStatistics.RecordCounter(BinaryPrimitives.ReadUInt16LittleEndian(frame.Span[2..]));
                 byte pid = frame.Span[4];
                 ResetHeartbeatTimer();
 
@@ -495,13 +508,17 @@ public class XcpClient : IAsyncDisposable
     }
     private void HandleDaq(ReadOnlyMemory<byte> data)
     {
+        ReceiveStatistics.RecordDaqReceived();
         // 每帧持有独立内存，接收缓冲区可立即复用。
         IMemoryOwner<byte> owner = _pool.Rent(data.Length);
         data.CopyTo(owner.Memory);
         var frame = new DaqFrame(data.Span[4], Stopwatch.GetTimestamp(), owner, data.Length);
 
         if (!_daqChannel.Writer.TryWrite(frame))
+        {
+            ReceiveStatistics.RecordQueueDrop();
             frame.Dispose();
+        }
     }
     private async Task DaqLoop()
     {
@@ -510,7 +527,10 @@ public class XcpClient : IAsyncDisposable
             try
             {
                 if (!_pidOdtMap.TryGetValue(frame.Pid, out var layout))
+                {
+                    ReceiveStatistics.RecordUnknownPid();
                     continue;
+                }
 
                 var payload = frame.Data.Span[12..];
 
@@ -524,9 +544,11 @@ public class XcpClient : IAsyncDisposable
 
                     offset += entry.Size;
                 }
+                ReceiveStatistics.RecordDaqDecoded();
             }
             catch (Exception ex)
             {
+                ReceiveStatistics.RecordParseError();
                 NotificationService.Show("DAQ解析错误", ex.Message, NotificationType.Warning);
                 Debug.WriteLine(ex);
             }
@@ -540,6 +562,8 @@ public class XcpClient : IAsyncDisposable
     private async Task HeartbeatLoop()
     {
         long intervalTicks = Stopwatch.Frequency; // 1 秒对应的 ticks
+        long lastDiagnosticsTimestamp = Stopwatch.GetTimestamp();
+        long lastErrorCount = 0;
 
         while (!_cts.IsCancellationRequested)
         {
@@ -553,6 +577,21 @@ public class XcpClient : IAsyncDisposable
             }
 
             long now = Stopwatch.GetTimestamp();
+            if (now - lastDiagnosticsTimestamp >= intervalTicks)
+            {
+                lastDiagnosticsTimestamp = now;
+                var stats = ReceiveStatistics.Snapshot();
+                long errorCount = stats.CounterGapFrames + stats.DuplicateOrReorderedFrames +
+                    stats.QueueDrops + stats.UnknownPidFrames + stats.ParseErrors + stats.MalformedDatagrams;
+                if (errorCount != lastErrorCount)
+                {
+                    lastErrorCount = errorCount;
+                    Serilog.Log.Warning("XCP 接收累计诊断：CTR前向缺口={CounterGaps}，重复/乱序={Reordered}，DAQ队列丢帧={QueueDrops}，未知PID={UnknownPid}，解析失败={ParseErrors}，无效数据报={Malformed}，DAQ接收/解析={Received}/{Decoded}",
+                        stats.CounterGapFrames, stats.DuplicateOrReorderedFrames, stats.QueueDrops,
+                        stats.UnknownPidFrames, stats.ParseErrors, stats.MalformedDatagrams,
+                        stats.DaqReceived, stats.DaqDecoded);
+                }
+            }
             long last = Interlocked.Read(ref _lastActivityTimestamp);
 
             // 1 秒内有过通信，跳过
@@ -612,6 +651,9 @@ public class XcpClient : IAsyncDisposable
         try { if (_daqTask != null) await _daqTask; } catch (OperationCanceledException) { }
         try { if (_heartbeatTask != null) await _heartbeatTask; } catch (OperationCanceledException) { }
 
+        _daqChannel.Writer.TryComplete();
+        while (_daqChannel.Reader.TryRead(out var frame))
+            frame.Dispose();
         _cts.Dispose();
         await _comm.DisposeAsync();
         _ctoSemaphore.Dispose();
@@ -821,7 +863,7 @@ public class XcpClient : IAsyncDisposable
             return _client.SendCtoAsync<Daq.WriteDaqCommand, Daq.WriteDaqParams, bool>(p);
         }
 
-        public Task<bool> SetDaqListModeAsync(ushort daqList = 0, ushort eventChannel = 0, byte prescaler = 0, byte priority = 0xff)
+        public Task<bool> SetDaqListModeAsync(ushort daqList = 0, ushort eventChannel = 0, byte prescaler = 1, byte priority = 0)
         {
             Daq.SetDaqListModeParams p = new()
             {

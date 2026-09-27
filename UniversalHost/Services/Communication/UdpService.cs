@@ -16,12 +16,14 @@ public class UdpService : ICommService
 
     public UdpService() : this("127.0.0.1", 0, "127.0.0.1", 0, 0) { }
 
-    public UdpService(string localAddr, int localPort, string remoteAddr, int remotePort, int timeoutMilliseconds)
+    public UdpService(string localAddr, int localPort, string remoteAddr, int remotePort, int timeoutMilliseconds, int receiveBufferSize = 0)
     {
         _timeoutMilliseconds = timeoutMilliseconds;
 
         var localEndPoint = new IPEndPoint(IPAddress.Parse(localAddr), localPort);
         _udpClient = new UdpClient(localEndPoint);
+        if (receiveBufferSize > 0)
+            _udpClient.Client.ReceiveBufferSize = receiveBufferSize;
         const int SIO_UDP_CONNRESET = -1744830452;
         _udpClient.Client.IOControl(
             (IOControlCode)SIO_UDP_CONNRESET,
