@@ -65,24 +65,4 @@ internal class FaultRecord
 
         RecordSymbolRuntimes.Add(runtime);
     }
-
-    /// <summary>
-    /// runtime中存储的是原始数组，按照实际时间顺序返回字符串。
-    /// </summary>
-    /// <param name="index">0最旧，RecordLength-1最新</param>
-    /// <param name="runtime"></param>
-    /// <returns></returns>
-    public string GetIndexString(uint index, SymbolRuntime runtime)
-    {
-        if (index >= RecordLength)
-        {
-            throw new IndexOutOfRangeException();
-        }
-        uint actualIdx = CurrentIndex + index + 1;
-        if (actualIdx >= RecordLength)
-        {
-            actualIdx -= RecordLength;
-        }
-        return runtime.GetValueHistoryIndexString((int)actualIdx)!;
-    }
 }
