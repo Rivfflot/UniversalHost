@@ -237,7 +237,7 @@ public class IapService
                 {
                     Serilog.Log.Verbose($"IAP 阶段 {stage} 第{frameIndex}/{protocol.FrameNum} 帧 第 {i + 1} 次尝试，状态: 接收超时");
                 }
-                else
+                else if(stage != IapProtocol.Stage.SendData)
                 {
                     Serilog.Log.Verbose($"IAP 阶段 {stage} 第 {i + 1} 次尝试，状态: 接收超时");
                 }
@@ -250,7 +250,7 @@ public class IapService
                 {
                     Serilog.Log.Verbose($"IAP 阶段 {stage} 第{frameIndex}/{protocol.FrameNum} 帧 第 {i + 1} 次尝试，状态: {status}");
                 }
-                else
+                else if(stage != IapProtocol.Stage.SendData)
                 {
                     Serilog.Log.Verbose($"IAP 阶段 {stage} 第 {i + 1} 次尝试，状态: {status}");
                 }
