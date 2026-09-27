@@ -30,10 +30,17 @@ public partial class FaultRecordViewModel : ReactiveObject
             NotificationService.Show("故障数据上传成功", $"保存至 {path}", NotificationType.Success);
             Serilog.Log.Information($"故障录波数据上传成功，保存至 {path}");
         }
+        catch (FaultRecordNotCompletedException ex)
+        {
+            Stage = ex.Message;
+            NotificationService.Show("故障数据上传失败", ex.Message, NotificationType.Warning);
+            Serilog.Log.Warning("故障数据上传失败：{Reason}", ex.Message);
+        }
         catch (Exception ex)
         {
+            Stage = "上传失败";
             NotificationService.Show("故障数据上传失败", ex.Message, NotificationType.Warning);
-            Serilog.Log.Warning($"故障数据上传失败 : {ex.Message}");
+            Serilog.Log.Warning(ex, "故障数据上传失败：{Reason}", ex.Message);
         }
     }
 }

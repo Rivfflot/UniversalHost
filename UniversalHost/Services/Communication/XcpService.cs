@@ -152,12 +152,12 @@ public class XcpClient : IAsyncDisposable
     private readonly MemoryPool<byte> _pool = MemoryPool<byte>.Shared;
 
     private readonly Channel<DaqFrame> _daqChannel = Channel.CreateBounded<DaqFrame>(
-            new BoundedChannelOptions(128)
+            new BoundedChannelOptions(256)
             {
                 SingleReader = true,
                 SingleWriter = true,
                 FullMode = BoundedChannelFullMode.DropOldest
-            });
+            }, itemDropped: frame => frame.Dispose());
 
     private int _ctr;
 
@@ -231,34 +231,44 @@ public class XcpClient : IAsyncDisposable
                         where TCommand : IXcpCommand<TParams, TResponse>
     {
         await _ctoSemaphore.WaitAsync(_cts.Token);
+        var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         try
         {
-            var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-
             IMemoryOwner<byte> owner = _pool.Rent(280);
-            Memory<byte> mem = owner.Memory;
-
-            int xcpLen = TCommand.Encode(mem.Span[4..], args);
-
             ushort ctr = (ushort)Interlocked.Increment(ref _ctr);
+            try
+            {
+                Memory<byte> mem = owner.Memory;
+                int xcpLen = TCommand.Encode(mem.Span[4..], args);
 
-            BinaryPrimitives.WriteUInt16LittleEndian(mem.Span, (ushort)xcpLen);
-            BinaryPrimitives.WriteUInt16LittleEndian(mem.Span[2..], ctr);
+                BinaryPrimitives.WriteUInt16LittleEndian(mem.Span, (ushort)xcpLen);
+                BinaryPrimitives.WriteUInt16LittleEndian(mem.Span[2..], ctr);
 
-            _ctoTcs = tcs;
+                _ctoTcs = tcs;
 
-            // 入队
-            await _highQueue.Writer.WriteAsync(new SendItem(owner, xcpLen + 4), _cts.Token);
+                // 入队成功后由发送线程归还内存。
+                await _highQueue.Writer.WriteAsync(new SendItem(owner, xcpLen + 4), _cts.Token);
+            }
+            catch
+            {
+                owner.Dispose();
+                throw;
+            }
 
-            using var timeout = new CancellationTokenSource(_timeoutMs);
-
-            byte[] raw = await tcs.Task.WaitAsync(timeout.Token);
-
-            return TCommand.Decode(raw, DeviceStatus.ConnectRes.IsLittleEndian);
+            try
+            {
+                byte[] raw = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(_timeoutMs), _cts.Token);
+                return TCommand.Decode(raw, DeviceStatus.ConnectRes.IsLittleEndian);
+            }
+            catch (TimeoutException ex)
+            {
+                throw new TimeoutException($"XCP {typeof(TCommand).Name} (CTR={ctr}) 响应超时（{_timeoutMs} ms）。", ex);
+            }
         }
         finally
         {
+            Interlocked.CompareExchange(ref _ctoTcs, null, tcs);
             _ctoSemaphore.Release();
         }
     }
@@ -440,31 +450,41 @@ public class XcpClient : IAsyncDisposable
     {
         while (!_cts.IsCancellationRequested)
         {
-            IMemoryOwner<byte> owner = _pool.Rent(1600);
-
-
+            using IMemoryOwner<byte> owner = _pool.Rent(1600);
             int len = await _comm.ReceiveAsync(owner.Memory, _cts.Token);
             if (len <= 0)
-            {
-                owner.Dispose();
                 continue;
-            }
 
-            // 收到有效数据后
-            ResetHeartbeatTimer();
-
-            ushort xcp_payload_len = BinaryPrimitives.ReadUInt16LittleEndian(owner.Memory.Span.Slice(0, 2));
-
-            byte pid = owner.Memory.Span[4];
-
-            if (pid >= 0xFC)
+            // 下位机会将多个带 LEN/CTR 的 XCP 帧合并在同一个 UDP 数据报中。
+            int offset = 0;
+            while (offset < len)
             {
-                HandleCto(owner.Memory.Slice(4, len - 4));
-                owner.Dispose();
-            }
-            else
-            {
-                await HandleDaq(owner, len);
+                if (len - offset < 5)
+                {
+                    Serilog.Log.Warning("XCP 数据报帧头不完整：长度 {Length}，偏移 {Offset}", len, offset);
+                    break;
+                }
+
+                int payloadLength = BinaryPrimitives.ReadUInt16LittleEndian(owner.Memory.Span.Slice(offset, 2));
+                if (payloadLength == 0 || payloadLength > len - offset - 4)
+                {
+                    Serilog.Log.Warning("XCP 数据报帧长度无效：LEN={PayloadLength}，长度 {Length}，偏移 {Offset}", payloadLength, len, offset);
+                    break;
+                }
+
+                int frameLength = payloadLength + 4;
+                ReadOnlyMemory<byte> frame = owner.Memory.Slice(offset, frameLength);
+                byte pid = frame.Span[4];
+                ResetHeartbeatTimer();
+
+                if (pid == 0xFF || pid == 0xFE)
+                    HandleCto(frame[4..]);
+                else if (pid < 0xFC)
+                    HandleDaq(frame);
+                // EV (0xFD) 和 SERV (0xFC) 是异步消息，不能完成正在等待的命令。
+
+                // 此下位机的对齐填充已包含在 LEN 中，不再额外补齐。
+                offset += frameLength;
             }
         }
     }
@@ -473,13 +493,15 @@ public class XcpClient : IAsyncDisposable
         var tcs = Interlocked.Exchange(ref _ctoTcs, null);
         tcs?.TrySetResult(data.ToArray());
     }
-    private ValueTask HandleDaq(IMemoryOwner<byte> owner, int length)
+    private void HandleDaq(ReadOnlyMemory<byte> data)
     {
-        byte pid = owner.Memory.Span[4];
+        // 每帧持有独立内存，接收缓冲区可立即复用。
+        IMemoryOwner<byte> owner = _pool.Rent(data.Length);
+        data.CopyTo(owner.Memory);
+        var frame = new DaqFrame(data.Span[4], Stopwatch.GetTimestamp(), owner, data.Length);
 
-        var frame = new DaqFrame(pid, Stopwatch.GetTimestamp(), owner, length);
-
-        return _daqChannel.Writer.WriteAsync(frame, _cts.Token);
+        if (!_daqChannel.Writer.TryWrite(frame))
+            frame.Dispose();
     }
     private async Task DaqLoop()
     {

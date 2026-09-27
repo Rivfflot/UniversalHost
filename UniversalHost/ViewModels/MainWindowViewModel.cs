@@ -304,9 +304,9 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             Serilog.Log.Information($"设备连接成功");
             NotificationService.Show("设备已连接", "", NotificationType.Success);
         }
-        catch (TaskCanceledException)
+        catch (Exception ex) when (ex is TimeoutException || ex is TaskCanceledException)
         {
-            Serilog.Log.Error($"设备连接超时");
+            Serilog.Log.Error(ex, "设备连接超时");
             NotificationService.Show("设备连接错误", "连接超时", NotificationType.Error);
             await XcpService.DisposeClientAsync();
         }
