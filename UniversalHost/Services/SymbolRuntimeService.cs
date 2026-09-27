@@ -94,8 +94,7 @@ public static class SymbolRuntimeService
                            var symbolRuntime = _calibrateSymbolRuntimesSource.Lookup(change.Current.Id);
                            if (symbolRuntime.HasValue)
                            {
-                               var newRuntime = SymbolRuntime.CreateSymbolRuntime(symbolRuntime.Value.Symbol,
-                                                                   ProjectSaveService.Instance.Settings.MonitorConfig.MaxSaveLen);
+                               var newRuntime = SymbolRuntime.CreateSymbolRuntime(symbolRuntime.Value.Symbol, 3);
                                _calibrateSymbolRuntimesSource.AddOrUpdate(newRuntime);
                                //更新后刷新UI。
                                var vms = DockableRegistry.GridCalibrateDocuments.Values
