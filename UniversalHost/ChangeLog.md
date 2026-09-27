@@ -202,3 +202,5 @@
 - 修复曲线窗口停用后未解绑回调、未清理曲线和坐标轴的问题，避免重新激活时重复注册、重复绘图及旧视图继续持有历史缓存。
 - 修复日志等级为Verbose时，IAP发送数据阶段间隔10帧记录一次失效的问题。
 - 修改主页面的两个连接设备按钮仅在工程已打开且设备未连接时启用。
+- 升级 Avalonia、Avalonia.Desktop、Avalonia.Themes.Fluent 和 Avalonia.Fonts.Inter 至 12.1.3，ReactiveUI.SourceGenerators 至 4.2.0；其余直接依赖保持当前最新稳定版。
+- 修复 ReactiveUI.SourceGenerators 升级后的编译问题：允许引用 compile 资产，使独立程序集中的 Reactive 和 ReactiveCommand 特性可用于编译。
