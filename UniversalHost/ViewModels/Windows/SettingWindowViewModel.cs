@@ -89,6 +89,8 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
 
     // 监控
     [Reactive] private int? _maxSaveLenTemp;
+    [Reactive] private int _monitoredSymbolCount;
+    [Reactive] private long _monitoredSymbolsTotalSize;
     public ReactiveCommand<Unit, Unit> ClearMonitorSymbolsCommand { get; }
     public ReactiveCommand<Unit, Unit> RemoveDuplicateMonitorSymbolsCommand { get; }
     public ReactiveCommand<UserSymbolInfo, Unit> RemoveMonitorSymbolCommand { get; }
@@ -160,6 +162,21 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                            .ObserveOn(AvaloniaScheduler.Instance)
                            .Bind(out _filteredMonitorSymbols)
                            .Subscribe().DisposeWith(_disposables);
+
+        // 统计已勾选的监控变量，不受搜索筛选影响。
+        ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.MonitorConfig.MonitoredSymbols)
+                            .Select(source => source.Connect())
+                            .Switch()
+                            .AutoRefresh(symbol => symbol.IsMonitored)
+                            .AutoRefresh(symbol => symbol.Size)
+                            .Filter(symbol => symbol.IsMonitored)
+                            .QueryWhenChanged(cache => (Count: cache.Count, TotalSize: cache.Items.Sum(symbol => (long)symbol.Size)))
+                            .ObserveOn(AvaloniaScheduler.Instance)
+                            .Subscribe(statistics =>
+                            {
+                                MonitoredSymbolCount = statistics.Count;
+                                MonitoredSymbolsTotalSize = statistics.TotalSize;
+                            }).DisposeWith(_disposables);
 
         // 在 ViewModel 初始化时，订阅列表变化以自动更新“全选框”的状态
         ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.MonitorConfig.MonitoredSymbols)

@@ -545,8 +545,20 @@
 							Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
 							ToolTip.ShowOnDisabled="True"/>
 					</StackPanel>
-					<!--  第 3 行  -->
-					<TabControl Grid.Row="2"
+					<!--  第 3 行：已勾选的监控变量统计  -->
+					<StackPanel
+						Grid.Row="2"
+						Grid.ColumnSpan="2"
+						Margin="0,5,0,5"
+						Orientation="Horizontal"
+						Spacing="20"
+						ToolTip.ShowOnDisabled="True"
+						ToolTip.Tip="统计已勾选的监控变量，不受搜索筛选影响">
+						<TextBlock Text="{Binding MonitoredSymbolCount, StringFormat='当前监控变量数：{0}'}"/>
+						<TextBlock Text="{Binding MonitoredSymbolsTotalSize, StringFormat='监控变量总大小：{0} 字节'}"/>
+					</StackPanel>
+					<!--  第 4 行  -->
+					<TabControl Grid.Row="3"
 								Grid.ColumnSpan="2"
 								Margin="0,0,4,0" >
 						<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
