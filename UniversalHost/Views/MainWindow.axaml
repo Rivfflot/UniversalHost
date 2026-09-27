@@ -89,7 +89,7 @@ x:DataType="vm:MainWindowViewModel"
 				Command="{Binding ConnectDeviceCommand}"
 				InputGesture="Ctrl+K"
 				HotKey="Ctrl+K"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance},Path=!IsConnected}" />
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
 				<MenuItem
 				Command="{Binding DisconnectDeviceCommand}"
 				Header="断开设备"
@@ -228,8 +228,7 @@ x:DataType="vm:MainWindowViewModel"
 			FontSize="18"
 			ToolTip.Tip="连接设备"
 			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance},
-			Path=!IsConnected}" />
+			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
 
 			<MenuItem
 			Command="{Binding DisconnectDeviceCommand}"

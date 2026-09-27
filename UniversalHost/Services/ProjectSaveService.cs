@@ -33,8 +33,19 @@ public partial class GlobalStatus : ReactiveObject
 
     private readonly ObservableAsPropertyHelper<bool> _canStartMonitor;
     public bool CanStartMonitor => _canStartMonitor.Value;
+
+    private readonly ObservableAsPropertyHelper<bool> _canConnectDevice;
+    public bool CanConnectDevice => _canConnectDevice.Value;
     private GlobalStatus()
     {
+        this.WhenAnyValue(
+                x => x.IsProjectOpened,
+                x => x.IsConnected,
+                (opened, connected) => opened && !connected)
+            .ToProperty(this,
+                        x => x.CanConnectDevice,
+                        out _canConnectDevice);
+
         this.WhenAnyValue(
                 x => x.IsProjectOpened,
                 x => x.IsMonitoring,
