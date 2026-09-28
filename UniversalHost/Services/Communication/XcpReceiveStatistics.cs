@@ -11,7 +11,7 @@ public sealed class XcpReceiveStatistics
     private bool _hasCounter;
     private ushort _nextCounter;
     private long _datagrams, _transportFrames, _counterGapFrames, _duplicateOrReorderedFrames;
-    private long _daqReceived, _daqDecoded, _queueDrops, _unknownPidFrames, _parseErrors, _malformedDatagrams;
+    private long _daqReceived, _daqDecoded, _inactiveDaqFrames, _queueDrops, _unknownPidFrames, _parseErrors, _malformedDatagrams;
 
     internal void RecordCounter(ushort counter)
     {
@@ -35,6 +35,7 @@ public sealed class XcpReceiveStatistics
     internal void RecordMalformedDatagram() => Interlocked.Increment(ref _malformedDatagrams);
     internal void RecordDaqReceived() => Interlocked.Increment(ref _daqReceived);
     internal void RecordDaqDecoded() => Interlocked.Increment(ref _daqDecoded);
+    internal void RecordInactiveDaq() => Interlocked.Increment(ref _inactiveDaqFrames);
     internal void RecordQueueDrop() => Interlocked.Increment(ref _queueDrops);
     internal void RecordUnknownPid() => Interlocked.Increment(ref _unknownPidFrames);
     internal void RecordParseError() => Interlocked.Increment(ref _parseErrors);
@@ -42,12 +43,12 @@ public sealed class XcpReceiveStatistics
     public XcpReceiveSnapshot Snapshot() => new(
         Interlocked.Read(ref _datagrams), Interlocked.Read(ref _transportFrames),
         Interlocked.Read(ref _counterGapFrames), Interlocked.Read(ref _duplicateOrReorderedFrames),
-        Interlocked.Read(ref _daqReceived), Interlocked.Read(ref _daqDecoded),
+        Interlocked.Read(ref _daqReceived), Interlocked.Read(ref _daqDecoded), Interlocked.Read(ref _inactiveDaqFrames),
         Interlocked.Read(ref _queueDrops), Interlocked.Read(ref _unknownPidFrames),
         Interlocked.Read(ref _parseErrors), Interlocked.Read(ref _malformedDatagrams));
 }
 
 public readonly record struct XcpReceiveSnapshot(
     long Datagrams, long TransportFrames, long CounterGapFrames, long DuplicateOrReorderedFrames,
-    long DaqReceived, long DaqDecoded, long QueueDrops, long UnknownPidFrames,
+    long DaqReceived, long DaqDecoded, long InactiveDaqFrames, long QueueDrops, long UnknownPidFrames,
     long ParseErrors, long MalformedDatagrams);

@@ -115,6 +115,7 @@ public class XcpClient : IAsyncDisposable
 
     // 在发送 START 前一次性发布完整布局，避免 DAQ 读取线程看到布局被修改。
     private volatile Dictionary<byte, OdtLayout> _pidOdtMap = [];
+    private bool _acceptDaqFrames;
 
     private volatile TaskCompletionSource<byte[]>? _ctoTcs;
 
@@ -354,6 +355,7 @@ public class XcpClient : IAsyncDisposable
 
     public async Task StartDaq(IReadOnlyList<SymbolRuntime> symbolRuntimes)
     {
+        Volatile.Write(ref _acceptDaqFrames, false);
         OdtLayout layout = new OdtLayout();
         layout.DaqList = 0;
         layout.Odt = 0;
@@ -384,13 +386,23 @@ public class XcpClient : IAsyncDisposable
         byte firstPid = await Daq.SelectDaqListAsync();
         layout.Pid = (byte)(firstPid + layout.Odt);
         _pidOdtMap = new Dictionary<byte, OdtLayout> { [layout.Pid] = layout };
-        await Daq.StartSynchAsync();
+        Volatile.Write(ref _acceptDaqFrames, true);
+        try
+        {
+            await Daq.StartSynchAsync();
+        }
+        catch
+        {
+            Volatile.Write(ref _acceptDaqFrames, false);
+            throw;
+        }
         GlobalStatus.Instance.IsMonitoring = true;
     }
 
     public async Task StopDaq()
     {
         await Daq.StopDaqListAsync(0);
+        Volatile.Write(ref _acceptDaqFrames, false);
         GlobalStatus.Instance.IsMonitoring = false;
     }
 
@@ -508,6 +520,13 @@ public class XcpClient : IAsyncDisposable
     }
     private void HandleDaq(ReadOnlyMemory<byte> data)
     {
+        // CONNECT 期间或 DAQ 停止后到达的 DTO 不属于本轮监控。
+        if (!Volatile.Read(ref _acceptDaqFrames))
+        {
+            ReceiveStatistics.RecordInactiveDaq();
+            return;
+        }
+
         ReceiveStatistics.RecordDaqReceived();
         // 每帧持有独立内存，接收缓冲区可立即复用。
         IMemoryOwner<byte> owner = _pool.Rent(data.Length);
@@ -564,6 +583,7 @@ public class XcpClient : IAsyncDisposable
         long intervalTicks = Stopwatch.Frequency; // 1 秒对应的 ticks
         long lastDiagnosticsTimestamp = Stopwatch.GetTimestamp();
         long lastErrorCount = 0;
+        long lastInactiveDaqCount = 0;
 
         while (!_cts.IsCancellationRequested)
         {
@@ -581,12 +601,17 @@ public class XcpClient : IAsyncDisposable
             {
                 lastDiagnosticsTimestamp = now;
                 var stats = ReceiveStatistics.Snapshot();
+                if (stats.InactiveDaqFrames != lastInactiveDaqCount)
+                {
+                    lastInactiveDaqCount = stats.InactiveDaqFrames;
+                    Serilog.Log.Verbose("XCP 监控未运行时忽略 DTO：累计={Ignored}", stats.InactiveDaqFrames);
+                }
                 long errorCount = stats.CounterGapFrames + stats.DuplicateOrReorderedFrames +
                     stats.QueueDrops + stats.UnknownPidFrames + stats.ParseErrors + stats.MalformedDatagrams;
                 if (errorCount != lastErrorCount)
                 {
                     lastErrorCount = errorCount;
-                    Serilog.Log.Warning("XCP 接收累计诊断：CTR前向缺口={CounterGaps}，重复/乱序={Reordered}，DAQ队列丢帧={QueueDrops}，未知PID={UnknownPid}，解析失败={ParseErrors}，无效数据报={Malformed}，DAQ接收/解析={Received}/{Decoded}",
+                    Serilog.Log.Warning("XCP 接收累计诊断：CTR前向缺口={CounterGaps}，重复/乱序={Reordered}，DAQ队列丢帧={QueueDrops}，未知PID={UnknownPid}，解析失败={ParseErrors}，无效数据报文={Malformed}，DAQ接收/解析={Received}/{Decoded}",
                         stats.CounterGapFrames, stats.DuplicateOrReorderedFrames, stats.QueueDrops,
                         stats.UnknownPidFrames, stats.ParseErrors, stats.MalformedDatagrams,
                         stats.DaqReceived, stats.DaqDecoded);
