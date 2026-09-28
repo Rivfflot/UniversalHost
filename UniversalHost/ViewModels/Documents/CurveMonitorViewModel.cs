@@ -35,7 +35,6 @@ public partial class CurveMonitorLayout : ReactiveObject
         public Guid Id => Runtime.Symbol.Id;
         public SymbolRuntime Runtime { get; }
         public ScottPlot.Plottables.Signal? Signal;
-        //public ScottPlot.Plottables.VerticalLine? ScanLine;
         public ScottPlot.AxisPanels.LeftAxis? YAxis;
         #region Curve Sytle
         private bool _isVisible = true;
@@ -46,15 +45,17 @@ public partial class CurveMonitorLayout : ReactiveObject
             {
                 this.RaiseAndSetIfChanged(ref _isVisible, value);
                 Signal?.IsVisible = value;
-                //ScanLine?.IsVisible = value;
             }
         }
         private Avalonia.Media.Color _color;
+        // 颜色属于曲线项，不能随视图停用时的绘图对象一起丢失。
+        internal bool HasColor { get; private set; }
         public Avalonia.Media.Color Color
         {
             get => _color;
             set
             {
+                HasColor = true;
                 this.RaiseAndSetIfChanged(ref _color, value);
                 Brush = Avalonia.Media.Brush.Parse(Color.ToString());
                 this.RaisePropertyChanged(nameof(Brush));
@@ -172,6 +173,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
                             {
                                 IsVisible = oldItem.IsVisible,
                             };
+                            if (oldItem.HasColor) newItem.Color = oldItem.Color;
                             CurvesLayout.CurvesSource.Replace(oldItem, newItem);
                             RemoveCurve?.Invoke(oldItem);
                             AddCurve?.Invoke(newItem);

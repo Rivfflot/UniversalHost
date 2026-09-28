@@ -76,7 +76,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             {
                 item.YAxis?.IsVisible = item == selectedCurve;
             }
-            Observable.Interval(TimeSpan.FromMilliseconds(50))
+            Observable.Interval(TimeSpan.FromMilliseconds(10))
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Where(_ => GlobalStatus.Instance.IsMonitoring && this.IsVisible)
                 .Subscribe(_ =>
@@ -152,9 +152,16 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         if (_curves.ContainsKey(item)) return;
 
         bool isFirst = _curves.Count == 0;
-        item.Signal = CurvePlot.Plot.Add.Signal(item.Runtime.PlotHistory.Buffer);
+        // 首次添加时自动配色，重新激活或重建视图时复用曲线项的颜色。
+        ScottPlot.Color? color = item.HasColor
+            ? new ScottPlot.Color(item.Color.R, item.Color.G, item.Color.B, item.Color.A)
+            : null;
+        item.Signal = CurvePlot.Plot.Add.Signal(item.Runtime.PlotHistory.Buffer, color: color);
         item.Signal.IsVisible = item.IsVisible;
-        item.Color = Avalonia.Media.Color.FromUInt32(item.Signal.Color.ARGB);
+        if (!item.HasColor)
+        {
+            item.Color = Avalonia.Media.Color.FromUInt32(item.Signal.Color.ARGB);
+        }
         //item.ScanLine = CurvePlot.Plot.Add.VerticalLine(0);
         //item.ScanLine.LineWidth = 0.5f;
         //item.ScanLine.IsVisible = item.IsVisible;
