@@ -51,10 +51,18 @@ namespace UniversalHost.Services
         /// <summary>
         /// 修改日志等级
         /// </summary>
-        public static void SetLogLevel(LogEventLevel level)
+        public static void SetLogLevel(LogEventLevel level, bool logChange = true)
         {
+            if (_levelSwitch.MinimumLevel == level)
+            {
+                return;
+            }
+
             _levelSwitch.MinimumLevel = level;
-            Log.Information($"日志等级修改为 {level}");
+            if (logChange)
+            {
+                Log.Information("日志等级修改为 {Level}", level);
+            }
         }
 
         /// <summary>

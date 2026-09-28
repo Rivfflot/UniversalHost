@@ -285,20 +285,19 @@ public class ProjectSaveService : ReactiveObject
         LogService.LogServiceConfig(System.IO.Path.GetDirectoryName(Instance.ProjectFilePath)!,
                      Instance.Settings.LogConfig.LogWriteToFileEnabled, Instance._disposables);
         //订阅日志设置更新
+        var isInitialLogConfiguration = true;
         currentSettings.LogConfig.WhenAnyValue(
             x => x.LogEnabled,
             x => x.LogEventLevelSetting,
             x => x.LogWriteToFileEnabled)
         .Subscribe(values =>
         {
-            if (values.Item1)
-            {
-                LogService.SetLogLevel(values.Item2);
-            }
-            else
-            {
-                LogService.SetLogLevel(Serilog.Events.LogEventLevel.Fatal + 1);
-            }
+            var effectiveLevel = values.Item1
+                ? values.Item2
+                : Serilog.Events.LogEventLevel.Fatal + 1;
+            // WhenAnyValue 首次推送的是已保存配置，并非用户修改。
+            LogService.SetLogLevel(effectiveLevel, logChange: !isInitialLogConfiguration);
+            isInitialLogConfiguration = false;
             LogService.IsWriteToFileEnabled = values.Item3;
         }).DisposeWith(Instance._disposables);
         //重建变量集合
