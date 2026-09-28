@@ -489,7 +489,6 @@
 		<TabItem Header="监控">
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
 				<Grid
-					IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
 					ColumnDefinitions="Auto,*"
 					RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 					<!--  第 1 行  -->
@@ -504,6 +503,7 @@
 					<StackPanel
 						Grid.Row="0"
 						Grid.Column="1"
+						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
 						Orientation="Horizontal">
 						<NumericUpDown
 							Width="100"
@@ -530,6 +530,7 @@
 					<StackPanel
 						Grid.Row="1"
 						Grid.Column="1"
+						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
 						Orientation="Horizontal" >
 						<Button
 							Content="重载ELF"
@@ -586,6 +587,7 @@
 														Padding="1"
 														Content="➕"
 														ToolTip.Tip="添加至监控变量"
+														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
 														Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}"
 														CommandParameter="{Binding}">
 													</Button>
@@ -627,6 +629,7 @@
 														FontSize="15"
 														Content="❌"
 														ToolTip.Tip="移除所有监控变量"
+														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
 														Command="{Binding $parent[Window].DataContext.ClearMonitorSymbolsCommand}">
 													</Button>
 												</DataTemplate>
@@ -638,6 +641,7 @@
 														Padding="1"
 														Content="❌"
 														ToolTip.Tip="移除出监控变量"
+														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
 														Command="{Binding $parent[Window].DataContext.RemoveMonitorSymbolCommand}"
 														CommandParameter="{Binding}">
 													</Button>
@@ -647,12 +651,12 @@
 										<DataGridTemplateColumn Width="28">
 											<DataGridTemplateColumn.HeaderTemplate>
 												<DataTemplate>
-													<CheckBox Margin="-8.5,0,-14,0" Command="{Binding  $parent[Window].DataContext.HeaderOfIsMonitoredChangedCommand}" IsChecked="{Binding $parent[Window].DataContext.SelectAllMonitorSymbolsBox}" IsThreeState="True" Padding="0" ToolTip.Tip="全选" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+													<CheckBox Margin="-8.5,0,-14,0" Command="{Binding  $parent[Window].DataContext.HeaderOfIsMonitoredChangedCommand}" IsChecked="{Binding $parent[Window].DataContext.SelectAllMonitorSymbolsBox}" IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}" IsThreeState="True" Padding="0" ToolTip.Tip="全选" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" HorizontalAlignment="Center"/>
 												</DataTemplate>
 											</DataGridTemplateColumn.HeaderTemplate>
 											<DataGridTemplateColumn.CellTemplate>
 												<DataTemplate>
-													<CheckBox ToolTip.Tip="是否监控" Padding="0" VerticalAlignment="Center" HorizontalAlignment="Center" IsChecked="{Binding IsMonitored}"/>
+													<CheckBox ToolTip.Tip="是否监控" Padding="0" VerticalAlignment="Center" HorizontalAlignment="Center" IsChecked="{Binding IsMonitored}" IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"/>
 												</DataTemplate>
 											</DataGridTemplateColumn.CellTemplate>
 										</DataGridTemplateColumn>
@@ -662,6 +666,7 @@
 												<DataTemplate>
 													<ComboBox
 														ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
+														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
 														SelectedItem="{Binding DataType, Mode=TwoWay}"
 														/>
 												</DataTemplate>
@@ -679,6 +684,7 @@
 														PlaceholderText="0"
 														ParsingNumberStyle="Integer"
 														ShowButtonSpinner="False"
+														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
 														Value="{Binding Offset,Mode = TwoWay}" >
 													</NumericUpDown>
 												</DataTemplate>
