@@ -59,6 +59,9 @@ public class IapProtocol
     {
         using (FileStream fs = new FileStream(_iapFilePath, FileMode.Open, FileAccess.Read))
         {
+            if (fs.Length == 0)
+                throw new InvalidDataException("所选 BIN 文件为空，无法执行 IAP 升级");
+
             int fileLen = (int)fs.Length;
             readBinData = new byte[fileLen];
             fs.ReadExactly(readBinData, 0, fileLen);
@@ -121,6 +124,10 @@ public class IapProtocol
                         0xFD => throw new Exception($"IAP 从站地址错误。当前连接的设备从站地址为{data[4]}"),
                         _ => Status.DeviceFrameCheckError,
                     };
+                }
+                else if (data[1] != (byte)stage)
+                {
+                    return Status.StageError;
                 }
                 else if (data[4] != _deviceID)
                 {
@@ -204,10 +211,10 @@ public class IapProtocol
 
     private Status ReceiveInformationPacketAnalysis(ReadOnlySpan<byte> data)
     {
-        //var deviceCondition = data[5];
+        if (data.Length != 8)
+            return Status.LengthError;
 
-        return Status.Success;
-
+        return data[5] == 0x00 ? Status.Success : Status.InformationError;
     }
     private int SendDataPacket(Span<byte> data, UInt32 sendFrameIndex)
     {

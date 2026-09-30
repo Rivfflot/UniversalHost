@@ -40,6 +40,7 @@ UniversalHost 用于与支持 XCP 或自定义 IAP 协议的设备进行通信�
 
 - 实现监控时保存数据，保存为HDF5。
 - IAP修改为使用XCP PGM实现。
+- IAP 增加 BIN 长度及目标设备固件合法性检查，避免选择错误 BIN（空 BIN 已拒绝，其余检查待实现）。
 - 日志显示。
 - 远程控制。
 
@@ -54,6 +55,8 @@ XCP（Universal Measurement and Calibration Protocol）是一种用于测量、�
 ### 自定义 IAP
 
 自定义 IAP 协议用于设备固件升级及相关控制操作，具体数据格式和命令定义以项目实现及设备协议文档为准。
+
+详细说明集中在 `docs/`：IAP 定义见 [IAP协议.md](docs/IAP协议.md)，故障录波格式见 [故障录波结构体定义.md](docs/故障录波结构体定义.md)，快捷键见 [快捷键.md](docs/快捷键.md)。
 
 ## 许可证
 

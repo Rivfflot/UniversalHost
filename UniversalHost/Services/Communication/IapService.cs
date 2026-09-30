@@ -9,6 +9,8 @@ namespace UniversalHost.Services.Communication;
 
 public class IapService
 {
+    private static readonly TimeSpan AcknowledgementRetryInterval = TimeSpan.FromSeconds(1);
+
     private enum StageProgress
     {
         Start = 0,
@@ -50,14 +52,6 @@ public class IapService
     {
         _progress.Report((double)StageProgress.Start);//开始
         _stage.Report("开始升级");
-        // 创建通信服务
-        await using var comm = CreateCommService();
-        var retryTimes = ProjectSaveService.Instance.Settings.DeviceConfig.Mode switch
-        {
-            CommunicationMode.UDP => ProjectSaveService.Instance.Settings.UdpConfig.RetryTimes + 1,
-            _ => ProjectSaveService.Instance.Settings.SerialConfig.RetryTimes + 1
-        };
-
         // 创建IAP协议
         var protocol = new IapProtocol(ProjectSaveService.Instance.Settings.IapConfig.IapFilePath, ProjectSaveService.Instance.Settings.DeviceConfig.DeviceID);
         // 读取BIN
@@ -65,20 +59,37 @@ public class IapService
         protocol.ReadFile();
         _progress.Report((double)StageProgress.ReadFile);//文件读取完成
 
+        // 文件检查通过后再创建通信服务
+        await using var comm = CreateCommService();
+        var retryTimes = ProjectSaveService.Instance.Settings.DeviceConfig.Mode switch
+        {
+            CommunicationMode.UDP => ProjectSaveService.Instance.Settings.UdpConfig.RetryTimes + 1,
+            _ => ProjectSaveService.Instance.Settings.SerialConfig.RetryTimes + 1
+        };
+
         //阶段1：握手
         _stage.Report("开始握手");
         Serilog.Log.Verbose("IAP 开始握手");
 
-        await RunHandShakeAsync(comm, protocol, TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds), ct);
+        await RunAcknowledgementStageAsync(
+            comm,
+            protocol,
+            IapProtocol.Stage.Handshake,
+            retryTimes,
+            TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForHandShakeTimeoutSeconds),
+            ct);
 
         _progress.Report((double)StageProgress.HandShake);//握手信息发送完成
 
-        //阶段2：发送信息，包括总帧数和每帧字节数
+        //阶段2：发送信息，包括总帧数、ROM长度和ROM CRC32
         _stage.Report("发送信息");
         Serilog.Log.Verbose("IAP 开始发送信息");
-        await RunInformationStageAsync(
+        if (protocol.IsFlashPerFrame)
+            _stage.Report("等待擦除");
+        await RunAcknowledgementStageAsync(
             comm,
             protocol,
+            IapProtocol.Stage.SendInformation,
             retryTimes,
             TimeSpan.FromSeconds(ProjectSaveService.Instance.Settings.IapConfig.WaitForInformationTimeoutSeconds),
             ct);
@@ -127,92 +138,74 @@ public class IapService
         _progress.Report((double)StageProgress.RebootComplete);
     }
 
-    //发送握手信息
-    private async Task RunHandShakeAsync(
+    // 握手和信息包每隔1秒重发，受重试次数和阶段总超时限制。
+    // 逐帧写入设备只在首次收到信息包时擦除，擦除完成后返回ACK。
+    private async Task RunAcknowledgementStageAsync(
         ICommService comm,
         IapProtocol protocol,
-        TimeSpan timeout,
-        CancellationToken ct)
-    {
-        var sw = Stopwatch.StartNew();
-        var last_update_time = TimeSpan.Zero;
-        var sendDataLen = protocol.GetSendPacket(_sendBuffer, IapProtocol.Stage.Handshake, 0);
-        ReadOnlyMemory<byte> sendData = _sendBuffer.AsMemory(0, sendDataLen);
-        await comm.SendAsync(sendData, ct);
-
-        while (sw.Elapsed < timeout)
-        {
-            var receivedDataLen = await comm.ReceiveAsync(_receiveBuffer, ct);
-            if (receivedDataLen <= 0)
-            {
-                if (sw.Elapsed - last_update_time >= TimeSpan.FromSeconds(1))
-                {
-                    await comm.SendAsync(sendData, ct);
-                    Serilog.Log.Verbose($"IAP 阶段 HandShake 1s无应答，再次发送握手包");
-                    last_update_time = sw.Elapsed;
-                }
-            }
-            else
-            {
-                ReadOnlySpan<byte> recvData = _receiveBuffer.AsSpan(0, receivedDataLen);
-                var status = protocol.ReceivePacketAnalysis(IapProtocol.Stage.Handshake, recvData, 0);
-
-                Serilog.Log.Verbose($"IAP 阶段 HandShake 状态: {status}");
-                if (status == IapProtocol.Status.Success)
-                    return;
-            }
-        }
-        Serilog.Log.Debug($"IAP 阶段 HandShake 超时");
-        throw new Exception($"IAP 阶段 HandShake 超时");
-    }
-
-    // 逐帧写入设备会在收到信息包后擦除 Flash，擦除完成后才返回信息 ACK。
-    // 擦除期间不能重发信息包，因此只发送一次，并使用独立的阶段超时持续等待。
-    // 整体写入设备此时不擦除，仍沿用通用的快速 ACK 和重试逻辑。
-    private async Task RunInformationStageAsync(
-        ICommService comm,
-        IapProtocol protocol,
+        IapProtocol.Stage stage,
         int retryLimit,
         TimeSpan timeout,
         CancellationToken ct)
     {
-        if (!protocol.IsFlashPerFrame)
-        {
-            await RunStageAsync(comm, protocol, IapProtocol.Stage.SendInformation, retryLimit, ct);
-            return;
-        }
-
-        var sendDataLen = protocol.GetSendPacket(_sendBuffer, IapProtocol.Stage.SendInformation, 0);
+        ct.ThrowIfCancellationRequested();
+        var sw = Stopwatch.StartNew();
+        var sendDataLen = protocol.GetSendPacket(_sendBuffer, stage, 0);
         ReadOnlyMemory<byte> sendData = _sendBuffer.AsMemory(0, sendDataLen);
         await comm.SendAsync(sendData, ct);
-        _stage.Report("等待擦除");
-        Serilog.Log.Verbose("IAP 已向逐帧写入设备发送信息，等待擦除完成及信息 ACK");
-
-        var sw = Stopwatch.StartNew();
-        var lastUpdateTime = TimeSpan.Zero;
+        int attempts = 1;
+        var lastSendTime = sw.Elapsed;
 
         while (sw.Elapsed < timeout)
         {
-            var receivedDataLen = await comm.ReceiveAsync(_receiveBuffer, ct);
-            if (receivedDataLen <= 0)
+            ct.ThrowIfCancellationRequested();
+            var elapsed = sw.Elapsed;
+            if (elapsed - lastSendTime >= AcknowledgementRetryInterval)
             {
-                if (sw.Elapsed - lastUpdateTime >= TimeSpan.FromSeconds(1))
+                if (attempts >= retryLimit)
                 {
-                    Serilog.Log.Verbose($"IAP 阶段 SendInformation 等待擦除完成及信息 ACK，已等待 {sw.Elapsed.TotalSeconds:F0} s");
-                    lastUpdateTime = sw.Elapsed;
+                    Serilog.Log.Debug($"IAP 阶段 {stage} 超过重试次数，失败");
+                    throw new TimeoutException($"IAP 阶段 {stage} 超过重试次数，失败");
                 }
-                continue;
+
+                await comm.SendAsync(sendData, ct);
+                attempts++;
+                lastSendTime = sw.Elapsed;
+                Serilog.Log.Verbose($"IAP 阶段 {stage} 1s无有效应答，第 {attempts} 次发送");
             }
 
+            var remainingStageTime = timeout - sw.Elapsed;
+            var remainingRetryTime = AcknowledgementRetryInterval - (sw.Elapsed - lastSendTime);
+            var receiveWait = remainingStageTime < remainingRetryTime ? remainingStageTime : remainingRetryTime;
+            if (receiveWait <= TimeSpan.Zero)
+                continue;
+
+            // 接收等待不能跨过下一次重发时刻或阶段超时。
+            using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            receiveCts.CancelAfter(receiveWait);
+            int receivedDataLen;
+            try
+            {
+                receivedDataLen = await comm.ReceiveAsync(_receiveBuffer, receiveCts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested && receiveCts.IsCancellationRequested)
+            {
+                receivedDataLen = 0;
+            }
+            ct.ThrowIfCancellationRequested();
+            if (receivedDataLen <= 0)
+                continue;
+
             ReadOnlySpan<byte> recvData = _receiveBuffer.AsSpan(0, receivedDataLen);
-            var status = protocol.ReceivePacketAnalysis(IapProtocol.Stage.SendInformation, recvData, 0);
-            Serilog.Log.Verbose($"IAP 阶段 SendInformation 等待擦除完成及信息 ACK，状态: {status}");
+            var status = protocol.ReceivePacketAnalysis(stage, recvData, 0);
+            Serilog.Log.Verbose($"IAP 阶段 {stage} 第 {attempts} 次发送，状态: {status}");
             if (status == IapProtocol.Status.Success)
                 return;
         }
 
-        Serilog.Log.Debug($"IAP 阶段 SendInformation 等待擦除完成及信息 ACK 超过 {timeout.TotalSeconds} 秒");
-        throw new TimeoutException($"IAP 信息阶段等待超时（{timeout.TotalSeconds} 秒）");
+        ct.ThrowIfCancellationRequested();
+        Serilog.Log.Debug($"IAP 阶段 {stage} 等待应答超过 {timeout.TotalSeconds} 秒");
+        throw new TimeoutException($"IAP 阶段 {stage} 等待应答超时（{timeout.TotalSeconds} 秒）");
     }
 
     // 通用阶段执行

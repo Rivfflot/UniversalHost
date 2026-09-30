@@ -4,7 +4,7 @@
 
 - 本仓库是基于 Avalonia、ReactiveUI 和 Dock.Avalonia 的 C# 桌面上位机，目标框架为 .NET 10。
 - 唯一应用项目位于 `UniversalHost/UniversalHost.csproj`，解决方案文件为 `UniversalHost.slnx`。
-- 面向用户的说明在根目录 `README.md`；项目变更记录在 `UniversalHost/ChangeLog.md`。修改协议前，先查看根目录的 `通信协议.xlsx` 以及相关协议实现。
+- 面向用户的说明在根目录 `README.md`；项目变更记录在 `UniversalHost/ChangeLog.md`。详细说明集中在 `docs/`：IAP 协议见 `docs/IAP协议.md`，故障录波格式见 `docs/故障录波结构体定义.md`，快捷键见 `docs/快捷键.md`。修改协议前，先查看对应 Markdown 文档以及相关协议实现。
 
 ## 代码结构
 
