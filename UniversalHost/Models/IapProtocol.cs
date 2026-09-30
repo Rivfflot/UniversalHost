@@ -186,7 +186,7 @@ public class IapProtocol
         data[1] = (byte)Stage.SendInformation;
         // 2 3 数据区长度
         data[2] = 0x00;
-        data[3] = 0x0E;//14
+        data[3] = 0x0C;//12
         data[4] = _deviceID;
         // 数据区
         FrameNum = (uint)Math.Ceiling((double)readBinData!.Length / bytesPerFrame);
