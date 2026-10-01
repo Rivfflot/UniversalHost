@@ -172,6 +172,12 @@ frame_length = N + 11            // 5 字节帧头 + 数据区 + 2 字节 CRC16
 
 **对于逐帧写入的设备，在这里等待擦除完成后返回“信息无误”应答。**上位机收到该应答后才能开始发送数据帧。
 
+### 设备返回：ROM长度过长
+
+| 功能码 | 阶段 | 长度 H | 长度 L | 从站地址 | 数据区 | 帧 CRC |
+| --- | --- | --- | --- | --- | --- | --- |
+| `0x01` | `0x01` | `0x00` | `0x01` | `0x00` | `0xF0` | `CRCH CRCL` |
+
 同一次升级中，下位机对重复信息包的处理规则为：
 
 1. 收到第一个有效信息包后，开始擦除一次。
@@ -253,6 +259,6 @@ frame_length = N + 11            // 5 字节帧头 + 数据区 + 2 字节 CRC16
 
 ## TODO
 
-- 增加 BIN 长度及目标设备固件合法性检查，避免用户选择错误 BIN。空 BIN 已直接拒绝，其余检查暂未实现。
+- 增加目标设备固件合法性检查，避免用户选择错误 BIN。
 
 相关实现：[IapProtocol.cs](../UniversalHost/Models/IapProtocol.cs)、[IapService.cs](../UniversalHost/Services/Communication/IapService.cs)、[Crc.cs](../UniversalHost/Models/Crc.cs)。

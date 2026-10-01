@@ -214,7 +214,12 @@ public class IapProtocol
         if (data.Length != 8)
             return Status.LengthError;
 
-        return data[5] == 0x00 ? Status.Success : Status.InformationError;
+        return data[5] switch
+        {
+            0x00 => Status.Success,
+            0xF0 => throw new Exception("IAP ROM 长度过长，设备拒绝升级，请检查所选 BIN 文件"),
+            _ => Status.InformationError,
+        };
     }
     private int SendDataPacket(Span<byte> data, UInt32 sendFrameIndex)
     {
