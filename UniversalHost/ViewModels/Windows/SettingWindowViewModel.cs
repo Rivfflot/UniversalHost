@@ -481,7 +481,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     {
         SelectAllMonitorSymbolsBox ??= false;
         //点击后为全选
-        if (SelectAllMonitorSymbolsBox == true)
+        if (SelectAllMonitorSymbolsBox == false)
         {
             foreach (var item in ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Items)
             {
