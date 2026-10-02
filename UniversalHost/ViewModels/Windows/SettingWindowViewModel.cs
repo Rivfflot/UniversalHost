@@ -115,11 +115,10 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [Reactive] private string? _iapFilePathTemp;
     [Reactive] private string? _iapFilePathError;
     [Reactive] private UInt16? _waitForHandShakeTimeoutSecondsTemp;
-    [Reactive] private UInt16? _waitForInformationTimeoutSecondsTemp;
+    [Reactive] private UInt16? _waitForEraseTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForWriteTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForCheckTimeoutSecondsTemp;
-    [Reactive] private UInt16? _waitForRebootStartTimeoutSecondsTemp;
-    [Reactive] private UInt16? _waitForRebootCompleteTimeoutSecondsTemp;
+    [Reactive] private UInt16? _waitForRebootTimeoutSecondsTemp;
 
     //日志设置
     public static IEnumerable<Serilog.Events.LogEventLevel> AvaliableLogEventLevel => Enum.GetValues<Serilog.Events.LogEventLevel>();
@@ -428,23 +427,20 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         }).DisposeWith(_projectSubscriptions);
 
         WaitForHandShakeTimeoutSecondsTemp = settings.IapConfig.WaitForHandShakeTimeoutSeconds;
-        WaitForInformationTimeoutSecondsTemp = settings.IapConfig.WaitForInformationTimeoutSeconds;
+        WaitForEraseTimeoutSecondsTemp = settings.IapConfig.WaitForEraseTimeoutSeconds;
         WaitForWriteTimeoutSecondsTemp = settings.IapConfig.WaitForWriteTimeoutSeconds;
         WaitForCheckTimeoutSecondsTemp = settings.IapConfig.WaitForCheckTimeoutSeconds;
-        WaitForRebootStartTimeoutSecondsTemp = settings.IapConfig.WaitForRebootStartTimeoutSeconds;
-        WaitForRebootCompleteTimeoutSecondsTemp = settings.IapConfig.WaitForRebootCompleteTimeoutSeconds;
+        WaitForRebootTimeoutSecondsTemp = settings.IapConfig.WaitForRebootTimeoutSeconds;
 
-        this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)5).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForInformationTimeoutSecondsTemp, v => settings.IapConfig.WaitForInformationTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.WaitForEraseTimeoutSecondsTemp, v => settings.IapConfig.WaitForEraseTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
         this.BindWithDefault(x => x.WaitForWriteTimeoutSecondsTemp, v => settings.IapConfig.WaitForWriteTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
         this.BindWithDefault(x => x.WaitForCheckTimeoutSecondsTemp, v => settings.IapConfig.WaitForCheckTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 
-        this.BindWithDefault(x => x.WaitForRebootStartTimeoutSecondsTemp, v => settings.IapConfig.WaitForRebootStartTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
-
-        this.BindWithDefault(x => x.WaitForRebootCompleteTimeoutSecondsTemp, v => settings.IapConfig.WaitForRebootCompleteTimeoutSeconds = v, (UInt16)30).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.WaitForRebootTimeoutSecondsTemp, v => settings.IapConfig.WaitForRebootTimeoutSeconds = v, (UInt16)30).DisposeWith(_projectSubscriptions);
 
         // 升级工具也可以选择文件，设置窗口同步显示同一份路径。
         settings.IapConfig.WhenAnyValue(x => x.IapFilePath)

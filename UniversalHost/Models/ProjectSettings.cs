@@ -135,12 +135,12 @@ public partial class SerialConfig : ReactiveObject
 public partial class IapConfig : ReactiveObject
 {
     [Reactive] private string _iapFilePath = Path.Combine(AppContext.BaseDirectory);
-    [Reactive] private UInt16 _waitForHandShakeTimeoutSeconds = 10;
-    [Reactive] private UInt16 _waitForInformationTimeoutSeconds = 10;
+    [Reactive] private UInt16 _waitForHandShakeTimeoutSeconds = 5;
+
+    [Reactive] private UInt16 _waitForEraseTimeoutSeconds = 10;
     [Reactive] private UInt16 _waitForWriteTimeoutSeconds = 10;
     [Reactive] private UInt16 _waitForCheckTimeoutSeconds = 10;
-    [Reactive] private UInt16 _waitForRebootStartTimeoutSeconds = 10;
-    [Reactive] private UInt16 _waitForRebootCompleteTimeoutSeconds = 30;
+    [Reactive] private UInt16 _waitForRebootTimeoutSeconds = 30;
 }
 public partial class DeviceConfig : ReactiveObject
 {

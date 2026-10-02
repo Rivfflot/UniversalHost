@@ -11,44 +11,38 @@ public class IapProtocol
         Handshake = 0x00,
         SendInformation = 0x01,
         SendData = 0x02,
-        SendComplete = 0x03
+        SendComplete = 0x03,
+        StartErase = 0x04,
+        StartWrite = 0x05,
+        StartCheck = 0x06,
+        Reboot = 0x07
     }
 
+    // 可忽略或重试的响应；设备明确拒绝当前请求时直接抛出异常，停止升级。
     public enum Status
     {
         Success,
         HostCheckError,
         StageError,
         LengthError,
-        DeviceBusy,
+        FunctionCodeError,
         DeviceIDError,
-        InformationError,
+        FrameIndexMismatch,
         DeviceFrameCheckError,
-        DeviceFunctionCodeError,
-        DeviceStationAddressError,
-        DeviceFrameCountError,
-        DeviceReceiveFrameIndexError,
-        DeviceFlashCheckError,
-        DeviceStartErase,
-        DeviceStartWrite,
-        DeviceStartFalshCheck,
-        DeviceStartReboot,
-        DeviceRebootComplete
+        DeviceLengthError
     }
 
+    public const int MaxBytesPerFrame = 1372;
     private const byte IAP_FUNCTION_CODE = 0x01;
-
-    private const byte IAP_HANDSHAKE_INFORMATION = 0xAA;
-
     private readonly string _iapFilePath;
     private readonly byte _deviceID;
+    private byte[]? _binData;
+    private uint _fileCrc32;
+    private ushort _bytesPerFrame;
 
-    private byte[]? readBinData;
-    private UInt32 fileCrc32 = 0;
-    private UInt16 bytesPerFrame = 0;
-    public UInt32 FrameNum { get; private set; } = 0;
-    public bool IsRebootBeforeIapRequired { get; private set; } = false;
-    public bool IsFlashPerFrame { get; private set; } = false;
+    public uint FrameNum { get; private set; }
+    public bool IsFlashPerFrame { get; private set; }
+
     public IapProtocol(string iapFilePath, byte deviceID)
     {
         _iapFilePath = iapFilePath;
@@ -57,261 +51,198 @@ public class IapProtocol
 
     public void ReadFile()
     {
-        using (FileStream fs = new FileStream(_iapFilePath, FileMode.Open, FileAccess.Read))
-        {
-            if (fs.Length == 0)
-                throw new InvalidDataException("所选 BIN 文件为空，无法执行 IAP 升级");
+        using var fs = new FileStream(_iapFilePath, FileMode.Open, FileAccess.Read);
+        if (fs.Length == 0)
+            throw new InvalidDataException("所选 BIN 文件为空，无法执行 IAP 升级");
+        if (fs.Length > Array.MaxLength)
+            throw new InvalidDataException("所选 BIN 文件过大，超出上位机支持的范围");
 
-            int fileLen = (int)fs.Length;
-            readBinData = new byte[fileLen];
-            fs.ReadExactly(readBinData, 0, fileLen);
-            // 计算 Crc
-            fileCrc32 = Crc.Crc32.Calculate(readBinData);
-        }
+        _binData = new byte[(int)fs.Length];
+        fs.ReadExactly(_binData);
+        _fileCrc32 = Crc.Crc32.Calculate(_binData);
+        _bytesPerFrame = 0;
+        FrameNum = 0;
+        IsFlashPerFrame = false;
     }
-    public int GetSendPacket(Span<byte> buffer, Stage stage, UInt32 sendFrameIndex)
+
+    public int GetSendPacket(Span<byte> buffer, Stage stage, uint sendFrameIndex = 0)
     {
+        int payloadLength;
+        int romOffset = 0;
         switch (stage)
         {
             case Stage.Handshake:
-                return SendHandshakePacket(buffer);
-            case Stage.SendInformation:
-                return SendInformationPacket(buffer);
-            case Stage.SendData:
-                return SendDataPacket(buffer, sendFrameIndex);
             case Stage.SendComplete:
-                return SendCompletePacket(buffer);
-            default:
-                throw new Exception("IAP Stage error");
-        }
-    }
-    private static void CopyWithPadding(ReadOnlySpan<byte> source, Span<byte> target, int sourceStart, int targetStart, int length)
-    {
-        for (int i = 0; i < length; i++)
-        {
-            if (sourceStart + i < source.Length) // 检查源数组是否越界
-            {
-                target[targetStart + i] = source[sourceStart + i];
-            }
-            else
-            {
-                target[targetStart + i] = 0; // 源数组不足时填充 0
-            }
-        }
-    }
-    public Status ReceivePacketAnalysis(Stage stage, ReadOnlySpan<byte> data, UInt32 sendFrameIndex)
-    {
-        if (data.Length < 8)
-        {
-            return Status.LengthError;
-        }
-        else
-        {
-            ushort crcReceive = BinaryPrimitives.ReadUInt16BigEndian(data[^2..]);
-            ushort crcCalculate = Crc.Crc16Modbus.Calculate(data[..^2]);
-            if (crcReceive != crcCalculate)
-            {
-                return Status.HostCheckError;
-            }
-            else
-            {
-                if (data[1] == 0xFF)
+            case Stage.StartErase:
+            case Stage.StartWrite:
+            case Stage.StartCheck:
+            case Stage.Reboot:
+                payloadLength = 2;
+                break;
+            case Stage.SendInformation:
+            case Stage.SendData:
+                if (_binData == null || _bytesPerFrame == 0)
+                    throw new InvalidOperationException("IAP 必须先读取 BIN 并完成握手");
+                if (stage == Stage.SendInformation)
                 {
-                    return data[5] switch
-                    {
-                        0xFF => Status.DeviceFrameCheckError,//当前帧校验错误
-                        0xFE => throw new Exception("IAP 设备功能码错误"),
-                        0xFD => throw new Exception($"IAP 从站地址错误。当前连接的设备从站地址为{data[4]}"),
-                        _ => Status.DeviceFrameCheckError,
-                    };
-                }
-                else if (data[1] != (byte)stage)
-                {
-                    return Status.StageError;
-                }
-                else if (data[4] != _deviceID)
-                {
-                    throw new Exception($"IAP 从站地址错误。当前连接的设备从站地址为{data[4]}");
+                    payloadLength = 12;
                 }
                 else
                 {
-                    switch (stage)
-                    {
-                        case Stage.Handshake:
-                            return ReceiveHandshakePacketAnalysis(data);
-                        case Stage.SendInformation:
-                            return ReceiveInformationPacketAnalysis(data);
-                        case Stage.SendData:
-                            return ReceiveDataAnalysis(data, sendFrameIndex);
-                        case Stage.SendComplete:
-                            return ReceiveCompletePacketAnalysis(data);
-                        default:
-                            return Status.StageError;
-                    }
-
+                    if (sendFrameIndex >= FrameNum)
+                        throw new ArgumentOutOfRangeException(nameof(sendFrameIndex));
+                    romOffset = checked((int)((long)sendFrameIndex * _bytesPerFrame));
+                    payloadLength = Math.Min(_bytesPerFrame, _binData.Length - romOffset) + 4;
                 }
-            }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(stage));
         }
-    }
-    private int SendHandshakePacket(Span<byte> data)
-    {
-        data[0] = IAP_FUNCTION_CODE;
-        data[1] = (byte)Stage.Handshake;
-        data[2] = 0x00;
-        data[3] = 0x02;
-        data[4] = _deviceID;
-        data[5] = IAP_HANDSHAKE_INFORMATION;
-        data[6] = IAP_HANDSHAKE_INFORMATION;
-        // 7 8
-        var crc = Crc.Crc16Modbus.Calculate(data, 7);
-        BinaryPrimitives.WriteUInt16BigEndian(data[7..9], crc);
-        return 9;
-    }
 
-    private Status ReceiveHandshakePacketAnalysis(ReadOnlySpan<byte> data)
-    {
-        if (data[5] == 0x00)
+        int frameLength = payloadLength + 7;
+        if (buffer.Length < frameLength)
+            throw new ArgumentException("IAP 发送缓存长度不足", nameof(buffer));
+        var packet = buffer[..frameLength];
+        packet[0] = IAP_FUNCTION_CODE;
+        packet[1] = (byte)stage;
+        BinaryPrimitives.WriteUInt16BigEndian(packet[2..4], (ushort)payloadLength);
+        packet[4] = _deviceID;
+        var payload = packet.Slice(5, payloadLength);
+        switch (stage)
         {
-            IsFlashPerFrame = (data[6] & 0b0000_0001) != 0;
-            IsRebootBeforeIapRequired = (data[6] & 0b0000_0010) != 0;
-            bytesPerFrame = BinaryPrimitives.ReadUInt16BigEndian(data[7..9]);
-            if (bytesPerFrame == 0 || bytesPerFrame > 1372)
-            {
-                throw new Exception($"每帧字节数不支持：{bytesPerFrame}，最大1372。");
-            }
-            return Status.Success;
+            case Stage.Handshake:
+                payload.Fill(0xAA);
+                break;
+            case Stage.SendInformation:
+                BinaryPrimitives.WriteUInt32BigEndian(payload[..4], FrameNum);
+                BinaryPrimitives.WriteUInt32BigEndian(payload[4..8], (uint)_binData!.Length);
+                BinaryPrimitives.WriteUInt32BigEndian(payload[8..12], _fileCrc32);
+                break;
+            case Stage.SendData:
+                BinaryPrimitives.WriteUInt32BigEndian(payload[..4], sendFrameIndex);
+                _binData!.AsSpan(romOffset, payloadLength - 4).CopyTo(payload[4..]);
+                break;
+            default:
+                payload.Clear();
+                break;
         }
-        else
-        {
-            throw new Exception("IAP 设备忙，当前无法升级");
-        }
+
+        BinaryPrimitives.WriteUInt16BigEndian(packet[^2..], Crc.Crc16Modbus.Calculate(packet[..^2]));
+        return frameLength;
     }
 
-    private int SendInformationPacket(Span<byte> data)
+    public Status ReceivePacketAnalysis(Stage stage, ReadOnlySpan<byte> data, uint sendFrameIndex = 0)
     {
-        data[0] = IAP_FUNCTION_CODE;
-        data[1] = (byte)Stage.SendInformation;
-        // 2 3 数据区长度
-        data[2] = 0x00;
-        data[3] = 0x0C;//12
-        data[4] = _deviceID;
-        // 数据区
-        FrameNum = (uint)Math.Ceiling((double)readBinData!.Length / bytesPerFrame);
-        // 5 6 7 8 总帧数
-        BinaryPrimitives.WriteUInt32BigEndian(data[5..9], FrameNum);
-        // 9 10 11 12 ROM长度
-        BinaryPrimitives.WriteInt32BigEndian(data[9..13], readBinData!.Length);
-        // 13 14 15 16 ROM Crc32
-        BinaryPrimitives.WriteUInt32BigEndian(data[13..17], fileCrc32);
-        // 17 18
-        var crc = Crc.Crc16Modbus.Calculate(data, 17);
-        BinaryPrimitives.WriteUInt16BigEndian(data[17..19], crc);
-        return 19;
-    }
-
-    private Status ReceiveInformationPacketAnalysis(ReadOnlySpan<byte> data)
-    {
-        if (data.Length != 8)
+        if (data.Length < 7)
             return Status.LengthError;
+        // 非目标从站的响应（包括通用错误）不能影响当前升级。
+        if (data[4] != _deviceID)
+            return Status.DeviceIDError;
+        if (BinaryPrimitives.ReadUInt16BigEndian(data[2..4]) + 7 != data.Length)
+            return Status.LengthError;
+        if (BinaryPrimitives.ReadUInt16BigEndian(data[^2..]) != Crc.Crc16Modbus.Calculate(data[..^2]))
+            return Status.HostCheckError;
+        if (data[0] != IAP_FUNCTION_CODE)
+            return Status.FunctionCodeError;
 
-        return data[5] switch
+        var payload = data[5..^2];
+        if (data[1] == 0xFF)
         {
-            0x00 => Status.Success,
-            0xF0 => throw new Exception("IAP ROM 长度过长，设备拒绝升级，请检查所选 BIN 文件"),
-            _ => Status.InformationError,
-        };
+            if (payload.Length != 2)
+                return Status.LengthError;
+            return BinaryPrimitives.ReadUInt16BigEndian(payload) switch
+            {
+                0xFF00 => Status.DeviceFrameCheckError,
+                0xFD00 => Status.DeviceLengthError,
+                0xFE00 => throw new InvalidOperationException("IAP 设备拒绝功能码（0xFE00）"),
+                0xFC00 => throw new InvalidOperationException("IAP 设备拒绝阶段码（0xFC00）"),
+                var result => throw new InvalidOperationException($"IAP 设备返回未知通用错误（0x{result:X4}）")
+            };
+        }
+        if (data[1] != (byte)stage)
+            return Status.StageError;
+
+        switch (stage)
+        {
+            case Stage.Handshake:
+                return ReceiveHandshake(payload);
+            case Stage.SendInformation:
+                if (payload.Length != 1)
+                    return Status.LengthError;
+                return payload[0] switch
+                {
+                    0x00 => Status.Success,
+                    0xF0 => throw new InvalidOperationException("IAP ROM 长度无效或超过设备容量，请检查所选 BIN 文件（0xF0）"),
+                    0xF1 => throw new InvalidOperationException("IAP ROM 总帧数异常，请重新握手开始升级（0xF1）"),
+                    0xF2 => throw new InvalidOperationException("IAP ROM 信息与当前会话不一致，请重新握手开始升级（0xF2）"),
+                    var result => throw new InvalidOperationException($"IAP 信息请求被拒绝（0x{result:X2}）")
+                };
+            case Stage.SendData:
+                if (payload.Length != 5)
+                    return Status.LengthError;
+                if (BinaryPrimitives.ReadUInt32BigEndian(payload[..4]) != sendFrameIndex)
+                    return Status.FrameIndexMismatch;
+                return payload[4] switch
+                {
+                    0x00 => Status.Success,
+                    0x01 => throw new InvalidOperationException($"IAP 第 {sendFrameIndex} 帧帧号错误（0x01）"),
+                    0x02 => throw new InvalidOperationException($"IAP 第 {sendFrameIndex} 帧写入失败，请重新握手开始升级（0x02）"),
+                    var result => throw new InvalidOperationException($"IAP 第 {sendFrameIndex} 帧请求被拒绝（0x{result:X2}）")
+                };
+            case Stage.SendComplete:
+            case Stage.StartErase:
+            case Stage.StartWrite:
+            case Stage.StartCheck:
+            case Stage.Reboot:
+                if (payload.Length != 2)
+                    return Status.LengthError;
+                return ReceiveOperationResult(stage, BinaryPrimitives.ReadUInt16BigEndian(payload));
+            default:
+                return Status.StageError;
+        }
     }
-    private int SendDataPacket(Span<byte> data, UInt32 sendFrameIndex)
+
+    private Status ReceiveHandshake(ReadOnlySpan<byte> payload)
     {
-        if (readBinData == null)
+        if (payload.Length == 2)
         {
-            throw new Exception("The iap file was not read.");
+            return BinaryPrimitives.ReadUInt16BigEndian(payload) switch
+            {
+                0xFFFF => throw new InvalidOperationException("IAP 设备忙，当前无法升级"),
+                0x0104 => throw new InvalidOperationException("IAP 握手参数无效（0x0104）"),
+                var result => throw new InvalidDataException($"IAP 握手确认无效（0x{result:X4}）")
+            };
         }
-        else if (sendFrameIndex >= FrameNum)
-        {
-            throw new Exception("Current send frame out of range.");
-        }
-        else
-        {
-            bool isLastFrame = (sendFrameIndex == FrameNum - 1);
-            int offset = (int)(sendFrameIndex * bytesPerFrame);
-            int currentPayloadLen = isLastFrame ? (readBinData.Length - offset) : bytesPerFrame;
-            //                   0          1         2  3            4              5 6 7 8      ...
-            //数组长度 = 帧头5(功能码1 + 当前阶段1 + 数据区长度 + 设备ID 1) + 数据区(当前帧号4 + 每帧字节数) + 2CRC
-            //         = 每帧字节数 + 帧信息9 + 2CRC
-            UInt16 sendDataLen = (UInt16)(currentPayloadLen + 9);
+        if (payload.Length != 4 || payload[0] != 0x00)
+            throw new InvalidDataException("IAP 握手确认格式无效");
 
-            //填充协议头
-            data[0] = IAP_FUNCTION_CODE;
-            data[1] = (byte)Stage.SendData;
-            // 2 3 数据区长度 = 当前帧号4 + 每帧字节数
-            BinaryPrimitives.WriteUInt16BigEndian(data[2..4], (ushort)(currentPayloadLen + 4));
-            // 4
-            data[4] = _deviceID;
-            // 5 6 7 8
-            BinaryPrimitives.WriteUInt32BigEndian(data[5..9], sendFrameIndex);
+        ushort bytesPerFrame = BinaryPrimitives.ReadUInt16BigEndian(payload[2..4]);
+        if (bytesPerFrame == 0 || bytesPerFrame > MaxBytesPerFrame)
+            throw new InvalidDataException($"IAP 每帧字节数不支持：{bytesPerFrame}，有效范围为 1～{MaxBytesPerFrame}");
+        if (_binData == null)
+            throw new InvalidOperationException("IAP 文件尚未读取");
 
-            ReadOnlySpan<byte> sourceSpan = readBinData.AsSpan(offset, currentPayloadLen);
-            // 9..
-            sourceSpan.CopyTo(data[9..]);
-
-            //最后两位
-            var crc = Crc.Crc16Modbus.Calculate(data, sendDataLen);
-            BinaryPrimitives.WriteUInt16BigEndian(data.Slice(sendDataLen, 2), crc);
-            return sendDataLen + 2;
-        }
+        // bit0 以外均为保留位，不再读取旧协议的重启标志。
+        IsFlashPerFrame = (payload[1] & 0x01) != 0;
+        _bytesPerFrame = bytesPerFrame;
+        FrameNum = (uint)((_binData.Length + (long)bytesPerFrame - 1) / bytesPerFrame);
+        return Status.Success;
     }
-    private Status ReceiveDataAnalysis(ReadOnlySpan<byte> data, UInt32 sendFrame)
+
+    private static Status ReceiveOperationResult(Stage stage, ushort result)
     {
-        // 5 6 7 8
-        var receiveFrameIndex = BinaryPrimitives.ReadUInt32BigEndian(data[5..9]);
-        if (receiveFrameIndex == sendFrame)
-        {
+        if (result == 0x00FF)
             return Status.Success;
-        }
-        else
-        {
-            return Status.DeviceReceiveFrameIndexError;
-        }
 
-    }
-
-    private int SendCompletePacket(Span<byte> data)
-    {
-        data[0] = IAP_FUNCTION_CODE;
-        data[1] = (byte)Stage.SendComplete;
-        data[2] = 0x00;
-        data[3] = 0x02;
-        data[4] = _deviceID;
-        data[5] = 0x00;
-        data[6] = 0x00;
-        // 7 8
-        var crc = Crc.Crc16Modbus.Calculate(data, 7);
-        BinaryPrimitives.WriteUInt16BigEndian(data[7..9], crc);
-        return 9;
-    }
-
-    private Status ReceiveCompletePacketAnalysis(ReadOnlySpan<byte> data)
-    {
-        if (data[5] == 0x00)
+        string reason = result switch
         {
-            return data[6] switch
-            {
-                0xFF => Status.Success,
-                0x00 => Status.DeviceStartErase,
-                0x01 => Status.DeviceStartWrite,
-                0x02 => Status.DeviceStartFalshCheck,
-                0x03 => Status.DeviceStartReboot,
-                _ => Status.DeviceRebootComplete,
-            };
-        }
-        else
-        {
-            return data[6] switch
-            {
-                0x00 => throw new Exception("IAP 设备接收到的总帧数错误"),
-                _ => throw new Exception("IAP 设备校验错误"),
-            };
-        }
+            0x0100 => "帧数或接收长度错误",
+            0x0101 => "BIN 接收 CRC32 或目标回读 CRC32 错误",
+            0x0102 => "存储、擦除、写入、回读或启动目标提交失败",
+            0x0103 => "设备当前状态不允许该请求",
+            0x0104 => "请求参数无效",
+            _ => "未知操作结果"
+        };
+        throw new InvalidOperationException($"IAP 阶段 {stage} 失败：{reason}（0x{result:X4}），请检查设备并重新握手开始升级");
     }
 }

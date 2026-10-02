@@ -926,133 +926,98 @@
 
 		<!--  IAP设置  -->
 		<TabItem Header="IAP">
-			<Grid
-				ColumnDefinitions="Auto,*"
-				RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-				<!--  第 1 行  -->
-				<TextBlock
-					Grid.Row="0"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="文件路径" />
-				<TextBox
-					Grid.Row="0"
-					Grid.Column="1"
-					MinWidth="130"
-					HorizontalAlignment="Left"
-					VerticalContentAlignment="Center"
-					InnerRightContent="{Binding IapFilePathError}"
-					Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
-				<!--  第 2 行  -->
-				<TextBlock
-					Grid.Row="1"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="等待握手超时ℹ"
-					ToolTip.Tip="单位 s"/>
-				<NumericUpDown
-					Grid.Row="1"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="65535"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
-				<!--  第 3 行  -->
-				<TextBlock
-					Grid.Row="2"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="等待信息超时ℹ"
-					ToolTip.Tip="逐帧写入设备等待擦除完成并返回信息 ACK 的最长时间，单位 s"/>
-				<NumericUpDown
-					Grid.Row="2"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="65535"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					Value="{Binding WaitForInformationTimeoutSecondsTemp}" />
-				<!--  第 4 行  -->
-				<TextBlock
-					Grid.Row="3"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="等待擦除超时ℹ"
-					ToolTip.Tip="单位 s"/>
-				<NumericUpDown
-					Grid.Row="3"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="65535"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
-				<!--  第 5 行  -->
-				<TextBlock
-					Grid.Row="4"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="等待写入超时ℹ"
-					ToolTip.Tip="单位 s"/>
-				<NumericUpDown
-					Grid.Row="4"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="65535"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
-				<!--  第 6 行  -->
-				<TextBlock
-					Grid.Row="5"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="等待校验超时ℹ"
-					ToolTip.Tip="单位 s"/>
-				<NumericUpDown
-					Grid.Row="5"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="65535"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					Value="{Binding WaitForRebootStartTimeoutSecondsTemp}" />
-				<!--  第 7 行  -->
-				<TextBlock
-					Grid.Row="6"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="等待重启超时ℹ"
-					ToolTip.Tip="单位 s"/>
-				<NumericUpDown
-					Grid.Row="6"
-					Grid.Column="1"
-					Width="80"
-					HorizontalAlignment="Left"
-					Maximum="65535"
-					Minimum="0"
-					ParsingNumberStyle="Integer"
-					ShowButtonSpinner="False"
-					Value="{Binding WaitForRebootCompleteTimeoutSecondsTemp}" />
-			</Grid>
+			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+				<Grid ColumnDefinitions="Auto,*"
+					  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+					<TextBlock Grid.Row="0"
+							   Grid.Column="0"
+							   Margin="0,0,10,0"
+							   VerticalAlignment="Center"
+							   Text="文件路径" />
+					<TextBox Grid.Row="0"
+							 Grid.Column="1"
+							 MinWidth="130"
+							 HorizontalAlignment="Left"
+							 VerticalContentAlignment="Center"
+							 InnerRightContent="{Binding IapFilePathError}"
+							 Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
+					<TextBlock Grid.Row="1"
+							   Grid.Column="0"
+							   Margin="0,0,10,0"
+							   VerticalAlignment="Center" 
+							   Text="握手总超时ℹ"
+							   ToolTip.Tip="单位 s；每隔 0.5 秒重发握手，须覆盖复位、IAP 启动及通信初始化" />
+					<NumericUpDown Grid.Row="1" 
+								   Grid.Column="1"
+								   Width="80"
+								   HorizontalAlignment="Left"
+								   Maximum="65535"
+								   Minimum="1"
+								   ParsingNumberStyle="Integer" 
+								   ShowButtonSpinner="False"
+								   Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
+					<TextBlock Grid.Row="2"
+							   Grid.Column="0"
+							   Margin="0,0,10,0"
+							   VerticalAlignment="Center"
+							   Text="擦除总超时ℹ"
+							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，须覆盖最坏擦除耗时及通信延时" />
+					<NumericUpDown Grid.Row="2" 
+								   Grid.Column="1" 
+								   Width="80"
+								   HorizontalAlignment="Left"
+								   Maximum="65535" 
+								   Minimum="1"
+								   ParsingNumberStyle="Integer"
+								   ShowButtonSpinner="False"
+								   Value="{Binding WaitForEraseTimeoutSecondsTemp}" />
+					<TextBlock Grid.Row="3" 
+							   Grid.Column="0" 
+							   Margin="0,0,10,0"
+							   VerticalAlignment="Center" 
+							   Text="写入总超时ℹ"
+							   ToolTip.Tip="单位 s；整体写入模式每隔 0.5 秒重发，须覆盖最坏写入耗时及通信延时" />
+					<NumericUpDown Grid.Row="3"
+								   Grid.Column="1" 
+								   Width="80"
+								   HorizontalAlignment="Left"
+								   Maximum="65535"
+								   Minimum="1"
+								   ParsingNumberStyle="Integer"
+								   ShowButtonSpinner="False"
+								   Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
+					<TextBlock Grid.Row="4"
+							   Grid.Column="0" 
+							   Margin="0,0,10,0"
+							   VerticalAlignment="Center" 
+							   Text="校验总超时ℹ"
+							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，等待目标回读 CRC32 校验完成" />
+					<NumericUpDown Grid.Row="4" 
+								   Grid.Column="1"
+								   Width="80"
+								   HorizontalAlignment="Left"
+								   Maximum="65535" 
+								   Minimum="1"
+								   ParsingNumberStyle="Integer"
+								   ShowButtonSpinner="False"
+								   Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
+					<TextBlock Grid.Row="5" 
+							   Grid.Column="0" 
+							   Margin="0,0,10,0"
+							   VerticalAlignment="Center"
+							   Text="重启总超时ℹ"
+							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，须覆盖复位、APP 启动及通信初始化" />
+					<NumericUpDown Grid.Row="5"
+								   Grid.Column="1" 
+								   Width="80"
+								   HorizontalAlignment="Left" 
+								   Maximum="65535" 
+								   Minimum="1"
+								   ParsingNumberStyle="Integer"
+								   ShowButtonSpinner="False"
+								   Value="{Binding WaitForRebootTimeoutSecondsTemp}" />
+				</Grid>
+			</ScrollViewer>
 		</TabItem>
 
 		<!--  日志设置  -->
