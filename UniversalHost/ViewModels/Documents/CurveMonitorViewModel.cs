@@ -44,7 +44,7 @@ public partial class CurveMonitorLayout : ReactiveObject
             set
             {
                 this.RaiseAndSetIfChanged(ref _isVisible, value);
-                Signal?.IsVisible = value;
+                Signal?.IsVisible = value && Runtime.PlotHistory.Count > 0;
             }
         }
         private Avalonia.Media.Color _color;
