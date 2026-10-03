@@ -22,6 +22,12 @@
             <Setter Property="BorderThickness" Value="0,0,0,3"/>
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
         </Style>
+        <Style Selector="MenuItem.axis-auto-scale:checked /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource MenuFlyoutItemBackgroundPressed}"/>
+        </Style>
+        <Style Selector="MenuItem.axis-auto-scale:checked /template/ ContentPresenter#PART_HeaderPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForegroundPressed}"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -31,11 +37,11 @@
             <ColumnDefinition Width="*" MinWidth="20"/>
         </Grid.ColumnDefinitions>
         <StackPanel
-        Grid.Column="0"
-        Orientation="Vertical">
+            Grid.Column="0"
+            Orientation="Vertical">
             <Menu
-            Padding="0"
-            Height="25">
+                Padding="0"
+                Height="25">
                 <MenuItem Header="🔽" Padding="1" ToolTip.Tip="选择显示项">
                     <CheckBox Content="变量名" IsChecked="{Binding CurvesLayout.IsNameVisible}"/>
                     <CheckBox Content="别名" IsChecked="{Binding CurvesLayout.IsAliasVisible}"/>
@@ -43,31 +49,45 @@
                     <CheckBox Content="单位" IsChecked="{Binding CurvesLayout.IsUnitVisible}"/>
                 </MenuItem>
                 <MenuItem
-                Header="➕"
-                Padding="1"
-                ToolTip.Tip="添加监控变量"
-                Command="{Binding OpenAddDisplaySymbolWindowCommand}"
-                Cursor="Hand"/>
+                    Header="➕"
+                    Padding="1"
+                    ToolTip.Tip="添加监控变量"
+                    Command="{Binding OpenAddDisplaySymbolWindowCommand}"
+                    Cursor="Hand"/>
                 <MenuItem
-                Header="⚙️"
-                Padding="1"
-                ToolTip.Tip="设置"
-                Cursor="Hand"/>
+                    Padding="1"
+                    ToolTip.Tip="坐标轴自动适应"
+                    Classes="axis-auto-scale"
+                    ToggleType="CheckBox"
+                    IsChecked="{Binding CurvesLayout.IsAxisAutoScaleEnabled, Mode=TwoWay}"
+                    Cursor="Hand">
+                    <MenuItem.Header>
+                        <Image Source="avares://UniversalHost/Assets/curve-axis-auto-fit.png"
+                               Width="15"
+                               Height="15"
+                               Stretch="Uniform"/>
+                    </MenuItem.Header>
+                </MenuItem>
+                <MenuItem
+                    Header="⚙️"
+                    Padding="1"
+                    ToolTip.Tip="设置"
+                    Cursor="Hand"/>
             </Menu>
 
             <!--  分隔线  -->
             <Border Height="1" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
 
             <ListBox
-            x:Name="SymbolList"
-            ItemsSource="{Binding DisplayCurves}"
-            SelectionMode="Single"
-            SelectedItem="{Binding SelectedCurveItem}"
+                x:Name="SymbolList"
+                ItemsSource="{Binding DisplayCurves}"
+                SelectionMode="Single"
+                SelectedItem="{Binding SelectedCurveItem}"
 
-            DragDrop.DragOver="ListBox_DragOver"
-            DragDrop.Drop="ListBox_Drop"
-            Background="Transparent"
-            Padding="0">
+                DragDrop.DragOver="ListBox_DragOver"
+                DragDrop.Drop="ListBox_Drop"
+                Background="Transparent"
+                Padding="0">
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Padding" Value="0"/>
@@ -79,62 +99,62 @@
                 <ListBox.ContextMenu>
                     <ContextMenu>
                         <MenuItem
-                        Header="切换显示"
-                        Command="{Binding ToggleCurveItemVisiableCommand}"
-                        InputGesture="Space"
-                        />
+                            Header="切换显示"
+                            Command="{Binding ToggleCurveItemVisiableCommand}"
+                            InputGesture="Space"
+                            />
                         <MenuItem
-                        Header="添加变量"
-                        Command="{Binding OpenAddDisplaySymbolWindowCommand}"/>
+                            Header="添加变量"
+                            Command="{Binding OpenAddDisplaySymbolWindowCommand}"/>
                         <MenuItem
-                        Header="移除变量"
-                        Command="{Binding RemoveSelectedSymbolCommand}"/>
+                            Header="移除变量"
+                            Command="{Binding RemoveSelectedSymbolCommand}"/>
                         <MenuItem
-                        Header="清空变量"
-                        Command="{Binding ClearSelectedSymbolsCommand}"/>
+                            Header="清空变量"
+                            Command="{Binding ClearSelectedSymbolsCommand}"/>
                         <MenuItem
-                        Header="复制变量名"
-                        Command="{Binding CopySymbolNameCommand}"
-                        CommandParameter="{Binding $parent[TopLevel]}"/>
+                            Header="复制变量名"
+                            Command="{Binding CopySymbolNameCommand}"
+                            CommandParameter="{Binding $parent[TopLevel]}"/>
                         <MenuItem
-                        Header="复制变量值"
-                        Command="{Binding CopySymbolValueCommand}"
-                        CommandParameter="{Binding $parent[TopLevel]}"/>
+                            Header="复制变量值"
+                            Command="{Binding CopySymbolValueCommand}"
+                            CommandParameter="{Binding $parent[TopLevel]}"/>
                     </ContextMenu>
                 </ListBox.ContextMenu>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Spacing="0">
                             <DockPanel
-                            PointerPressed="FirstRow_PointerPressed"
-                            LastChildFill="False"
-                            Background="Transparent">
+                                PointerPressed="FirstRow_PointerPressed"
+                                LastChildFill="False"
+                                Background="Transparent">
                                 <TextBlock
-                                Text="{Binding Runtime.Symbol.Name}"
-                                FontSize="14"
-                                Padding="1,0,0,0"
-                                IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsNameVisible}"/>
+                                    Text="{Binding Runtime.Symbol.Name}"
+                                    FontSize="14"
+                                    Padding="1,0,0,0"
+                                    IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsNameVisible}"/>
                                 <TextBlock
-                                Text="{Binding Runtime.Symbol.Alias}"
-                                FontSize="14"
-                                Padding="1,0,0,0"
-                                IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsAliasVisible}"/>
+                                    Text="{Binding Runtime.Symbol.Alias}"
+                                    FontSize="14"
+                                    Padding="1,0,0,0"
+                                    IsVisible="{Binding  $parent[UserControl].DataContext.CurvesLayout.IsAliasVisible}"/>
                             </DockPanel>
                             <DockPanel LastChildFill="False">
                                 <ToggleButton
-                                Height="16"
-                                Width="20"
-                                IsThreeState="False"
-                                Padding="0,0,1,0"
-                                CornerRadius="1.5"
-                                IsChecked="{Binding IsVisible}">
+                                    Height="16"
+                                    Width="20"
+                                    IsThreeState="False"
+                                    Padding="0,0,1,0"
+                                    CornerRadius="1.5"
+                                    IsChecked="{Binding IsVisible}">
                                     <ToggleButton.Content>
                                         <TextBlock
-                                        VerticalAlignment="Center"
-                                        HorizontalAlignment="Center"
-                                        IsVisible="{Binding !$parent[ToggleButton].IsChecked}"
-                                        Text="✖️"
-                                        FontSize="10"/>
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            IsVisible="{Binding !$parent[ToggleButton].IsChecked}"
+                                            Text="✖️"
+                                            FontSize="10"/>
                                     </ToggleButton.Content>
                                     <ToggleButton.Styles>
                                         <Style Selector="ToggleButton:checked /template/ ContentPresenter">

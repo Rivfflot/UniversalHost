@@ -55,6 +55,10 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 {
                     CurvePlot.Plot.MoveToTop(curve.Signal);
                 }
+                if (viewModel.CurvesLayout.IsAxisAutoScaleEnabled && _curves.Values.Any(x => x.Signal.IsVisible))
+                {
+                    CurvePlot.Plot.Axes.AutoScale();
+                }
                 CurvePlot.Refresh();
             }
             Action<CurveMonitorLayout.CurveItem> removeCurveHandler = RemoveCurve;
@@ -96,6 +100,11 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             {
                 item.YAxis?.IsVisible = item == selectedCurve;
             }
+            viewModel.CurvesLayout.WhenAnyValue(x => x.IsAxisAutoScaleEnabled)
+                .Skip(1)
+                .ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
+
             Observable.Interval(TimeSpan.FromMilliseconds(33))
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Where(_ => GlobalStatus.Instance.IsMonitoring && this.IsVisible)

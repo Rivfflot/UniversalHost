@@ -124,6 +124,7 @@ public partial class CurveMonitorLayout : ReactiveObject
     [Reactive] private bool _isAliasVisible = true;
     [Reactive] private bool _isValueVisible = true;
     [Reactive] private bool _isUnitVisible = true;
+    [Reactive] private bool _isAxisAutoScaleEnabled = true;
 };
 public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
 {
