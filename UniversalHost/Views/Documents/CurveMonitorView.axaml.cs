@@ -13,6 +13,7 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
+using UniversalHost.Services;
 using UniversalHost.Services.Plotting;
 using UniversalHost.ViewModels.Documents;
 
@@ -20,6 +21,7 @@ namespace UniversalHost.Views.Documents;
 
 public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewModel>
 {
+    private const double XAxisRightMargin = 1e-4;
     private ListBoxItem? _currentHoveredItem;
     private sealed class CurveRenderState(ScottPlot.Plottables.Signal signal, ScottPlot.AxisPanels.LeftAxis yAxis)
     {
@@ -42,6 +44,14 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             if (viewModel == null) return;
 
             var subscriptions = new CompositeDisposable();
+            var monitorConfig = ProjectSaveService.Instance.Settings.MonitorConfig;
+            void SetXAxisLimits()
+            {
+                // 固定显示完整记录长度，右边保留小间隔以显示最后一个横坐标。
+                CurvePlot.Plot.Axes.SetLimitsX(0, monitorConfig.MaxSaveLen * (1 + XAxisRightMargin));
+            }
+            CurvePlot.Plot.Axes.Margins(0, XAxisRightMargin, 0.05, 0.05);
+            SetXAxisLimits();
             var scanLine = CurvePlot.Plot.Add.VerticalLine(0, 0.95f, Colors.Red);
             scanLine.IsVisible = false;
             void RefreshPlot(bool force = true)
@@ -63,9 +73,14 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 {
                     CurvePlot.Plot.MoveToTop(curve.Signal);
                 }
-                if (viewModel.CurvesLayout.IsAxisAutoScaleEnabled && _curves.Values.Any(x => x.Signal.IsVisible))
+                if (viewModel.CurvesLayout.IsYAxisAutoScaleEnabled)
                 {
-                    CurvePlot.Plot.Axes.AutoScale();
+                    foreach (var curveState in _curves.Values)
+                    {
+                        if (curveState.Signal.IsVisible)
+                            CurvePlot.Plot.Axes.AutoScaleY(curveState.YAxis);
+                    }
+                    SetXAxisLimits();
                 }
                 CurvePlot.Refresh();
             }
@@ -100,15 +115,17 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             {
                 AddCurve(item);
             }
-            //右边留一个小间隔以显示最后一个横坐标
-            CurvePlot.Plot.Axes.Margins(0, 1e-4, 0.05, 0.05);
             CurvePlot.Plot.Axes.Left.IsVisible = false;
             var selectedCurve = viewModel.SelectedCurveItem ?? viewModel.DisplayCurves.FirstOrDefault();
             foreach (var item in viewModel.DisplayCurves)
             {
                 item.YAxis?.IsVisible = item == selectedCurve;
             }
-            viewModel.CurvesLayout.WhenAnyValue(x => x.IsAxisAutoScaleEnabled)
+            viewModel.CurvesLayout.WhenAnyValue(x => x.IsYAxisAutoScaleEnabled)
+                .Skip(1)
+                .ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
+            monitorConfig.WhenAnyValue(x => x.MaxSaveLen)
                 .Skip(1)
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);

@@ -25,14 +25,7 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
         for (int i = firstIndex; i <= lastIndex; i++) yield return GetY(i);
     }
 
-    public double GetY(int index)
-    {
-        lock (history.SyncRoot)
-        {
-            return index >= 0 && index < history.CountUnsafe
-                ? history.GetPhysicalValueUnsafe(index) : double.NaN;
-        }
-    }
+    public double GetY(int index) => history.GetPhysicalValue(index);
 
     public override SignalRangeY GetLimitsY(int firstIndex, int lastIndex)
     {
@@ -42,17 +35,14 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
 
     public new AxisLimits GetLimits()
     {
-        lock (history.SyncRoot)
-        {
-            int first = MinRenderIndex;
-            int last = MaxRenderIndex;
-            if (first > last) return AxisLimits.NoLimits;
-            CurvePlotRange range = history.GetRangeUnsafe(first, last);
-            if (!range.HasValues) return AxisLimits.HorizontalOnly(GetX(first), GetX(last));
-            double y1 = range.Minimum * YScale + YOffset;
-            double y2 = range.Maximum * YScale + YOffset;
-            return new(GetX(first), GetX(last), Math.Min(y1, y2), Math.Max(y1, y2));
-        }
+        int first = MinRenderIndex;
+        int last = MaxRenderIndex;
+        if (first > last) return AxisLimits.NoLimits;
+        CurvePlotRange range = history.GetRange(first, last);
+        if (!range.HasValues) return AxisLimits.HorizontalOnly(GetX(first), GetX(last));
+        double y1 = range.Minimum * YScale + YOffset;
+        double y2 = range.Maximum * YScale + YOffset;
+        return new(GetX(first), GetX(last), Math.Min(y1, y2), Math.Max(y1, y2));
     }
 
     public new CoordinateRange GetLimitsX() => GetLimits().XRange;
@@ -65,28 +55,25 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
         double x2 = axes.GetCoordinateX(x + 1);
         double left = Math.Min(x1, x2);
         double right = Math.Max(x1, x2);
-        lock (history.SyncRoot)
-        {
-            int first = MinRenderIndex;
-            int last = MaxRenderIndex;
-            if (first > last || !RangeContainsSignal(left, right))
-                return PixelColumn.WithoutData(x);
-            int i1 = GetIndex(left, true);
-            int i2 = GetIndex(right, true);
-            CurvePlotRange range = history.GetRangeUnsafe(i1, i2);
-            if (!range.HasValues) return PixelColumn.WithoutData(x);
+        int first = MinRenderIndex;
+        int last = MaxRenderIndex;
+        if (first > last || !RangeContainsSignal(left, right))
+            return PixelColumn.WithoutData(x);
+        int i1 = GetIndex(left, true);
+        int i2 = GetIndex(right, true);
+        CurvePlotRange range = history.GetRange(i1, i2);
+        if (!range.HasValues) return PixelColumn.WithoutData(x);
 
-            double enter = history.GetPhysicalValueUnsafe(i1);
-            double exit = history.GetPhysicalValueUnsafe(i2);
-            // 非有限设备值不参与缩放，也不让它遮掉同一像素内的有效尖峰。
-            if (!double.IsFinite(enter)) enter = range.Minimum;
-            if (!double.IsFinite(exit)) exit = range.Maximum;
-            return new PixelColumn(x,
-                axes.GetPixelY(enter * YScale + YOffset),
-                axes.GetPixelY(exit * YScale + YOffset),
-                axes.GetPixelY(range.Minimum * YScale + YOffset),
-                axes.GetPixelY(range.Maximum * YScale + YOffset));
-        }
+        double enter = history.GetPhysicalValue(i1);
+        double exit = history.GetPhysicalValue(i2);
+        // 非有限设备值不参与缩放，也不让它遮掉同一像素内的有效尖峰。
+        if (!double.IsFinite(enter)) enter = range.Minimum;
+        if (!double.IsFinite(exit)) exit = range.Maximum;
+        return new PixelColumn(x,
+            axes.GetPixelY(enter * YScale + YOffset),
+            axes.GetPixelY(exit * YScale + YOffset),
+            axes.GetPixelY(range.Minimum * YScale + YOffset),
+            axes.GetPixelY(range.Maximum * YScale + YOffset));
     }
 
     int IDataSource.GetXClosestIndex(Coordinates location) => GetIndex(location.X, true);
@@ -105,7 +92,7 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
-/// <summary>读取屏幕数据时锁住历史，耗时的 Skia 绘制在释放锁后进行。</summary>
+/// <summary>无锁读取历史的屏幕数据，保留逐像素包络与原始点绘制。</summary>
 internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
 {
     private readonly CurvePlotBuffer _history;
@@ -120,47 +107,43 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
     {
         using SkiaSharp.SKPath path = new();
         List<Pixel>? markers = null;
-        double pointsPerPixel;
         int columnCount = 0;
-        lock (_history.SyncRoot)
-        {
-            int first = Math.Max(0, MinRenderIndex);
-            int last = Math.Min(_history.CountUnsafe - 1, MaxRenderIndex);
-            if (first > last || Axes.DataRect.Width <= 0) return;
+        int first = Math.Max(0, MinRenderIndex);
+        int last = Math.Min(_history.Count - 1, MaxRenderIndex);
+        if (first > last || Axes.DataRect.Width <= 0) return;
 
-            double left = Axes.GetCoordinateX(Axes.DataRect.Left);
-            double right = Axes.GetCoordinateX(Axes.DataRect.Right);
-            double xMin = Math.Min(left, right);
-            double xMax = Math.Max(left, right);
-            pointsPerPixel = (xMax - xMin) / Axes.DataRect.Width / Data.Period;
-            bool connected = false;
-            if (pointsPerPixel < 1 || AlwaysUseLowDensityMode)
+        double left = Axes.GetCoordinateX(Axes.DataRect.Left);
+        double right = Axes.GetCoordinateX(Axes.DataRect.Right);
+        double xMin = Math.Min(left, right);
+        double xMax = Math.Max(left, right);
+        double pointsPerPixel = (xMax - xMin) / Axes.DataRect.Width / Data.Period;
+        bool connected = false;
+        if (pointsPerPixel < 1 || AlwaysUseLowDensityMode)
+        {
+            int i1 = Data.GetIndex(xMin, true);
+            int i2 = Data.GetIndex(xMax + Data.Period, true);
+            markers = [];
+            for (int i = i1; i <= i2; i++)
             {
-                int i1 = Data.GetIndex(xMin, true);
-                int i2 = Data.GetIndex(xMax + Data.Period, true);
-                markers = [];
-                for (int i = i1; i <= i2; i++)
+                double y = Data.GetY(i) * Data.YScale + Data.YOffset;
+                if (!double.IsFinite(y))
                 {
-                    double y = Data.GetY(i) * Data.YScale + Data.YOffset;
-                    if (!double.IsFinite(y))
-                    {
-                        connected = false;
-                        continue;
-                    }
-                    Pixel pixel = new(Axes.GetPixelX(Data.GetX(i)), Axes.GetPixelY(y));
-                    if (connected) path.LineTo(pixel.X, pixel.Y);
-                    else path.MoveTo(pixel.X, pixel.Y);
-                    connected = true;
-                    markers.Add(pixel);
+                    connected = false;
+                    continue;
                 }
+                Pixel pixel = new(Axes.GetPixelX(Data.GetX(i)), Axes.GetPixelY(y));
+                if (connected) path.LineTo(pixel.X, pixel.Y);
+                else path.MoveTo(pixel.X, pixel.Y);
+                connected = true;
+                markers.Add(pixel);
             }
-            else
-            {
-                columnCount = (int)Axes.DataRect.Width;
-                if (_columns.Length < columnCount) _columns = new PixelColumn[columnCount];
-                for (int x = 0; x < columnCount; x++)
-                    _columns[x] = Data.GetPixelColumn(Axes, x);
-            }
+        }
+        else
+        {
+            columnCount = (int)Axes.DataRect.Width;
+            if (_columns.Length < columnCount) _columns = new PixelColumn[columnCount];
+            for (int x = 0; x < columnCount; x++)
+                _columns[x] = Data.GetPixelColumn(Axes, x);
         }
 
         // 普通细实线直接绘制像素列矩形，避免中间密度下复杂路径的填充/描边低谷。
@@ -177,7 +160,7 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
             }
             BuildColumnPath(path, columnCount);
         }
-        // 特殊线型和放大后的原始点保留折线绘制，均不占用采集线程的锁。
+        // 特殊线型和放大后的原始点保留折线绘制。
         Drawing.DrawPath(rp.Canvas, rp.Paint, path, LineStyle);
         if (markers != null && pointsPerPixel < 1)
         {

@@ -56,10 +56,10 @@
                     Cursor="Hand"/>
                 <MenuItem
                     Padding="1"
-                    ToolTip.Tip="坐标轴自动适应"
+                    ToolTip.Tip="自动更新Y轴自动适应，X轴恢复最大记录长度"
                     Classes="axis-auto-scale"
                     ToggleType="CheckBox"
-                    IsChecked="{Binding CurvesLayout.IsAxisAutoScaleEnabled, Mode=TwoWay}"
+                    IsChecked="{Binding CurvesLayout.IsYAxisAutoScaleEnabled, Mode=TwoWay}"
                     Cursor="Hand">
                     <MenuItem.Header>
                         <Image Source="avares://UniversalHost/Assets/curve-axis-auto-fit.png"
