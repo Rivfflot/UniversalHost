@@ -55,19 +55,13 @@
                     Command="{Binding OpenAddDisplaySymbolWindowCommand}"
                     Cursor="Hand"/>
                 <MenuItem
+                    Header="🔍"
                     Padding="1"
                     ToolTip.Tip="自动更新Y轴自动适应，X轴恢复最大记录长度"
                     Classes="axis-auto-scale"
                     ToggleType="CheckBox"
                     IsChecked="{Binding CurvesLayout.IsYAxisAutoScaleEnabled, Mode=TwoWay}"
-                    Cursor="Hand">
-                    <MenuItem.Header>
-                        <Image Source="avares://UniversalHost/Assets/curve-axis-auto-fit.png"
-                               Width="15"
-                               Height="15"
-                               Stretch="Uniform"/>
-                    </MenuItem.Header>
-                </MenuItem>
+                    Cursor="Hand"/>
                 <MenuItem
                     Header="⚙️"
                     Padding="1"

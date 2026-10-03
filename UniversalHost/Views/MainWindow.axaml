@@ -285,6 +285,17 @@ x:DataType="vm:MainWindowViewModel"
 			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}" />
 
 			<MenuItem
+			Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
+			Header="🔍"
+			Cursor="Hand"
+			FontFamily="Apple Color Emoji, Noto Color Emoji"
+			FontSize="18"
+			Padding="0"
+			ToolTip.Tip="切换所有曲线窗口的坐标轴自动适应（状态不一致时全部开启）"
+			ToolTip.ShowOnDisabled="True"
+			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+
+			<MenuItem
 			Command="{Binding AddGridMonitorPanelCommand}"
 			Header="📅"
 			Cursor="Hand"

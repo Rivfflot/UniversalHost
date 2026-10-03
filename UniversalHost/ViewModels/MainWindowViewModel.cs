@@ -175,6 +175,19 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             Factory.ShowOrCreateTool(Layout, DockableRegistry.IapToolId);
         });
     }
+    [ReactiveCommand]
+    private void ToggleAllCurveYAxisAutoScale()
+    {
+        var curveWindows = DockableRegistry.CurveMonitorDocuments.Values;
+        if (curveWindows.Count == 0) return;
+
+        // 仅在全部开启时统一关闭；状态不一致时统一开启。
+        var enableAutoScale = !curveWindows.All(window => window.CurvesLayout.IsYAxisAutoScaleEnabled);
+        foreach (var window in curveWindows)
+        {
+            window.CurvesLayout.IsYAxisAutoScaleEnabled = enableAutoScale;
+        }
+    }
     #region 文件指令
     [ReactiveCommand]
     private async Task NewProjectFileAsync(Window window)
