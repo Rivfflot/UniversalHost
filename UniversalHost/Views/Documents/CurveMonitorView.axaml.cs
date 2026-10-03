@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ReactiveUI.Reactive;
 using ReactiveUI.Avalonia.Reactive;
@@ -12,7 +13,7 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using UniversalHost.Services;
+using UniversalHost.Services.Plotting;
 using UniversalHost.ViewModels.Documents;
 
 namespace UniversalHost.Views.Documents;
@@ -20,8 +21,13 @@ namespace UniversalHost.Views.Documents;
 public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewModel>
 {
     private ListBoxItem? _currentHoveredItem;
-    private readonly Dictionary<CurveMonitorLayout.CurveItem,
-        (ScottPlot.Plottables.Signal Signal, ScottPlot.AxisPanels.LeftAxis YAxis)> _curves = [];
+    private sealed class CurveRenderState(ScottPlot.Plottables.Signal signal, ScottPlot.AxisPanels.LeftAxis yAxis)
+    {
+        public ScottPlot.Plottables.Signal Signal { get; } = signal;
+        public ScottPlot.AxisPanels.LeftAxis YAxis { get; } = yAxis;
+        public long LastVersion { get; set; } = -1;
+    }
+    private readonly Dictionary<CurveMonitorLayout.CurveItem, CurveRenderState> _curves = [];
     private static readonly DataFormat<CurveMonitorLayout.CurveItem> RowFormat =
     DataFormat<CurveMonitorLayout.CurveItem>.CreateInProcessFormat<CurveMonitorLayout.CurveItem>("CurveItemRow");
     public CurveMonitorView()
@@ -38,14 +44,16 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             var subscriptions = new CompositeDisposable();
             var scanLine = CurvePlot.Plot.Add.VerticalLine(0, 0.95f, Colors.Red);
             scanLine.IsVisible = false;
-            void RefreshPlot()
+            void RefreshPlot(bool force = true)
             {
-                UpdateCurveRenderRanges();
-                if (viewModel.DisplayCurves.FirstOrDefault() is { } first && first.Runtime.PlotHistory.Count > 0)
+                bool changed = UpdateCurveRenderRanges();
+                if (!force && !changed) return;
+                if (viewModel.DisplayCurves.FirstOrDefault(x => x.IsVisible && x.Runtime.PlotHistory.Count > 0) is { } first)
                 {
                     var history = first.Runtime.PlotHistory;
-                    scanLine.IsVisible = true;
-                    scanLine.X = (history.WriteIndex + history.Capacity - 1) % history.Capacity;
+                    var state = history.GetState();
+                    scanLine.IsVisible = state.Count > 0;
+                    scanLine.X = (state.WriteIndex + history.Capacity - 1) % history.Capacity;
                 }
                 else
                 {
@@ -63,7 +71,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             }
             Action<CurveMonitorLayout.CurveItem> removeCurveHandler = RemoveCurve;
             Action<CurveMonitorLayout.CurveItem> addCurveHandler = AddCurve;
-            Action refreshCurveHandler = RefreshPlot;
+            Action refreshCurveHandler = () => RefreshPlot();
             var themeChangedHandler = new EventHandler((s, e) => ApplyPlotTheme());
             viewModel.RemoveCurve += removeCurveHandler;
             viewModel.AddCurve += addCurveHandler;
@@ -105,35 +113,36 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
 
-            Observable.Interval(TimeSpan.FromMilliseconds(33))
-                .ObserveOn(AvaloniaScheduler.Instance)
-                .Where(_ => GlobalStatus.Instance.IsMonitoring && this.IsVisible)
-                .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
-
-            Observable.Interval(TimeSpan.FromMilliseconds(200))
-               .Select(_ => GlobalStatus.Instance.IsMonitoring)
-               .DistinctUntilChanged()
-               .Publish()
-               .RefCount().ObserveOn(AvaloniaScheduler.Instance).Subscribe(state =>
-                {
-                    if (!state)
-                    {
-                        RefreshPlot();
-                    }
-                }).DisposeWith(subscriptions);
+            // UI 定时器不会积压后台 Interval 排入的刷新事件；空闲或隐藏窗口不重绘。
+            // 持续检查版本，也覆盖停止监控后的最后一帧、清空历史和重新显示窗口。
+            var refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(33),
+            };
+            refreshTimer.Tick += (_, _) =>
+            {
+                if (IsEffectivelyVisible) RefreshPlot(force: false);
+            };
+            refreshTimer.Start();
+            Disposable.Create(refreshTimer.Stop).DisposeWith(subscriptions);
 
             ApplyPlotTheme();
             RefreshPlot();
         });
     }
-    private void UpdateCurveRenderRanges()
+    private bool UpdateCurveRenderRanges()
     {
+        bool changed = false;
         foreach (var (item, curve) in _curves)
         {
-            int count = item.Runtime.PlotHistory.Count;
-            curve.Signal.MaxRenderIndex = Math.Max(0, count - 1);
-            curve.Signal.IsVisible = item.IsVisible && count > 0;
+            var state = item.Runtime.PlotHistory.GetState();
+            bool visible = item.IsVisible && state.Count > 0;
+            changed |= curve.Signal.IsVisible != visible || (visible && curve.LastVersion != state.Version);
+            curve.LastVersion = state.Version;
+            curve.Signal.MaxRenderIndex = Math.Max(0, state.Count - 1);
+            curve.Signal.IsVisible = visible;
         }
+        return changed;
     }
     private void ApplyPlotTheme()
     {
@@ -170,19 +179,20 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         ScottPlot.Color? color = item.HasColor
             ? new ScottPlot.Color(item.Color.R, item.Color.G, item.Color.B, item.Color.A)
             : null;
-        item.Signal = CurvePlot.Plot.Add.Signal(item.Runtime.PlotHistory.Buffer, color: color);
+        item.Signal = new CurvePlotSignal(item.Runtime.PlotHistory)
+        {
+            Color = color ?? CurvePlot.Plot.Add.GetNextColor(),
+        };
+        CurvePlot.Plot.Add.Plottable(item.Signal);
         if (!item.HasColor)
         {
             item.Color = Avalonia.Media.Color.FromUInt32(item.Signal.Color.ARGB);
         }
-        //item.ScanLine = CurvePlot.Plot.Add.VerticalLine(0);
-        //item.ScanLine.LineWidth = 0.5f;
-        //item.ScanLine.IsVisible = item.IsVisible;
         item.YAxis = CurvePlot.Plot.Axes.AddLeftAxis();
         item.YAxis.IsVisible = isFirst;
         item.Signal.Axes.XAxis = CurvePlot.Plot.Axes.Bottom;
         item.Signal.Axes.YAxis = item.YAxis;
-        _curves.Add(item, (item.Signal, item.YAxis));
+        _curves.Add(item, new CurveRenderState(item.Signal, item.YAxis));
         UpdateCurveRenderRanges();
         ApplyPlotTheme();
     }

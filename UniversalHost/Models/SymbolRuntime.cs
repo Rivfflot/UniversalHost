@@ -7,95 +7,6 @@ using System.Runtime.InteropServices;
 
 namespace UniversalHost.Models;
 
-public sealed class RingBuffer<T>
-{
-    private readonly T[] _buffer;
-    public T[] Buffer => _buffer;
-    private int _writeIndex;
-
-    public int Capacity => _buffer.Length;
-    public int Count { get; private set; }
-
-    public RingBuffer(int capacity)
-    {
-        if (capacity <= 0)
-            throw new ArgumentException("capacity must > 0");
-
-        _buffer = new T[capacity];
-    }
-    public void Clear()
-    {
-        Array.Clear(_buffer, 0, _buffer.Length);
-        _writeIndex = 0;
-        Count = 0;
-    }
-    // =========================
-    // Write (wrap index)
-    // =========================
-    public void Add(T item)
-    {
-        _buffer[_writeIndex] = item;
-
-        _writeIndex++;
-        if (_writeIndex == Capacity)
-            _writeIndex = 0;
-
-        if (Count < Capacity)
-            Count++;
-    }
-
-    // =========================
-    // newest-first indexing
-    // 0 = newest
-    // =========================
-    public T this[int index]
-    {
-        get
-        {
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
-
-            int newestIndex = _writeIndex == 0 ? Capacity - 1 : _writeIndex - 1;
-
-            int physicalIndex = newestIndex - index;
-            if (physicalIndex < 0)
-                physicalIndex += Capacity;
-
-            return _buffer[physicalIndex];
-        }
-    }
-
-    // =========================
-    // contiguous export (newest → oldest)
-    // =========================
-    public void CopyToSpan(Span<T> dst)
-    {
-        if (dst.Length < Count)
-            throw new ArgumentException("destination too small");
-
-        int newestIndex = _writeIndex == 0 ? Capacity - 1 : _writeIndex - 1;
-
-        for (int i = 0; i < Count; i++)
-        {
-            int idx = newestIndex - i;
-            if (idx < 0)
-                idx += Capacity;
-
-            dst[i] = _buffer[idx];
-        }
-    }
-
-    // =========================
-    // snapshot (for ScottPlot fallback)
-    // =========================
-    public T[] ToArray()
-    {
-        var arr = new T[Count];
-        CopyToSpan(arr);
-        return arr;
-    }
-
-    public int WriteIndex => _writeIndex;
-}
 public abstract partial class SymbolRuntime : ReactiveObject
 {
     public UserSymbolInfo Symbol { get; init; }
@@ -105,7 +16,7 @@ public abstract partial class SymbolRuntime : ReactiveObject
     // 提供给外部的非泛型只读属性
     public abstract byte ValueSizeInBytes { get; }
     //画曲线图用
-    public abstract RingBuffer<double> PlotHistory { get; }
+    public abstract CurvePlotBuffer PlotHistory { get; }
     protected SymbolRuntime(UserSymbolInfo symbol)
     {
         Symbol = symbol;
@@ -145,15 +56,15 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
 {
     public T Value { get; private set; }
     private readonly CircularBuffer.CircularBuffer<T> _valuesHistory;
-    private readonly RingBuffer<double> _plotHistory;
-    public override RingBuffer<double> PlotHistory => _plotHistory;
+    private readonly CurvePlotBuffer _plotHistory;
+    public override CurvePlotBuffer PlotHistory => _plotHistory;
     public override byte ValueSizeInBytes => (byte)Unsafe.SizeOf<T>();
 
     public SymbolRuntime(UserSymbolInfo symbol, int maxSaveLen)
                                      : base(symbol)
     {
         _valuesHistory = new CircularBuffer.CircularBuffer<T>(maxSaveLen);
-        _plotHistory = new RingBuffer<double>(maxSaveLen);
+        _plotHistory = new CurvePlotBuffer(maxSaveLen);
     }
     public override void ClearHistory()
     {
