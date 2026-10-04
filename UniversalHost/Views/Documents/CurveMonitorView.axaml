@@ -13,6 +13,7 @@
     <UserControl.KeyBindings>
         <!-- 触发 ViewModel 中的 Command -->
         <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
+        <KeyBinding Gesture="E" Command="{Binding ToggleYAxisAutoScaleCommand}" />
     </UserControl.KeyBindings>
 
     <UserControl.Styles>
@@ -57,7 +58,7 @@
                 <MenuItem
                     Header="🔍"
                     Padding="1"
-                    ToolTip.Tip="自动更新Y轴自动适应，X轴恢复最大记录长度"
+                    ToolTip.Tip="自动更新Y轴自动适应，X轴恢复最大记录长度（E）"
                     Classes="axis-auto-scale"
                     ToggleType="CheckBox"
                     IsChecked="{Binding CurvesLayout.IsYAxisAutoScaleEnabled, Mode=TwoWay}"

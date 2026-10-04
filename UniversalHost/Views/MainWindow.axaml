@@ -33,15 +33,11 @@ x:DataType="vm:MainWindowViewModel"
 			<MenuItem Header="文件">
 				<MenuItem
 				Header="新建"
-				InputGesture="Ctrl+N"
-				HotKey="Ctrl+N"
 				Command="{Binding NewProjectFileCommand}"
 				CommandParameter="{Binding $parent[Window]}"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
 				<MenuItem
 				Header="打开"
-				InputGesture="Ctrl+O"
-				HotKey="Ctrl+O"
 				Command="{Binding OpenProjectFileCommand}"
 				CommandParameter="{Binding $parent[Window]}"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
@@ -77,24 +73,18 @@ x:DataType="vm:MainWindowViewModel"
 					<sys:Int32>0</sys:Int32>
 				</MenuItem.CommandParameter>
 			</MenuItem>
-			<MenuItem Header="设备">
+			<MenuItem Header="设备" IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
 				<MenuItem
 				Command="{Binding ShowDeviceInfomationCommand}"
 				Header="设备信息"
-				InputGesture="Ctrl+Alt+I"
-				HotKey="Ctrl+Alt+I"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 				<MenuItem
 				Header="连接设备"
 				Command="{Binding ConnectDeviceCommand}"
-				InputGesture="Ctrl+K"
-				HotKey="Ctrl+K"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
 				<MenuItem
 				Command="{Binding DisconnectDeviceCommand}"
 				Header="断开设备"
-				InputGesture="Ctrl+Shift+K"
-				HotKey="Ctrl+Shift+K"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 				<MenuItem
 				Command="{Binding OpenIapWindowCommand}"
@@ -110,22 +100,21 @@ x:DataType="vm:MainWindowViewModel"
 			Header="监控">
 				<MenuItem
 				Header="开始监控"
-				InputGesture="F5"
-				HotKey="F5"
 				Command="{Binding StartMonitorCommand}"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"
 				/>
 				<MenuItem
 				Header="停止监控"
-				InputGesture="Shift+F5"
-				HotKey="Shift+F5"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}"
 				Command="{Binding StopMonitorCommand}"/>
 				<MenuItem
+				Header="切换所有窗口坐标自适应"
+				Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
+				InputGesture="Ctrl+E"
+				HotKey="Ctrl+E"/>
+				<MenuItem
 				Header="监控设置"
-				Command="{Binding OpenSettingWindowCommand}"
-				InputGesture="Alt+,"
-				HotKey="Alt+,">
+				Command="{Binding OpenSettingWindowCommand}">
 					<MenuItem.CommandParameter>
 						<sys:Int32>2</sys:Int32>
 					</MenuItem.CommandParameter>
@@ -133,28 +122,18 @@ x:DataType="vm:MainWindowViewModel"
 				<MenuItem
 				Header="保存监控数据"
 				Command="{Binding SaveMonitorDataCommand}"
-				InputGesture="Shift+S"
-				HotKey="Shift+S"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"/>
 				<MenuItem
-				Header="读取监控数据"
-				InputGesture="Shift+D"
-				HotKey="Shift+D"/>
+				Header="读取监控数据"/>
 				<MenuItem
 				Header="新建表格监控窗口"
-				Command="{Binding AddGridMonitorPanelCommand}"
-				InputGesture="Alt+Q"
-				HotKey="Alt+Q"/>
+				Command="{Binding AddGridMonitorPanelCommand}"/>
 				<MenuItem
 				Header="新建曲线监控窗口"
-				Command="{Binding AddCurveMonitorPanelCommand}"
-				InputGesture="Alt+W"
-				HotKey="Alt+W"/>
+				Command="{Binding AddCurveMonitorPanelCommand}"/>
 				<MenuItem
 				Header="新建位监控窗口"
-				Command="{Binding AddBitsMonitorPanelCommand}"
-				InputGesture="Alt+E"
-				HotKey="Alt+E"/>
+				Command="{Binding AddBitsMonitorPanelCommand}"/>
 			</MenuItem>
 			<MenuItem
 			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
@@ -169,35 +148,27 @@ x:DataType="vm:MainWindowViewModel"
 				Header="参数回传"
 				Command="{Binding UploadValuesCommand}"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
-				InputGesture="Ctrl+U"
-				HotKey="Ctrl+U"/>
+				InputGesture="Ctrl+F"
+				HotKey="Ctrl+F"/>
 				<MenuItem
 				Command="{Binding OpenSettingWindowCommand}"
-				Header="标定设置"
-				InputGesture="Alt+."
-				HotKey="Alt+.">
+				Header="标定设置">
 					<MenuItem.CommandParameter>
 						<sys:Int32>3</sys:Int32>
 					</MenuItem.CommandParameter>
 				</MenuItem>
 				<MenuItem
 				Header="新建标定窗口"
-				Command="{Binding AddGridCalibratePanelCommand}"
-				InputGesture="Alt+A"
-				HotKey="Alt+A"/>
+				Command="{Binding AddGridCalibratePanelCommand}"/>
 
 				<MenuItem
 				Header="保存参数"
-				Command="{Binding SaveCalibrateParametersCommand}"
-				InputGesture="Alt+S"
-				HotKey="Alt+S"/>
+				Command="{Binding SaveCalibrateParametersCommand}"/>
 
 				<MenuItem
 				Header="读取参数"
 				Command="{Binding LoadCalibrateParametersCommand}"
-				CommandParameter="{Binding $parent[Window]}"
-				InputGesture="Alt+D"
-				HotKey="Alt+D"/>
+				CommandParameter="{Binding $parent[Window]}"/>
 
 			</MenuItem>
 

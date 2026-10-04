@@ -229,6 +229,11 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         }
     }
     [ReactiveCommand]
+    private void ToggleYAxisAutoScale()
+    {
+        CurvesLayout.IsYAxisAutoScaleEnabled = !CurvesLayout.IsYAxisAutoScaleEnabled;
+    }
+    [ReactiveCommand]
     private void ToggleCurveItemVisiable()
     {
         if (_selectedCurveItem == null)
