@@ -1,17 +1,17 @@
 <Window
-x:Class="UniversalHost.Views.MainWindow"
-xmlns="https://github.com/avaloniaui"
-xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-xmlns:views="using:UniversalHost"
-xmlns:vm="using:UniversalHost.ViewModels"
-xmlns:services="clr-namespace:UniversalHost.Services"
-xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-Title="UniversalHost"
-Width="1000"
-Height="700"
-WindowState="Maximized"
-x:DataType="vm:MainWindowViewModel"
->
+	x:Class="UniversalHost.Views.MainWindow"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:views="using:UniversalHost"
+	xmlns:vm="using:UniversalHost.ViewModels"
+	xmlns:services="clr-namespace:UniversalHost.Services"
+	xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+	Title="UniversalHost"
+	Width="1000"
+	Height="700"
+	WindowState="Maximized"
+	x:DataType="vm:MainWindowViewModel"
+	>
 
 	<Window.Resources>
 		<ResourceDictionary>
@@ -32,143 +32,140 @@ x:DataType="vm:MainWindowViewModel"
 			</Menu.ItemsPanel>
 			<MenuItem Header="文件">
 				<MenuItem
-				Header="新建"
-				Command="{Binding NewProjectFileCommand}"
-				CommandParameter="{Binding $parent[Window]}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
+					Header="新建"
+					Command="{Binding NewProjectFileCommand}"
+					CommandParameter="{Binding $parent[Window]}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
 				<MenuItem
-				Header="打开"
-				Command="{Binding OpenProjectFileCommand}"
-				CommandParameter="{Binding $parent[Window]}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
+					Header="打开"
+					Command="{Binding OpenProjectFileCommand}"
+					CommandParameter="{Binding $parent[Window]}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
 				<MenuItem
-				Command="{Binding SaveProjectCommand}"
-				Header="保存"
-				InputGesture="Ctrl+S"
-				HotKey="Ctrl+S"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"/>
+					Command="{Binding SaveProjectCommand}"
+					Header="保存"
+					InputGesture="Ctrl+S"
+					HotKey="Ctrl+S"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"/>
 				<MenuItem
-				Header="另存为"
-				InputGesture="Ctrl+Shift+S"
-				HotKey="Ctrl+Shift+S"
-				Command="{Binding SaveAsProjectFileCommand}"
-				CommandParameter="{Binding $parent[Window]}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+					Header="另存为"
+					InputGesture="Ctrl+Shift+S"
+					HotKey="Ctrl+Shift+S"
+					Command="{Binding SaveAsProjectFileCommand}"
+					CommandParameter="{Binding $parent[Window]}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 				<MenuItem
-				Command="{Binding ReloadSymbolsCommand}"
-				Header="重载符号表"
-				InputGesture="Ctrl+R"
-				HotKey="Ctrl+R"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
+					Command="{Binding ReloadSymbolsCommand}"
+					Header="重载符号表"
+					InputGesture="Ctrl+R"
+					HotKey="Ctrl+R"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
 			</MenuItem>
 			<MenuItem
-			Command="{Binding OpenSettingWindowCommand}"
-			Header="设置"
-			InputGesture="Ctrl+,"
-			HotKey="Ctrl+,"
-			ToolTip.Tip="Ctrl + ,"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" >
+				Command="{Binding OpenSettingWindowCommand}"
+				Header="设置"
+				InputGesture="Ctrl+,"
+				HotKey="Ctrl+,"
+				ToolTip.Tip="Ctrl + ,"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" >
 				<MenuItem.CommandParameter>
 					<sys:Int32>0</sys:Int32>
 				</MenuItem.CommandParameter>
 			</MenuItem>
 			<MenuItem Header="设备" IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
 				<MenuItem
-				Command="{Binding ShowDeviceInfomationCommand}"
-				Header="设备信息"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
+					Command="{Binding ShowDeviceInfomationCommand}"
+					Header="设备信息"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 				<MenuItem
-				Header="连接设备"
-				Command="{Binding ConnectDeviceCommand}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
+					Header="连接设备"
+					Command="{Binding ConnectDeviceCommand}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
 				<MenuItem
-				Command="{Binding DisconnectDeviceCommand}"
-				Header="断开设备"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
+					Command="{Binding DisconnectDeviceCommand}"
+					Header="断开设备"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 				<MenuItem
-				Command="{Binding OpenIapWindowCommand}"
-				Header="在线升级"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+					Command="{Binding OpenIapWindowCommand}"
+					Header="在线升级"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 				<MenuItem
-				Command="{Binding OpenFaultRecordToolCommand}"
-				Header="故障录波"
-				/>
+					Command="{Binding OpenFaultRecordToolCommand}"
+					Header="故障录波"
+					/>
 			</MenuItem>
 			<MenuItem
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
-			Header="监控">
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
+				Header="监控">
 				<MenuItem
-				Header="开始监控"
-				Command="{Binding StartMonitorCommand}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"
-				/>
+					Header="开始监控"
+					Command="{Binding StartMonitorCommand}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"
+					/>
 				<MenuItem
-				Header="停止监控"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}"
-				Command="{Binding StopMonitorCommand}"/>
+					Header="停止监控"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}"
+					Command="{Binding StopMonitorCommand}"/>
 				<MenuItem
-				Header="切换所有窗口坐标自适应"
-				Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
-				InputGesture="Ctrl+E"
-				HotKey="Ctrl+E"/>
+					Header="切换所有窗口坐标自适应"
+					Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
+					InputGesture="Ctrl+E"/>
 				<MenuItem
-				Header="监控设置"
-				Command="{Binding OpenSettingWindowCommand}">
+					Header="监控设置"
+					Command="{Binding OpenSettingWindowCommand}">
 					<MenuItem.CommandParameter>
 						<sys:Int32>2</sys:Int32>
 					</MenuItem.CommandParameter>
 				</MenuItem>
 				<MenuItem
-				Header="保存监控数据"
-				Command="{Binding SaveMonitorDataCommand}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"/>
+					Header="保存监控数据"
+					Command="{Binding SaveMonitorDataCommand}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"/>
 				<MenuItem
-				Header="读取监控数据"/>
+					Header="读取监控数据"/>
 				<MenuItem
-				Header="新建表格监控窗口"
-				Command="{Binding AddGridMonitorPanelCommand}"/>
+					Header="新建表格监控窗口"
+					Command="{Binding AddGridMonitorPanelCommand}"/>
 				<MenuItem
-				Header="新建曲线监控窗口"
-				Command="{Binding AddCurveMonitorPanelCommand}"/>
+					Header="新建曲线监控窗口"
+					Command="{Binding AddCurveMonitorPanelCommand}"/>
 				<MenuItem
-				Header="新建位监控窗口"
-				Command="{Binding AddBitsMonitorPanelCommand}"/>
+					Header="新建位监控窗口"
+					Command="{Binding AddBitsMonitorPanelCommand}"/>
 			</MenuItem>
 			<MenuItem
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
-			Header="标定">
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
+				Header="标定">
 				<MenuItem
-				Header="参数下发"
-				Command="{Binding DownloadValuesCommand}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
-				InputGesture="Ctrl+D"
-				HotKey="Ctrl+D"/>
+					Header="参数下发"
+					Command="{Binding DownloadValuesCommand}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
+					InputGesture="Ctrl+D"/>
 				<MenuItem
-				Header="参数回传"
-				Command="{Binding UploadValuesCommand}"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
-				InputGesture="Ctrl+F"
-				HotKey="Ctrl+F"/>
+					Header="参数回传"
+					Command="{Binding UploadValuesCommand}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}"
+					InputGesture="Ctrl+F"/>
 				<MenuItem
-				Command="{Binding OpenSettingWindowCommand}"
-				Header="标定设置">
+					Command="{Binding OpenSettingWindowCommand}"
+					Header="标定设置">
 					<MenuItem.CommandParameter>
 						<sys:Int32>3</sys:Int32>
 					</MenuItem.CommandParameter>
 				</MenuItem>
 				<MenuItem
-				Header="新建标定窗口"
-				Command="{Binding AddGridCalibratePanelCommand}"/>
+					Header="新建标定窗口"
+					Command="{Binding AddGridCalibratePanelCommand}"/>
 
 				<MenuItem
-				Header="保存参数"
-				Command="{Binding SaveCalibrateParametersCommand}"/>
+					Header="保存参数"
+					Command="{Binding SaveCalibrateParametersCommand}"/>
 
 				<MenuItem
-				Header="读取参数"
-				Command="{Binding LoadCalibrateParametersCommand}"
-				CommandParameter="{Binding $parent[Window]}"/>
+					Header="读取参数"
+					Command="{Binding LoadCalibrateParametersCommand}"
+					CommandParameter="{Binding $parent[Window]}"/>
 
 			</MenuItem>
 
@@ -191,239 +188,242 @@ x:DataType="vm:MainWindowViewModel"
 			</MenuItem>
 
 			<MenuItem
-			Command="{Binding ConnectDeviceCommand}"
-			Header="🟩"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			Padding="0"
-			FontSize="18"
-			ToolTip.Tip="连接设备"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
+				Command="{Binding ConnectDeviceCommand}"
+				Header="🟩"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				Padding="0"
+				FontSize="18"
+				ToolTip.Tip="连接设备"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanConnectDevice}" />
 
 			<MenuItem
-			Command="{Binding DisconnectDeviceCommand}"
-			Header="🟥"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			Padding="0"
-			FontSize="18"
-			ToolTip.Tip="断开设备"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
+				Command="{Binding DisconnectDeviceCommand}"
+				Header="🟥"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				Padding="0"
+				FontSize="18"
+				ToolTip.Tip="断开设备"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 
 			<Separator
-			Height="NaN"
-			Width="1"
-			Margin="2,5"/>
+				Height="NaN"
+				Width="1"
+				Margin="2,5"/>
 
 			<MenuItem
-			Command="{Binding ReloadSymbolsCommand}"
-			Header="🔄"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			Padding="0"
-			FontSize="18"
-			Cursor="Hand"
-			ToolTip.Tip="重新加载符号表"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
+				Command="{Binding ReloadSymbolsCommand}"
+				Header="🔄"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				Padding="0"
+				FontSize="18"
+				Cursor="Hand"
+				ToolTip.Tip="重新加载符号表"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
 
 			<Separator
-			Height="NaN"
-			Width="1"
-			Margin="2,5"/>
+				Height="NaN"
+				Width="1"
+				Margin="2,5"/>
 
 			<MenuItem
-			Command="{Binding StartMonitorCommand}"
-			Header="▶️"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			Padding="0"
-			FontSize="18"
-			ToolTip.Tip="开始监控"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanStartMonitor}" />
+				Command="{Binding StartMonitorCommand}"
+				Header="▶️"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				Padding="0"
+				FontSize="18"
+				ToolTip.Tip="开始监控"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanStartMonitor}" />
 
 			<MenuItem
-			Command="{Binding StopMonitorCommand}"
-			Header="⏸️"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			Padding="0"
-			FontSize="18"
-			ToolTip.Tip="停止监控"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}" />
+				Command="{Binding StopMonitorCommand}"
+				Header="⏸️"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				Padding="0"
+				FontSize="18"
+				ToolTip.Tip="停止监控"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}" />
 
 			<MenuItem
-			Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
-			Header="🔍"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="切换所有曲线窗口的坐标轴自动适应（状态不一致时全部开启）"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
+				Header="🔍"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="切换所有曲线窗口的坐标轴自动适应（状态不一致时全部开启）"
+				ToolTip.ShowOnDisabled="True"
+				HotKey="Ctrl+E"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 
 			<MenuItem
-			Command="{Binding AddGridMonitorPanelCommand}"
-			Header="📅"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="新建表格监控窗口"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				Command="{Binding AddGridMonitorPanelCommand}"
+				Header="📅"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="新建表格监控窗口"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 
 			<MenuItem
-			Command="{Binding AddCurveMonitorPanelCommand}"
-			Header="📈"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="新建曲线监控窗口"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				Command="{Binding AddCurveMonitorPanelCommand}"
+				Header="📈"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="新建曲线监控窗口"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 
 			<MenuItem
-			Command="{Binding AddBitsMonitorPanelCommand}"
-			Header="🔢"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="新建位监控窗口"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				Command="{Binding AddBitsMonitorPanelCommand}"
+				Header="🔢"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="新建位监控窗口"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 
 			<MenuItem
-			Command="{Binding SaveMonitorDataCommand}"
-			Header="💾"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="保存监控数据。监控运行时不能操作。"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
+				Command="{Binding SaveMonitorDataCommand}"
+				Header="💾"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="保存监控数据。监控运行时不能操作。"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
 
 			<Separator
-			Height="NaN"
-			Width="1"
-			Margin="2,5"/>
+				Height="NaN"
+				Width="1"
+				Margin="2,5"/>
 
 			<MenuItem
-			Command="{Binding AddGridCalibratePanelCommand}"
-			Header="✳️"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="新建表格标定窗口"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				Command="{Binding AddGridCalibratePanelCommand}"
+				Header="✳️"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="新建表格标定窗口"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 
 			<MenuItem
-			Command="{Binding DownloadValuesCommand}"
-			Header="⏬"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="下载标定变量至设备"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
+				Command="{Binding DownloadValuesCommand}"
+				Header="⏬"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="下载标定变量至设备"
+				ToolTip.ShowOnDisabled="True"
+				HotKey="Ctrl+D"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 
 			<MenuItem
-			Command="{Binding UploadValuesCommand}"
-			Header="⏫"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="从设备上传标定变量"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
+				Command="{Binding UploadValuesCommand}"
+				Header="⏫"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="从设备上传标定变量"
+				ToolTip.ShowOnDisabled="True"
+				HotKey="Ctrl+F"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 
 			<MenuItem
-			Command="{Binding SaveCalibrateParametersCommand}"
-			Header="📝"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="保存标定变量到文件"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				Command="{Binding SaveCalibrateParametersCommand}"
+				Header="📝"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="保存标定变量到文件"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 
 			<MenuItem
-			Command="{Binding LoadCalibrateParametersCommand}"
-			CommandParameter="{Binding $parent[Window]}"
-			Header="📄"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="从文件读取标定变量"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
-			/>
+				Command="{Binding LoadCalibrateParametersCommand}"
+				CommandParameter="{Binding $parent[Window]}"
+				Header="📄"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="从文件读取标定变量"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
+				/>
 
 			<Separator
-			Height="NaN"
-			Width="1"
-			Margin="2,5"/>
+				Height="NaN"
+				Width="1"
+				Margin="2,5"/>
 
 			<MenuItem
-			Command="{Binding AddCommandPanelCommand}"
-			Header="✴️"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="新建指令窗口"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
-			/>
+				Command="{Binding AddCommandPanelCommand}"
+				Header="✴️"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="新建指令窗口"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
+				/>
 
 			<Separator
-			Height="NaN"
-			Width="1"
-			Margin="2,5"/>
+				Height="NaN"
+				Width="1"
+				Margin="2,5"/>
 
 			<MenuItem
-			Command="{Binding OpenFaultRecordToolCommand}"
-			Header="💿"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="打开故障录波窗口"
-			ToolTip.ShowOnDisabled="True"
-			/>
+				Command="{Binding OpenFaultRecordToolCommand}"
+				Header="💿"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="打开故障录波窗口"
+				ToolTip.ShowOnDisabled="True"
+				/>
 
 			<MenuItem
-			Command="{Binding OpenIapWindowCommand}"
-			Header="⬇️"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			ToolTip.Tip="打开在线升级窗口"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
-			/>
+				Command="{Binding OpenIapWindowCommand}"
+				Header="⬇️"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				ToolTip.Tip="打开在线升级窗口"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
+				/>
 
 			<!-- 主题项，在最右边 -->
 			<MenuItem
-			DockPanel.Dock="Right"
-			Command="{Binding ToggleThemeCommand}"
-			Cursor="Hand"
-			Padding="0"
-			ToolTip.Tip="切换主题">
+				DockPanel.Dock="Right"
+				Command="{Binding ToggleThemeCommand}"
+				Cursor="Hand"
+				Padding="0"
+				ToolTip.Tip="切换主题">
 				<MenuItem.Header>
 					<TransitioningContentControl Content="{Binding CurrentThemeIcon}">
 						<!-- 定义过渡效果， 0.3 秒的淡入淡出 -->
@@ -442,25 +442,25 @@ x:DataType="vm:MainWindowViewModel"
 			</MenuItem>
 
 			<MenuItem
-			Command="{Binding ToggleRandomDataCommand}"
-			DockPanel.Dock="Right"
-			ToolTip.Tip="测试"
-			ToolTip.ShowOnDisabled="True"
-			IsEnabled="False"
-			Header="🔢"
-			Cursor="Hand"
-			FontFamily="Apple Color Emoji, Noto Color Emoji"
-			FontSize="18"
-			Padding="0"
-			/>
+				Command="{Binding ToggleRandomDataCommand}"
+				DockPanel.Dock="Right"
+				ToolTip.Tip="测试"
+				ToolTip.ShowOnDisabled="True"
+				IsEnabled="False"
+				Header="🔢"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				/>
 
 		</Menu>
 		<!--  分隔线  -->
 		<Border Height="1" DockPanel.Dock="Top" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
 		<!--  主内容区域  -->
 		<DockControl
-		Factory="{Binding Factory}" BorderThickness="0"
-		Layout="{Binding Layout}">
+			Factory="{Binding Factory}" BorderThickness="0"
+			Layout="{Binding Layout}">
 		</DockControl>
 
 	</DockPanel>
