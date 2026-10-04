@@ -54,13 +54,6 @@ public partial class BitsMonitorLayout : ReactiveObject
 
         public ObservableCollection<BitStyle> Bits { get; init; } = new ObservableCollection<BitStyle>();
         [Reactive] private bool _isExpanded = true;
-        [JsonIgnore]
-        public double PanelHeight =>
-            Bits.Count switch
-            {
-                8 => 308.7 * 0.5,
-                _ => 308.7
-            };
         public BitsMonitorSymbol() { }
         public BitsMonitorSymbol(SymbolRuntime runtime)
         {
