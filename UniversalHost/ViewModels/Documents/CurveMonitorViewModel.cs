@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
@@ -136,6 +137,50 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
     public Action<CurveMonitorLayout.CurveItem>? AddCurve;
     public Action? RefreshCurve;
     [Reactive] private CurveMonitorLayout.CurveItem? _selectedCurveItem;
+    // 测量模式和读数属于窗口运行时状态，不写入工程布局。
+    private CurveMeasurementMode _measurementMode;
+    public CurveMeasurementMode MeasurementMode
+    {
+        get => _measurementMode;
+        private set
+        {
+            if (_measurementMode == value) return;
+            this.RaiseAndSetIfChanged(ref _measurementMode, value);
+            this.RaisePropertyChanged(nameof(IsMouseCoordinatesEnabled));
+            this.RaisePropertyChanged(nameof(IsNearestPointEnabled));
+            this.RaisePropertyChanged(nameof(IsVerticalCursorsEnabled));
+            this.RaisePropertyChanged(nameof(IsHorizontalCursorsEnabled));
+            this.RaisePropertyChanged(nameof(IsMeasurementReadoutVisible));
+        }
+    }
+    public bool IsMouseCoordinatesEnabled
+    {
+        get => MeasurementMode == CurveMeasurementMode.MouseCoordinates;
+        set => SetMeasurementMode(CurveMeasurementMode.MouseCoordinates, value);
+    }
+    public bool IsNearestPointEnabled
+    {
+        get => MeasurementMode == CurveMeasurementMode.NearestPoint;
+        set => SetMeasurementMode(CurveMeasurementMode.NearestPoint, value);
+    }
+    public bool IsVerticalCursorsEnabled
+    {
+        get => MeasurementMode == CurveMeasurementMode.VerticalCursors;
+        set => SetMeasurementMode(CurveMeasurementMode.VerticalCursors, value);
+    }
+    public bool IsHorizontalCursorsEnabled
+    {
+        get => MeasurementMode == CurveMeasurementMode.HorizontalCursors;
+        set => SetMeasurementMode(CurveMeasurementMode.HorizontalCursors, value);
+    }
+    public bool IsMeasurementReadoutVisible => MeasurementMode != CurveMeasurementMode.None;
+    [Reactive] private CurveMeasurementReadout _measurementReadout = CurveMeasurementReadout.Empty;
+
+    private void SetMeasurementMode(CurveMeasurementMode mode, bool enabled)
+    {
+        if (enabled) MeasurementMode = mode;
+        else if (MeasurementMode == mode) MeasurementMode = CurveMeasurementMode.None;
+    }
     // 数据源
     private readonly ReadOnlyObservableCollection<CurveMonitorLayout.CurveItem> _displayCurves;
     public ReadOnlyObservableCollection<CurveMonitorLayout.CurveItem> DisplayCurves => _displayCurves;
@@ -155,8 +200,10 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
 
                         if (toRemove != null)
                         {
+                            bool wasSelected = ReferenceEquals(SelectedCurveItem, toRemove);
                             RemoveCurve?.Invoke(toRemove);
                             CurvesLayout.CurvesSource.Remove(toRemove);
+                            if (wasSelected) SelectedCurveItem = null;
                         }
                     })
                     .Subscribe()
@@ -170,6 +217,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
 
                         if (oldItem != null)
                         {
+                            bool wasSelected = ReferenceEquals(SelectedCurveItem, oldItem);
                             var newItem = new CurveMonitorLayout.CurveItem(current)
                             {
                                 IsVisible = oldItem.IsVisible,
@@ -178,6 +226,15 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
                             CurvesLayout.CurvesSource.Replace(oldItem, newItem);
                             RemoveCurve?.Invoke(oldItem);
                             AddCurve?.Invoke(newItem);
+                            if (wasSelected)
+                            {
+                                // 等待 DisplayCurves 绑定完成，避免 ListBox 因新项尚未出现而清空选择。
+                                AvaloniaScheduler.Instance.Schedule(() =>
+                                {
+                                    if (SelectedCurveItem != null && !ReferenceEquals(SelectedCurveItem, oldItem)) return;
+                                    SelectedCurveItem = CurvesLayout.CurvesSource.Items.FirstOrDefault(x => x.Id == oldItem.Id);
+                                }).DisposeWith(_disposables);
+                            }
                         }
                     })
                     .Subscribe()
@@ -217,8 +274,10 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         // 如果存在，其移除
         if (item != null)
         {
+            bool wasSelected = ReferenceEquals(SelectedCurveItem, item);
             RemoveCurve?.Invoke(item);
             CurvesLayout.CurvesSource.Remove(item);
+            if (wasSelected) SelectedCurveItem = null;
         }
         // 如果不存在，添加
         else
@@ -262,7 +321,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         RemoveCurve?.Invoke(_selectedCurveItem);
         CurvesLayout.CurvesSource.Remove(_selectedCurveItem);
 
-        _selectedCurveItem = null;
+        SelectedCurveItem = null;
     }
     [ReactiveCommand]
     void ClearSelectedSymbols()
@@ -272,6 +331,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
             RemoveCurve?.Invoke(item);
         }
         CurvesLayout.CurvesSource.Clear();
+        SelectedCurveItem = null;
     }
     [ReactiveCommand]
     private async Task CopySymbolNameAsync(Avalonia.Controls.TopLevel topLevel)

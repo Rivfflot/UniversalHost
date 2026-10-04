@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -13,6 +14,7 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
+using UniversalHost.Models;
 using UniversalHost.Services;
 using UniversalHost.Services.Plotting;
 using UniversalHost.ViewModels.Documents;
@@ -23,6 +25,9 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
 {
     private const double XAxisRightMargin = 1e-4;
     private ListBoxItem? _currentHoveredItem;
+    private CurveMeasurementController? _measurements;
+    private IPointer? _measurementDragPointer;
+    private bool _plotInputWasEnabled;
     private sealed class CurveRenderState(ScottPlot.Plottables.Signal signal, ScottPlot.AxisPanels.LeftAxis yAxis)
     {
         public ScottPlot.Plottables.Signal Signal { get; } = signal;
@@ -38,12 +43,29 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         SymbolList.AddHandler(PointerPressedEvent, FirstRow_PointerPressed, handledEventsToo: true);
         SymbolList.AddHandler(DragDrop.DragOverEvent, ListBox_DragOver);
         SymbolList.AddHandler(DragDrop.DragLeaveEvent, ListBox_DragLeave);
+        // 在 AvaPlot 处理鼠标按下之前拦截光标拖动，避免同时启动图表平移。
+        CurvePlot.AddHandler(PointerPressedEvent, CurvePlot_PointerPressed, RoutingStrategies.Tunnel);
+        CurvePlot.AddHandler(PointerMovedEvent, CurvePlot_PointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        CurvePlot.AddHandler(PointerReleasedEvent, CurvePlot_PointerReleased, RoutingStrategies.Bubble, handledEventsToo: true);
+        CurvePlot.PointerExited += (_, _) =>
+        {
+            bool changed = _measurements?.PointerExited() == true;
+            if (_measurementDragPointer == null) CurvePlot.SetCursor(ScottPlot.Cursor.Arrow);
+            if (changed) CurvePlot.Refresh();
+        };
+        CurvePlot.PointerCaptureLost += (_, _) => EndMeasurementDrag();
         this.WhenActivated(disposables =>
         {
             var viewModel = ViewModel;
             if (viewModel == null) return;
 
             var subscriptions = new CompositeDisposable();
+            var measurements = new CurveMeasurementController(CurvePlot.Plot,
+                () => GetMeasurementTarget(viewModel.SelectedCurveItem),
+                () => GetMeasurementTarget(viewModel.SelectedCurveItem) ??
+                    GetMeasurementTarget(viewModel.DisplayCurves.FirstOrDefault(x => x.IsVisible)),
+                readout => viewModel.MeasurementReadout = readout);
+            _measurements = measurements;
             var monitorConfig = ProjectSaveService.Instance.Settings.MonitorConfig;
             void SetXAxisLimits()
             {
@@ -57,7 +79,11 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             void RefreshPlot(bool force = true)
             {
                 bool changed = UpdateCurveRenderRanges();
-                if (!force && !changed) return;
+                if (!force && !changed)
+                {
+                    if (measurements.Update()) CurvePlot.Refresh();
+                    return;
+                }
                 if (viewModel.DisplayCurves.FirstOrDefault(x => x.IsVisible && x.Runtime.PlotHistory.Count > 0) is { } first)
                 {
                     var history = first.Runtime.PlotHistory;
@@ -82,6 +108,8 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                     }
                     SetXAxisLimits();
                 }
+                measurements.Update();
+                measurements.BringToFront();
                 CurvePlot.Refresh();
             }
             Action<CurveMonitorLayout.CurveItem> removeCurveHandler = RemoveCurve;
@@ -100,6 +128,9 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 viewModel.RefreshCurve -= refreshCurveHandler;
                 ActualThemeVariantChanged -= themeChangedHandler;
                 subscriptions.Dispose();
+                EndMeasurementDrag();
+                measurements.Dispose();
+                _measurements = null;
 
                 // 清理本视图创建的对象，也覆盖停用前已从显示集合移除的项。
                 foreach (var item in _curves.Keys.ToArray())
@@ -125,6 +156,16 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 .Skip(1)
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
+            viewModel.WhenAnyValue(x => x.MeasurementMode)
+                .ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(mode =>
+                {
+                    EndMeasurementDrag();
+                    measurements.SetMode(mode);
+                    CurvePlot.SetCursor(measurements.MouseCursor);
+                    measurements.BringToFront();
+                    CurvePlot.Refresh();
+                }).DisposeWith(subscriptions);
             monitorConfig.WhenAnyValue(x => x.MaxSaveLen)
                 .Skip(1)
                 .ObserveOn(AvaloniaScheduler.Instance)
@@ -147,6 +188,59 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             RefreshPlot();
         });
     }
+    private CurveMeasurementTarget? GetMeasurementTarget(CurveMonitorLayout.CurveItem? item)
+    {
+        if (item == null || !_curves.TryGetValue(item, out var curve)) return null;
+        string label = item.Runtime.Symbol.Name;
+        if (!string.IsNullOrWhiteSpace(item.Runtime.Symbol.Unit)) label += $" [{item.Runtime.Symbol.Unit}]";
+        return new(item.Runtime.PlotHistory, curve.YAxis, label, item.IsVisible);
+    }
+
+    private void CurvePlot_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_measurements == null || e.GetCurrentPoint(CurvePlot).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed) return;
+        var point = e.GetPosition(CurvePlot);
+        if (!_measurements.TryBeginDrag(new((float)point.X, (float)point.Y))) return;
+
+        _plotInputWasEnabled = CurvePlot.UserInputProcessor.IsEnabled;
+        CurvePlot.UserInputProcessor.Disable();
+        _measurementDragPointer = e.Pointer;
+        e.Pointer.Capture(CurvePlot);
+        CurvePlot.Focus();
+        e.Handled = true;
+        CurvePlot.Refresh();
+    }
+
+    private void CurvePlot_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_measurements == null) return;
+        var point = e.GetPosition(CurvePlot);
+        Pixel pixel = new((float)point.X, (float)point.Y);
+        bool changed = _measurements.PointerMoved(pixel);
+        CurvePlot.SetCursor(_measurements.GetMouseCursor(pixel));
+        if (_measurementDragPointer != null) e.Handled = true;
+        if (changed) CurvePlot.Refresh();
+    }
+
+    private void CurvePlot_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_measurementDragPointer == null || e.InitialPressMouseButton != MouseButton.Left) return;
+        EndMeasurementDrag();
+        e.Handled = true;
+    }
+
+    private void EndMeasurementDrag()
+    {
+        _measurements?.EndDrag();
+        if (_measurementDragPointer is { } pointer)
+        {
+            _measurementDragPointer = null;
+            if (ReferenceEquals(pointer.Captured, CurvePlot)) pointer.Capture(null);
+            CurvePlot.UserInputProcessor.IsEnabled = _plotInputWasEnabled;
+        }
+        CurvePlot.SetCursor(_measurements?.MouseCursor ?? ScottPlot.Cursor.Arrow);
+    }
+
     private bool UpdateCurveRenderRanges()
     {
         bool changed = false;
