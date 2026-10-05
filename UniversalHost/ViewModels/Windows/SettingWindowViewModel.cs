@@ -62,6 +62,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [Reactive] private int? _baudRateTemp;
     [Reactive] private UInt16? _serialTimeoutTemp;
     [Reactive] private UInt16? _serialRetryTimesTemp;
+    [Reactive] private UInt16? _serialTurnaroundDelayTemp;
     public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
 
     // 串口和IP的SourceList，用于更新数据
@@ -71,8 +72,10 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     private readonly ReadOnlyObservableCollection<string> _availableSerialPorts;
     public ReadOnlyObservableCollection<string> AvailableSerialPorts => _availableSerialPorts;
     public static IEnumerable<System.IO.Ports.Parity> AvailableParities => Enum.GetValues<System.IO.Ports.Parity>();
-    public static IEnumerable<int> AvailableDataBits => [7, 8, 9];
-    public static IEnumerable<System.IO.Ports.StopBits> AvailableStopBits => Enum.GetValues<System.IO.Ports.StopBits>();
+    public static IEnumerable<System.IO.Ports.StopBits> AvailableStopBits =>
+        [System.IO.Ports.StopBits.One, System.IO.Ports.StopBits.OnePointFive, System.IO.Ports.StopBits.Two];
+    public static IEnumerable<SerialDuplexMode> AvailableSerialDuplexModes => Enum.GetValues<SerialDuplexMode>();
+    public static IEnumerable<SerialDirectionControl> AvailableSerialDirectionControls => Enum.GetValues<SerialDirectionControl>();
 
     // UDP设置
     private readonly ReadOnlyObservableCollection<string> _availableIPv4Addresses;
@@ -354,11 +357,13 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         BaudRateTemp = settings.SerialConfig.BaudRate;
         SerialTimeoutTemp = settings.SerialConfig.TimeoutMilliseconds;
         SerialRetryTimesTemp = settings.SerialConfig.RetryTimes;
+        SerialTurnaroundDelayTemp = settings.SerialConfig.TurnaroundDelayMilliseconds;
 
         this.BindWithDefault(x => x.DeviceIDTemp, v => settings.DeviceConfig.DeviceID = v, (byte)0).DisposeWith(_projectSubscriptions);
         this.BindWithDefault(x => x.BaudRateTemp, v => settings.SerialConfig.BaudRate = v, 115200).DisposeWith(_projectSubscriptions);
         this.BindWithDefault(x => x.SerialTimeoutTemp, v => settings.SerialConfig.TimeoutMilliseconds = v, (UInt16)50).DisposeWith(_projectSubscriptions);
         this.BindWithDefault(x => x.SerialRetryTimesTemp, v => settings.SerialConfig.RetryTimes = v, (UInt16)10).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.SerialTurnaroundDelayTemp, v => settings.SerialConfig.TurnaroundDelayMilliseconds = v, (UInt16)2).DisposeWith(_projectSubscriptions);
 
         // UDP相关
         // 检查UI输入的IP是否合法

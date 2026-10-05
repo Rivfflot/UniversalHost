@@ -11,47 +11,57 @@
 			 x:Class="UniversalHost.Views.Tools.IapView">
 
 	<Grid
-	Margin="8"
-	ColumnDefinitions="Auto,Auto"
-	RowDefinitions="Auto,Auto">
+		Margin="8"
+		ColumnDefinitions="Auto,Auto"
+		RowDefinitions="Auto,Auto">
 
 		<!--  文件路径  -->
 		<Button
-		Grid.Row="0"
-		Grid.Column="0"
-		Margin="5,0,0,0"
-		Command="{Binding SelectIapFileCommand}"
-		CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
-		Content="选择文件" />
+			Grid.Row="0"
+			Grid.Column="0"
+			Margin="5,0,0,0"
+			Command="{Binding SelectIapFileCommand}"
+			CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+			Content="选择文件" />
 
 		<TextBox
-		Grid.Row="0"
-		Grid.Column="1"
-		IsReadOnly="False"
-		Text="{Binding Source={x:Static services:ProjectSaveService.Instance},Path=Settings.IapConfig.IapFilePath}" />
+			Grid.Row="0"
+			Grid.Column="1"
+			IsReadOnly="False"
+			Loaded="ShowIapFilePathEnd"
+			TextChanged="ShowIapFilePathEnd"
+			Width="260"
+			Text="{Binding Source={x:Static services:ProjectSaveService.Instance},Path=Settings.IapConfig.IapFilePath}" />
 
-		<!--  进度条  -->
+
 		<Button
-		Grid.Row="1"
-		Grid.Column="0"
-		Margin="5,0,0,0"
-		Command="{Binding StartIapCommand}"
-		Content="开始升级" />
+			Grid.Row="1"
+			Grid.Column="0"
+			Margin="5,0,0,0"
+			Command="{Binding StartIapCommand}"
+			Content="开始升级" />
+
 		<StackPanel
-		Grid.Row="1"
-		Grid.Column="1"
-		Orientation="Horizontal">
+			Grid.Row="1"
+			Grid.Column="1"
+			Orientation="Horizontal">
+
+			<Button Margin="1,0,0,0"
+					Command="{Binding CancelIapCommand}"
+					Content="取消" />
 
 			<TextBlock
-			Text="{Binding CurrentStage}"
-			Width="60"
-			VerticalAlignment="Center"/>
+				Text="{Binding CurrentStage}"
+				Width="60"
+				VerticalAlignment="Center"/>
 
+			<!--  进度条  -->
 			<ProgressBar
-			Height="25"
-			Maximum="100"
-			Minimum="0"
-			Value="{Binding IapProgressBar}" />
+				Height="25"
+				Maximum="100"
+				Minimum="0"
+				MinWidth="155"
+				Value="{Binding IapProgressBar}" />
 		</StackPanel>
 	</Grid>
 </UserControl>

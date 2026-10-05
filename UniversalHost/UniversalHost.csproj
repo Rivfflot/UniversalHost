@@ -11,6 +11,7 @@
 		<Platforms>AnyCPU</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<WarningLevel>8</WarningLevel>
+		<Version>0.0.1-alpha</Version>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">

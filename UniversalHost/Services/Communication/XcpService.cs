@@ -9,52 +9,100 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using UniversalHost.Services.Communication.Serial;
 using static UniversalHost.Models.XcpProtocol;
 
 namespace UniversalHost.Services.Communication;
 
 public static class XcpService
 {
-    public static XcpClient? Client = null;
+    public static XcpClient? Client { get; private set; }
+    private static readonly SemaphoreSlim ClientGate = new(1, 1);
 
     static XcpService()
     {
         GlobalStatus.Instance.WhenAnyValue(x => x.IsConnected)
-            .Subscribe(async isConnected =>
+            .Subscribe(isConnected =>
             {
-                if (!isConnected && Client != null)
-                {
-                    if (Client != null)
-                    {
-                        await Client.DisposeAsync();
-                        Client = null;
-                    }
-                    GlobalStatus.Instance.IsMonitoring = false;
-                    NotificationService.Show("设备已断开", "", NotificationType.Warning);
-                }
+                if (!isConnected && Client is { } client)
+                    _ = DisposeDisconnectedClientAsync(client);
             });
     }
 
-    public static async Task CreateClientAsync()
+    public static async Task ConnectAsync()
     {
-        if (Client != null)
+        // 重复入口立即拒绝，不能排队后清理另一个入口刚建立的连接。
+        if (!await ClientGate.WaitAsync(0))
+            throw new InvalidOperationException("设备连接正在建立或清理，请稍后再试");
+        try
         {
-            await Client.DisposeAsync();
+            if (Client != null)
+                throw new InvalidOperationException("设备连接尚未关闭，请先断开连接");
+            var settings = ProjectSaveService.Instance.Settings;
+            Client = await Task.Run(() => new XcpClient(settings));
+            try
+            {
+                await Client.ConnectAsync();
+            }
+            catch
+            {
+                try { await Client.DisposeAsync(); }
+                catch (Exception ex) { Serilog.Log.Error(ex, "连接失败后的 XCP 清理异常"); }
+                Client = null;
+                GlobalStatus.Instance.IsConnected = false;
+                GlobalStatus.Instance.IsMonitoring = false;
+                throw;
+            }
         }
-        Client?.DisposeAsync().AsTask().Wait();
-        Client = new XcpClient();
+        finally { ClientGate.Release(); }
     }
 
-    public static async Task DisposeClientAsync()
+    public static async Task DisconnectAsync()
     {
-        if (Client != null)
+        await ClientGate.WaitAsync();
+        try
         {
-            await Client.DisposeAsync();
-            Client = null;
+            if (Client is not { } client)
+                return;
+            try { await client.DisconnectAsync(); }
+            finally
+            {
+                try { await client.DisposeAsync(); }
+                finally
+                {
+                    Client = null;
+                    GlobalStatus.Instance.IsConnected = false;
+                    GlobalStatus.Instance.IsMonitoring = false;
+                }
+            }
         }
-        Debug.WriteLine("Client已清理");
-        GlobalStatus.Instance.IsConnected = false;
-        GlobalStatus.Instance.IsMonitoring = false;
+        finally { ClientGate.Release(); }
+    }
+
+    private static async Task DisposeDisconnectedClientAsync(XcpClient expectedClient)
+    {
+        try { await DisposeClientAsync(expectedClient); }
+        catch (Exception ex) { Serilog.Log.Error(ex, "设备连接清理失败"); }
+    }
+
+    public static Task DisposeClientAsync() => DisposeClientAsync(null);
+
+    private static async Task DisposeClientAsync(XcpClient? expectedClient)
+    {
+        await ClientGate.WaitAsync();
+        try
+        {
+            if (expectedClient != null && !ReferenceEquals(Client, expectedClient))
+                return;
+            if (Client is { } client)
+            {
+                try { await client.DisposeAsync(); }
+                finally { Client = null; }
+            }
+            GlobalStatus.Instance.IsConnected = false;
+            GlobalStatus.Instance.IsMonitoring = false;
+        }
+        finally { ClientGate.Release(); }
     }
 }
 
@@ -123,11 +171,13 @@ public class XcpClient : IAsyncDisposable
     {
         public readonly IMemoryOwner<byte> Owner;
         public readonly int Length;
+        public readonly TaskCompletionSource Sent;
 
-        public SendItem(IMemoryOwner<byte> owner, int length)
+        public SendItem(IMemoryOwner<byte> owner, int length, TaskCompletionSource sent)
         {
             Owner = owner;
             Length = length;
+            Sent = sent;
         }
     }
 
@@ -138,14 +188,13 @@ public class XcpClient : IAsyncDisposable
                                             SingleWriter = false
                                         });
 
-    private readonly Channel<SendItem> _lowQueue = Channel.CreateUnbounded<SendItem>(
-                                        new UnboundedChannelOptions
-                                        {
-                                            SingleReader = true,
-                                            SingleWriter = false
-                                        });
-
     private readonly ICommService _comm;
+    private readonly IDisposable _session;
+    private readonly SerialConnectionOptions? _serialOptions;
+    private readonly object _disposeGate = new();
+    private Task? _disposeTask;
+    private int _started;
+    private int _disconnecting;
 
     private readonly CancellationTokenSource _cts = new();
 
@@ -177,7 +226,9 @@ public class XcpClient : IAsyncDisposable
     }
     public DeviceResponse DeviceStatus = default;
 
-    public XcpClient()
+    public XcpClient() : this(ProjectSaveService.Instance.Settings) { }
+
+    internal XcpClient(ProjectSettings settings, Func<ICommService>? createCommService = null)
     {
         // 1024帧队列，10kHz下0.1s
         _daqChannel = Channel.CreateBounded<DaqFrame>(
@@ -191,18 +242,30 @@ public class XcpClient : IAsyncDisposable
                 ReceiveStatistics.RecordQueueDrop();
                 frame.Dispose();
             });
-        _comm = ProjectSaveService.Instance.Settings.DeviceConfig.Mode switch
+        var mode = settings.DeviceConfig.Mode;
+        _serialOptions = mode == CommunicationMode.Serial ? new SerialConnectionOptions(settings.SerialConfig) : null;
+        _timeoutMs = mode == CommunicationMode.Serial
+            ? _serialOptions!.TimeoutMilliseconds : settings.UdpConfig.TimeoutMilliseconds;
+        if (_timeoutMs <= 0)
+            throw new InvalidOperationException("XCP 通信超时必须大于 0");
+        _session = CommunicationSessionCoordinator.AcquireXcp(mode, _serialOptions);
+        try
         {
-            CommunicationMode.UDP => new UdpService(ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpLocalPort, ProjectSaveService.Instance.Settings.UdpConfig.RemoteAddress, ProjectSaveService.Instance.Settings.UdpConfig.XcpRemotePort, ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds * 10, receiveBufferSize: 4 * 1024 * 1024),
-            //CommunicationMode.Serial => new SerialService(ProjectSaveService.Instance.Settings.SerialConfig),//TODO : 串口通信
-            _ => throw new Exception("Unsupported communication Mode")
-        };
-        _timeoutMs = ProjectSaveService.Instance.Settings.DeviceConfig.Mode switch
+            _comm = createCommService?.Invoke() ?? (mode switch
+            {
+                CommunicationMode.UDP => new UdpService(settings.UdpConfig.LocalAddress, settings.UdpConfig.XcpLocalPort,
+                    settings.UdpConfig.RemoteAddress, settings.UdpConfig.XcpRemotePort, _timeoutMs * 10,
+                    receiveBufferSize: 4 * 1024 * 1024),
+                CommunicationMode.Serial => new SerialTransportService(_serialOptions!, SerialProtocol.Xcp,
+                    ReceiveStatistics.RecordMalformedDatagram),
+                _ => throw new NotSupportedException("不支持该 XCP 通信模式")
+            });
+        }
+        catch
         {
-            CommunicationMode.UDP => ProjectSaveService.Instance.Settings.UdpConfig.TimeoutMilliseconds,
-            //CommunicationMode.Serial => new SerialService(ProjectSaveService.Instance.Settings.SerialConfig),//TODO : 串口通信
-            _ => throw new Exception("Unsupported communication Mode")
-        };
+            _session.Dispose();
+            throw;
+        }
 
         Std = new XcpStd(this);
         Cal = new XcpCal(this);
@@ -210,24 +273,43 @@ public class XcpClient : IAsyncDisposable
     }
     public async Task ConnectAsync()
     {
-        _txTask = Task.Run(SenderLoop);
-        _rxTask = Task.Run(ReceiverLoop);
-        //protocol 解析失败会throw
-        DeviceStatus.ConnectRes = await Std.ConnectAsync();
-        DeviceStatus.GetStatusRes = await Std.GetStatusAsync();
-        GlobalStatus.Instance.IsConnected = true;
-        _heartbeatTask = Task.Run(HeartbeatLoop);
-        _daqTask = Task.Run(DaqLoop);
+        if (Interlocked.Exchange(ref _started, 1) != 0)
+            throw new InvalidOperationException("XCP 会话不能重复连接");
+        try
+        {
+            _txTask = Task.Run(() => RunLoopAsync(SenderLoop));
+            _rxTask = Task.Run(() => RunLoopAsync(ReceiverLoop));
+            DeviceStatus.ConnectRes = await Std.ConnectAsync();
+            DeviceStatus.GetStatusRes = await Std.GetStatusAsync();
+            lock (_disposeGate)
+            {
+                _cts.Token.ThrowIfCancellationRequested();
+                GlobalStatus.Instance.IsConnected = true;
+                _heartbeatTask = Task.Run(() => RunLoopAsync(HeartbeatLoop));
+                _daqTask = Task.Run(() => RunLoopAsync(DaqLoop));
+            }
+        }
+        catch
+        {
+            await DisposeAsync();
+            throw;
+        }
     }
     public async Task DisconnectAsync()
     {
+        if (Interlocked.Exchange(ref _disconnecting, 1) != 0)
+            throw new InvalidOperationException("XCP 会话正在断开");
         try
         {
+            if (_heartbeatTask != null)
+                await _heartbeatTask;
+            if (Volatile.Read(ref _acceptDaqFrames) || DeviceStatus.GetStatusRes.DaqRunning)
+                await StopDaq();
             await Std.DisonnectAsync();
         }
         finally
         {
-            GlobalStatus.Instance.IsConnected = false;
+            await DisposeAsync();
         }
     }
 
@@ -241,6 +323,7 @@ public class XcpClient : IAsyncDisposable
     {
         await _ctoSemaphore.WaitAsync(_cts.Token);
         var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         try
         {
@@ -257,7 +340,7 @@ public class XcpClient : IAsyncDisposable
                 _ctoTcs = tcs;
 
                 // 入队成功后由发送线程归还内存。
-                await _highQueue.Writer.WriteAsync(new SendItem(owner, xcpLen + 4), _cts.Token);
+                await _highQueue.Writer.WriteAsync(new SendItem(owner, xcpLen + 4, sent), _cts.Token);
             }
             catch
             {
@@ -265,14 +348,19 @@ public class XcpClient : IAsyncDisposable
                 throw;
             }
 
+            // 队列等待及请求线上发送不计为设备应答超时。
+            await sent.Task.WaitAsync(_cts.Token);
+            TimeSpan responseTimeout = _serialOptions?.GetResponseTimeout(
+                (DeviceStatus.ConnectRes.MaxCtoLen == 0 ? byte.MaxValue : DeviceStatus.ConnectRes.MaxCtoLen) + 7)
+                ?? TimeSpan.FromMilliseconds(_timeoutMs);
             try
             {
-                byte[] raw = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(_timeoutMs), _cts.Token);
+                byte[] raw = await tcs.Task.WaitAsync(responseTimeout, _cts.Token);
                 return TCommand.Decode(raw, DeviceStatus.ConnectRes.IsLittleEndian);
             }
             catch (TimeoutException ex)
             {
-                throw new TimeoutException($"XCP {typeof(TCommand).Name} (CTR={ctr}) 响应超时（{_timeoutMs} ms）。", ex);
+                throw new TimeoutException($"XCP {typeof(TCommand).Name} (CTR={ctr}) 响应超时（{responseTimeout.TotalMilliseconds:F0} ms）。", ex);
             }
         }
         finally
@@ -355,6 +443,19 @@ public class XcpClient : IAsyncDisposable
 
     public async Task StartDaq(IReadOnlyList<SymbolRuntime> symbolRuntimes)
     {
+        if (_serialOptions != null)
+        {
+            // 当前布局每次事件仅有一个 ODT；LEN 含 PID 及现有的 7 字节时间戳/对齐头。
+            int payloadLength = 8;
+            foreach (var symbol in symbolRuntimes)
+                payloadLength += CalculateByteLenOfValue(DeviceStatus.ConnectRes.Granularity, symbol.ValueSizeInBytes);
+            if (payloadLength > DeviceStatus.ConnectRes.MaxDtoLen)
+                throw new InvalidOperationException($"串口 DAQ 布局长度 {payloadLength} 超过设备 MAX_DTO {DeviceStatus.ConnectRes.MaxDtoLen}");
+            int wireLength = SerialTransportProtocol.GetMaxWireLength(payloadLength + 7);
+            double byteRate = _serialOptions.BaudRate / _serialOptions.BitsPerCharacter;
+            Serilog.Log.Information("串口 DAQ 带宽预算：每事件线上上限={WireLength} 字节，接收理论上限={ByteRate:F0} 字节/秒，预留 20% 带宽时建议采样不超过 {SampleRate:F1} 次/秒；采样率由设备配置",
+                wireLength, byteRate, byteRate * 0.8 / wireLength);
+        }
         Volatile.Write(ref _acceptDaqFrames, false);
         OdtLayout layout = new OdtLayout();
         layout.DaqList = 0;
@@ -408,38 +509,8 @@ public class XcpClient : IAsyncDisposable
 
     private async Task SenderLoop()
     {
-        var high = _highQueue.Reader;
-        var low = _lowQueue.Reader;
-
-        while (!_cts.IsCancellationRequested)
-        {
-            // === 只要高优先级（CTO命令）有包，优先发 ===
-            while (high.TryRead(out var highItem))
-            {
-                await SendInternal(highItem);
-            }
-
-            // 吞吐模式：高优先级发完了，再低优先级（DTO数据） ===
-            if (low.TryRead(out var lowItem))
-            {
-                await SendInternal(lowItem);
-                continue; // 发完立刻重回头部，检查有没有突发的高优先级
-            }
-
-            // 只要任何一个队列重新进包，就会唤醒线程
-            try
-            {
-                // 利用 Task.WhenAny 异步监测谁先有数据
-                await Task.WhenAny(
-                    high.WaitToReadAsync(_cts.Token).AsTask(),
-                    low.WaitToReadAsync(_cts.Token).AsTask()
-                );
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-        }
+        await foreach (var item in _highQueue.Reader.ReadAllAsync(_cts.Token))
+            await SendInternal(item);
     }
 
     private async Task SendInternal(SendItem item)
@@ -447,6 +518,12 @@ public class XcpClient : IAsyncDisposable
         try
         {
             await _comm.SendAsync(item.Owner.Memory[..item.Length], _cts.Token);
+            item.Sent.TrySetResult();
+        }
+        catch (Exception ex)
+        {
+            item.Sent.TrySetException(ex);
+            throw;
         }
         finally
         {
@@ -467,7 +544,7 @@ public class XcpClient : IAsyncDisposable
     }
     private async Task ReceiverLoop()
     {
-        using IMemoryOwner<byte> owner = _pool.Rent(1600);
+        using IMemoryOwner<byte> owner = _pool.Rent(ushort.MaxValue + 4);
         while (!_cts.IsCancellationRequested)
         {
             int len = await _comm.ReceiveAsync(owner.Memory, _cts.Token);
@@ -585,7 +662,7 @@ public class XcpClient : IAsyncDisposable
         long lastErrorCount = 0;
         long lastInactiveDaqCount = 0;
 
-        while (!_cts.IsCancellationRequested)
+        while (!_cts.IsCancellationRequested && Volatile.Read(ref _disconnecting) == 0)
         {
             try
             {
@@ -595,6 +672,9 @@ public class XcpClient : IAsyncDisposable
             {
                 break;
             }
+
+            if (Volatile.Read(ref _disconnecting) != 0)
+                break;
 
             long now = Stopwatch.GetTimestamp();
             if (now - lastDiagnosticsTimestamp >= intervalTicks)
@@ -630,10 +710,15 @@ public class XcpClient : IAsyncDisposable
             try
             {
                 DeviceStatus.GetStatusRes = await Std.GetStatusAsync();
+                _cts.Token.ThrowIfCancellationRequested();
                 GlobalStatus.Instance.IsConnected = true;
 
                 // 心跳本身也是一次有效通信，更新时间戳避免连续发送
                 Interlocked.Exchange(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
+            }
+            catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex) when (ex is TimeoutException || ex is OperationCanceledException)
             {
@@ -642,6 +727,7 @@ public class XcpClient : IAsyncDisposable
                 try
                 {
                     await Std.SyncAsync();
+                    _cts.Token.ThrowIfCancellationRequested();
                     Debug.WriteLine("[心跳成功] 协议重新同步成功，链路恢复健康。");
                     GlobalStatus.Instance.IsConnected = true;
 
@@ -667,21 +753,66 @@ public class XcpClient : IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
+    private async Task RunLoopAsync(Func<Task> loop)
+    {
+        try { await loop(); }
+        catch (Exception) when (_cts.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "XCP 收发任务异常，终止设备会话");
+            _ctoTcs?.TrySetException(ex);
+            _cts.Cancel();
+            GlobalStatus.Instance.IsConnected = false;
+            GlobalStatus.Instance.IsMonitoring = false;
+            // 不在当前任务内等待自己的结束；所有入口都共享同一份清理任务。
+            _ = Task.Run(async () =>
+            {
+                try { await DisposeAsync(); }
+                catch (Exception cleanupEx) { Serilog.Log.Error(cleanupEx, "XCP 会话清理失败"); }
+            });
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        lock (_disposeGate)
+            return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
+
+    private async Task DisposeCoreAsync()
     {
         _cts.Cancel();
-
-        try { if (_rxTask != null) await _rxTask; } catch (OperationCanceledException) { }
-        try { if (_txTask != null) await _txTask; } catch (OperationCanceledException) { }
-        try { if (_daqTask != null) await _daqTask; } catch (OperationCanceledException) { }
-        try { if (_heartbeatTask != null) await _heartbeatTask; } catch (OperationCanceledException) { }
-
+        Volatile.Write(ref _acceptDaqFrames, false);
+        _ctoTcs?.TrySetCanceled(_cts.Token);
+        _highQueue.Writer.TryComplete();
         _daqChannel.Writer.TryComplete();
-        while (_daqChannel.Reader.TryRead(out var frame))
-            frame.Dispose();
-        _cts.Dispose();
-        await _comm.DisposeAsync();
-        _ctoSemaphore.Dispose();
+        try
+        {
+            // 先关闭底层，确保取消/拔出串口时读写任务能够结束。
+            await _comm.DisposeAsync();
+        }
+        finally
+        {
+            if (_rxTask != null) await _rxTask;
+            if (_txTask != null) await _txTask;
+            if (_daqTask != null) await _daqTask;
+            if (_heartbeatTask != null) await _heartbeatTask;
+            while (_highQueue.Reader.TryRead(out var item))
+            {
+                item.Sent.TrySetCanceled(_cts.Token);
+                item.Owner.Dispose();
+            }
+            while (_daqChannel.Reader.TryRead(out var frame))
+                frame.Dispose();
+            // 等待正在返回的业务命令释放信号量，再结束串口占用。
+            await _ctoSemaphore.WaitAsync();
+            _ctoSemaphore.Release();
+            _ctoSemaphore.Dispose();
+            _cts.Dispose();
+            GlobalStatus.Instance.IsConnected = false;
+            GlobalStatus.Instance.IsMonitoring = false;
+            _session.Dispose();
+        }
     }
 
     private class XcpStd

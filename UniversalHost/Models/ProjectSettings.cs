@@ -36,6 +36,17 @@ public enum CommunicationMode
     UDP,
     Serial
 }
+public enum SerialDuplexMode
+{
+    FullDuplex,
+    HalfDuplex
+}
+public enum SerialDirectionControl
+{
+    Automatic,
+    RtsHighWhileSending,
+    RtsLowWhileSending
+}
 /// <summary>
 /// 从elf文件中读取到的原始符号信息
 /// </summary>
@@ -128,7 +139,11 @@ public partial class SerialConfig : ReactiveObject
     [Reactive] private string _selectedSerialPort = "";
     [Reactive] private int _baudRate = 115200;
     [Reactive] private Parity _paritySetting = System.IO.Ports.Parity.None;
-    [Reactive] private StopBits _stopBitsSetting = StopBits.None;
+    [Reactive] private StopBits _stopBitsSetting = StopBits.One;
+    [Reactive] private SerialDuplexMode _duplexMode = SerialDuplexMode.FullDuplex;
+    [Reactive] private SerialDirectionControl _directionControl = SerialDirectionControl.Automatic;
+    [Reactive] private UInt16 _turnaroundDelayMilliseconds = 2;
+    [Reactive] private bool _hasLocalEcho = false;
     [Reactive] private UInt16 _timeoutMilliseconds = 50;
     [Reactive] private UInt16 _retryTimes = 10;
 }

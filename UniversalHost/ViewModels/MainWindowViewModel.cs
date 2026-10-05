@@ -306,8 +306,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     {
         try
         {
-            await XcpService.CreateClientAsync();
-            await XcpService.Client!.ConnectAsync();
+            await XcpService.ConnectAsync();
             // 新连接清空标定值，以免迷惑用户。
             foreach (var runtime in SymbolRuntimeService.CalibrateSymbolRuntimesSource.Items)
             {
@@ -321,13 +320,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             Serilog.Log.Error(ex, "设备连接超时");
             NotificationService.Show("设备连接错误", "连接超时", NotificationType.Error);
-            await XcpService.DisposeClientAsync();
         }
         catch (Exception ex)
         {
             Serilog.Log.Error($"设备连接错误，{ex.Message}");
             NotificationService.Show("设备连接错误", ex.Message, NotificationType.Error);
-            await XcpService.DisposeClientAsync();
         }
     }
     [ReactiveCommand]
@@ -339,7 +336,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }
         try
         {
-            await XcpService.Client.DisconnectAsync();
+            await XcpService.DisconnectAsync();
         }
         catch (Exception ex)
         {

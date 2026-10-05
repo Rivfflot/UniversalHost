@@ -108,7 +108,7 @@
 					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsMonitoring}"
 					Command="{Binding StopMonitorCommand}"/>
 				<MenuItem
-					Header="切换所有窗口坐标自适应"
+					Header="切换坐标自适应"
 					Command="{Binding ToggleAllCurveYAxisAutoScaleCommand}"
 					InputGesture="Ctrl+E"/>
 				<MenuItem

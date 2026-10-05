@@ -26,6 +26,9 @@ public partial class GlobalStatus : ReactiveObject
     [Reactive] private bool _isProjectOpened = false;
     [Reactive] private bool _isMonitoring = false;
     [Reactive] private bool _isConnected = false;
+    [Reactive] private bool _isXcpSessionActive = false;
+    [Reactive] private bool _isIapRunning = false;
+    [Reactive] private bool _isSerialIapActive = false;
 
 
     private readonly ObservableAsPropertyHelper<bool> _canEditMonitorSymbol;
@@ -36,15 +39,28 @@ public partial class GlobalStatus : ReactiveObject
 
     private readonly ObservableAsPropertyHelper<bool> _canConnectDevice;
     public bool CanConnectDevice => _canConnectDevice.Value;
+    private readonly ObservableAsPropertyHelper<bool> _canEditCommunicationSettings;
+    public bool CanEditCommunicationSettings => _canEditCommunicationSettings.Value;
     private GlobalStatus()
     {
         this.WhenAnyValue(
                 x => x.IsProjectOpened,
                 x => x.IsConnected,
-                (opened, connected) => opened && !connected)
+                x => x.IsXcpSessionActive,
+                x => x.IsSerialIapActive,
+                (opened, connected, xcpActive, serialIapActive) => opened && !connected && !xcpActive && !serialIapActive)
             .ToProperty(this,
                         x => x.CanConnectDevice,
                         out _canConnectDevice);
+
+        this.WhenAnyValue(
+                x => x.IsConnected,
+                x => x.IsXcpSessionActive,
+                x => x.IsIapRunning,
+                (connected, xcpActive, iapRunning) => !connected && !xcpActive && !iapRunning)
+            .ToProperty(this,
+                        x => x.CanEditCommunicationSettings,
+                        out _canEditCommunicationSettings);
 
         this.WhenAnyValue(
                 x => x.IsProjectOpened,

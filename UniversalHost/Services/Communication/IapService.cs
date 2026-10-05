@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using UniversalHost.Services.Communication.Serial;
 using static UniversalHost.Models.IapProtocol;
 
 namespace UniversalHost.Services.Communication;
@@ -18,6 +19,8 @@ public class IapService
     private readonly TimeSpan _receiveTimeout;
     private readonly int _retryTimes;
     private readonly Func<ICommService> _createCommService;
+    private readonly CommunicationMode _mode;
+    private readonly SerialConnectionOptions? _serialOptions;
     // UDP 数据报可包含多条完整 ACK，不能将拼接应答当成单帧解析。
     private readonly byte[] _receiveBuffer = new byte[ushort.MaxValue];
     private readonly byte[] _sendBuffer = new byte[MaxBytesPerFrame + 11];
@@ -29,6 +32,12 @@ public class IapService
 
     public IapService(IProgress<double> iapProgress, IProgress<string> stage,
         ProjectSettings settings)
+        : this(iapProgress, stage, settings, null)
+    {
+    }
+
+    internal IapService(IProgress<double> iapProgress, IProgress<string> stage,
+        ProjectSettings settings, Func<ICommService>? createCommService)
     {
         _progress = iapProgress;
         _stage = stage;
@@ -43,25 +52,39 @@ public class IapService
             WaitForCheckTimeoutSeconds = config.WaitForCheckTimeoutSeconds,
             WaitForRebootTimeoutSeconds = config.WaitForRebootTimeoutSeconds
         };
-        var mode = settings.DeviceConfig.Mode;
-        int timeoutMilliseconds = mode == CommunicationMode.UDP
-            ? settings.UdpConfig.TimeoutMilliseconds : settings.SerialConfig.TimeoutMilliseconds;
+        _mode = settings.DeviceConfig.Mode;
+        _serialOptions = _mode == CommunicationMode.Serial ? new SerialConnectionOptions(settings.SerialConfig) : null;
+        int timeoutMilliseconds = _mode == CommunicationMode.UDP
+            ? settings.UdpConfig.TimeoutMilliseconds : _serialOptions!.TimeoutMilliseconds;
         _receiveTimeout = TimeSpan.FromMilliseconds(timeoutMilliseconds);
-        _retryTimes = mode == CommunicationMode.UDP
+        _retryTimes = _mode == CommunicationMode.UDP
             ? settings.UdpConfig.RetryTimes : settings.SerialConfig.RetryTimes;
         var localAddress = settings.UdpConfig.LocalAddress;
         var localPort = settings.UdpConfig.IapLocalPort;
         var remoteAddress = settings.UdpConfig.RemoteAddress;
         var remotePort = settings.UdpConfig.IapRemotePort;
-        _createCommService = (() => mode switch
+        _createCommService = createCommService ?? (() => _mode switch
         {
             // 连接的 UDP socket 只接收配置的远端 IP/端口，隔离其他发送端。
             CommunicationMode.UDP => new UdpService(localAddress, localPort, remoteAddress, remotePort, timeoutMilliseconds),
-            _ => throw new NotSupportedException("IAP 暂不支持该通信模式")
+            CommunicationMode.Serial => new SerialTransportService(_serialOptions!, SerialProtocol.Iap),
+            _ => throw new NotSupportedException("不支持该 IAP 通信模式")
         });
     }
 
-    public async Task RunIapSequenceAsync(CancellationToken ct)
+    public Task RunIapSequenceAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        // 在读文件、开串口之前占用，直到底层串口释放后才解除互斥。
+        var session = CommunicationSessionCoordinator.AcquireIap(_mode);
+        return Task.Run(async () =>
+        {
+            using (session)
+                await RunSequenceCoreAsync(ct);
+        });
+    }
+
+    private async Task RunSequenceCoreAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         ValidateTimeouts();
@@ -141,6 +164,21 @@ public class IapService
         CancellationToken ct, int? retryTimes = null, TimeSpan? retryInterval = null, uint frameIndex = 0)
     {
         var interval = retryInterval ?? OperationRetryInterval;
+        TimeSpan? serialResponseWait = null;
+        if (_serialOptions != null)
+        {
+            int acknowledgementLength = stage switch
+            {
+                Stage.Handshake => 11,
+                Stage.SendData => 12,
+                Stage.SendInformation => 8,
+                _ => 9
+            };
+            var serialWait = _serialOptions.GetResponseTimeout(acknowledgementLength);
+            serialResponseWait = serialWait;
+            if (retryTimes.HasValue)
+                interval = serialWait;
+        }
         TimeSpan? timeout = timeoutSeconds.HasValue ? TimeSpan.FromSeconds(timeoutSeconds.Value) : null;
         var sw = Stopwatch.StartNew();
         using var stageCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -149,26 +187,29 @@ public class IapService
         int packetLength = _protocol.GetSendPacket(_sendBuffer, stage, frameIndex);
         var packet = _sendBuffer.AsMemory(0, packetLength);
         int attempts = 0;
-        var lastSendTime = TimeSpan.Zero;
+        var nextSendTime = TimeSpan.Zero;
         try
         {
             while (!timeout.HasValue || sw.Elapsed < timeout.Value)
             {
                 ct.ThrowIfCancellationRequested();
                 stageCts.Token.ThrowIfCancellationRequested();
-                if (attempts == 0 || sw.Elapsed - lastSendTime >= interval)
+                if (attempts == 0 || sw.Elapsed >= nextSendTime)
                 {
                     if (retryTimes.HasValue && attempts >= retryTimes.Value + 1)
                         throw new TimeoutException($"IAP 阶段 {stage}，帧号 {frameIndex}，超过重试次数（{retryTimes} 次重试）");
                     // 每次重发完全相同的请求，不因迟到或无关 ACK 立即重发。
-                    lastSendTime = sw.Elapsed;
+                    nextSendTime = sw.Elapsed + interval;
                     await comm.SendAsync(packet, stageCts.Token);
+                    // 保留耗时操作 0.5 秒的发送周期；低波特率时至少留出发送完成后的完整应答窗口。
+                    if (serialResponseWait.HasValue && sw.Elapsed + serialResponseWait.Value > nextSendTime)
+                        nextSendTime = sw.Elapsed + serialResponseWait.Value;
                     attempts++;
                     if (attempts > 1)
                         Serilog.Log.Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，第 {Attempt} 次发送", stage, frameIndex, attempts);
                 }
 
-                var receiveWait = interval - (sw.Elapsed - lastSendTime);
+                var receiveWait = nextSendTime - sw.Elapsed;
                 if (timeout.HasValue)
                 {
                     var remainingStageTime = timeout.Value - sw.Elapsed;

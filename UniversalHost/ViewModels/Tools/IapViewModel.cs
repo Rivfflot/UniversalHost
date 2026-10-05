@@ -5,6 +5,7 @@ using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Services;
@@ -19,14 +20,19 @@ namespace UniversalHost.ViewModels.Tools
 
         [Reactive] private double _iapProgressBar;
         [Reactive] private string _currentStage = "准备就绪";
+        [Reactive] private bool _isRunning;
         public ReactiveCommand<Window, Unit> SelectIapFileCommand { get; }
         public ReactiveCommand<Unit, Unit> StartIapCommand { get; }
+        public ReactiveCommand<Unit, Unit> CancelIapCommand { get; }
         public IapViewModel()
         {
 
             IapProgressBar = 0;
 
-            StartIapCommand = ReactiveCommand.CreateFromTask(StartIapAsync);
+            StartIapCommand = ReactiveCommand.CreateFromTask(StartIapAsync,
+                GlobalStatus.Instance.WhenAnyValue(x => x.IsIapRunning).Select(running => !running));
+            CancelIapCommand = ReactiveCommand.Create(() => _iapCancellation?.Cancel(),
+                this.WhenAnyValue(x => x.IsRunning));
             SelectIapFileCommand = ReactiveCommand.CreateFromTask<Window>(SelectIapFileAsync);
         }
         private async Task SelectIapFileAsync(Window window)
@@ -50,6 +56,7 @@ namespace UniversalHost.ViewModels.Tools
         private async Task StartIapAsync()
         {
             _iapCancellation = new CancellationTokenSource();
+            IsRunning = true;
 
             //IapService
             try
@@ -58,7 +65,7 @@ namespace UniversalHost.ViewModels.Tools
                 var stageProgress = new Progress<string>(value => CurrentStage = value);
                 Serilog.Log.Debug("在线升级开始");
                 var iapCommService = new IapService(iapProgress, stageProgress);
-                await Task.Run(() => iapCommService.RunIapSequenceAsync(_iapCancellation.Token));
+                await iapCommService.RunIapSequenceAsync(_iapCancellation.Token);
                 CurrentStage = "升级完成";
                 IapProgressBar = 100;
                 Serilog.Log.Information("在线升级完成");
@@ -81,6 +88,7 @@ namespace UniversalHost.ViewModels.Tools
             {
                 _iapCancellation.Dispose();
                 _iapCancellation = null;
+                IsRunning = false;
             }
         }
     }

@@ -1,4 +1,4 @@
-<Window
+﻿<Window
 	x:Class="UniversalHost.Views.Windows.SettingWindow"
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -35,7 +35,7 @@
 						Grid.Row="0"
 						Grid.Column="1"
 						ItemsSource="{Binding AvailableCommunicationModes}"
-						IsEnabled="{Binding !GlobalStatusInstance.IsConnected}"
+						IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
 						SelectedItem="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode}" />
 					<!--  第 2 行 设备ID  -->
 					<TextBlock
@@ -54,7 +54,7 @@
 						Minimum="0"
 						ParsingNumberStyle="Integer"
 						ShowButtonSpinner="False"
-						IsEnabled="{Binding !GlobalStatusInstance.IsConnected}"
+						IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
 						Value="{Binding DeviceIDTemp}" />
 					<!--  第 3 行 -->
 					<TextBlock
@@ -155,7 +155,8 @@
 
 		<!--  通信设置  -->
 		<TabItem Header="通信">
-			<Grid ColumnDefinitions="*,Auto,*" IsEnabled="{Binding !GlobalStatusInstance.IsConnected}">
+			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+			<Grid ColumnDefinitions="*,Auto,*" IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
 				<!--  串口  -->
 				<StackPanel Grid.Column="0" Grid.IsSharedSizeScope="True" >
 					<TextBlock FontSize="18" Text="串口" VerticalAlignment="Center" FontWeight="Heavy"/>
@@ -201,7 +202,7 @@
 							Width="120"
 							HorizontalAlignment="Left"
 							Maximum="10000000"
-							Minimum="0"
+							Minimum="1"
 							ParsingNumberStyle="Integer"
 							ShowButtonSpinner="False"
 							Value="{Binding BaudRateTemp}" />
@@ -255,13 +256,13 @@
 							Margin="0,0,10,0"
 							VerticalAlignment="Center"
 							Text="超时时间ℹ"
-							ToolTip.Tip="单位 ms"/>
+							ToolTip.Tip="单位 ms；设备处理及调度裕量，另计完整应答的线上时间；请求发送完成后开始计时"/>
 						<NumericUpDown
 							Grid.Column="1"
 							Width="80"
 							HorizontalAlignment="Left"
 							Maximum="65535"
-							Minimum="0"
+							Minimum="1"
 							ParsingNumberStyle="Integer"
 							ShowButtonSpinner="False"
 							Value="{Binding SerialTimeoutTemp}" />
@@ -290,6 +291,27 @@
 							Value="{Binding SerialRetryTimesTemp}" />
 
 					</Grid>
+					<Grid ColumnDefinitions="Auto,*">
+						<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="物理双工ℹ"
+							ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP；HalfDuplex：半双工（如两线 RS485），仅支持 IAP。按实际物理链路选择。" />
+						<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDuplexModes}"
+							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DuplexMode}" />
+					</Grid>
+					<Grid ColumnDefinitions="Auto,*">
+						<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="方向控制ℹ"
+							ToolTip.Tip="Automatic：适配器自动换向；RtsHighWhileSending / RtsLowWhileSending：半双工发送时 RTS 高 / 低电平。全双工选 Automatic。" />
+						<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDirectionControls}"
+							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DirectionControl}" />
+					</Grid>
+					<Grid ColumnDefinitions="Auto,*">
+						<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="换向延时ℹ"
+							ToolTip.Tip="单位 ms；半双工收发器和适配器的方向转换裕量，按硬件要求设置。" />
+						<NumericUpDown Grid.Column="1" Width="80" HorizontalAlignment="Left" Minimum="0" Maximum="65535"
+							ShowButtonSpinner="False" ParsingNumberStyle="Integer" Value="{Binding SerialTurnaroundDelayTemp}" />
+					</Grid>
+					<CheckBox Content="适配器有本机回显" IsChecked="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.HasLocalEcho}"
+						ToolTip.Tip="仅在适配器确实返回所发送的完整帧时开启；会消费一份回显后再接受设备应答。" />
+					<TextBlock Text="固定 8 数据位；串口 IAP 前须断开 XCP。" TextWrapping="Wrap" Margin="0,6,0,0" />
 				</StackPanel>
 
 				<Separator Grid.Column="1" HorizontalAlignment="Center" Height="NaN" Width="1"/>
@@ -484,6 +506,7 @@
 					</Grid>
 				</StackPanel>
 			</Grid>
+			</ScrollViewer>
 		</TabItem>
 		<!--  监控设置  -->
 		<TabItem Header="监控">
