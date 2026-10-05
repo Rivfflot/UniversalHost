@@ -13,6 +13,7 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
@@ -25,6 +26,13 @@ namespace UniversalHost.ViewModels;
 
 public partial class MainWindowViewModel : ReactiveObject, IDisposable
 {
+    public string AppVersion { get; } = typeof(MainWindowViewModel).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion.Split('+')[0] ?? "未知";
+
+    private readonly ObservableAsPropertyHelper<string> _windowTitle;
+    public string WindowTitle => _windowTitle.Value;
+
     // CompositeDisposable 字段来管理所有订阅
     private readonly CompositeDisposable _disposables = [];
     //-------------菜单栏：文件 相关指令-------------
@@ -47,6 +55,12 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     [Reactive] private string _currentThemeIcon = "";
     public MainWindowViewModel()
     {
+        GlobalStatus.Instance.WhenAnyValue(x => x.IsProjectOpened)
+            .CombineLatest(
+                ProjectSaveService.Instance.WhenAnyValue(x => x.ProjectFilePath),
+                (opened, path) => $"UniversalHost  -  {(opened ? path : "未打开工程")}")
+            .ToProperty(this, x => x.WindowTitle, out _windowTitle);
+
         if (Application.Current is { } app)
         {
             CurrentThemeIcon = app.ActualThemeVariant == ThemeVariant.Dark ? "🌙" : "🔆";
@@ -607,6 +621,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
 
     public void Dispose()
     {
+        _windowTitle.Dispose();
         _disposables.Dispose();
     }
 }

@@ -6,7 +6,7 @@
 	xmlns:vm="using:UniversalHost.ViewModels"
 	xmlns:services="clr-namespace:UniversalHost.Services"
 	xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-	Title="UniversalHost"
+	Title="{Binding WindowTitle}"
 	Width="1000"
 	Height="700"
 	WindowState="Maximized"
@@ -21,6 +21,13 @@
 			</ContextMenu>
 		</ResourceDictionary>
 	</Window.Resources>
+
+	<Window.Styles>
+		<Style Selector="MenuItem.version-info:disabled /template/ ContentPresenter#PART_HeaderPresenter">
+			<Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForeground}"/>
+			<Setter Property="Opacity" Value="0.8"/>
+		</Style>
+	</Window.Styles>
 
 	<DockPanel>
 		<!--  顶部菜单栏  -->
@@ -185,6 +192,7 @@
 						  Command="{Binding ResetDockLayoutCommand}"
 						  />
 				<MenuItem Header="帮助" />
+				<MenuItem Header="{Binding AppVersion}" Classes="version-info" IsEnabled="False" />
 			</MenuItem>
 
 			<MenuItem
@@ -403,6 +411,7 @@
 				Padding="0"
 				ToolTip.Tip="打开故障录波窗口"
 				ToolTip.ShowOnDisabled="True"
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
 				/>
 
 			<MenuItem
