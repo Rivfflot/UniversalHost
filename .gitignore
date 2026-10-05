@@ -17,9 +17,7 @@
 mono_crash.*
 
 # Tests
-tests/*
-!tests/README.md
-!tests/UniversalHost.Communication.Tests/
+tests/
 
 # Build results
 [Dd]ebug/
