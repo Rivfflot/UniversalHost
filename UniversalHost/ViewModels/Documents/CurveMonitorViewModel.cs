@@ -181,6 +181,14 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         if (enabled) MeasurementMode = mode;
         else if (MeasurementMode == mode) MeasurementMode = CurveMeasurementMode.None;
     }
+    [ReactiveCommand]
+    private void ToggleMouseCoordinates() => IsMouseCoordinatesEnabled = !IsMouseCoordinatesEnabled;
+    [ReactiveCommand]
+    private void ToggleNearestPoint() => IsNearestPointEnabled = !IsNearestPointEnabled;
+    [ReactiveCommand]
+    private void ToggleVerticalCursors() => IsVerticalCursorsEnabled = !IsVerticalCursorsEnabled;
+    [ReactiveCommand]
+    private void ToggleHorizontalCursors() => IsHorizontalCursorsEnabled = !IsHorizontalCursorsEnabled;
     // 数据源
     private readonly ReadOnlyObservableCollection<CurveMonitorLayout.CurveItem> _displayCurves;
     public ReadOnlyObservableCollection<CurveMonitorLayout.CurveItem> DisplayCurves => _displayCurves;
@@ -243,7 +251,11 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         CurvesLayout.CurvesSource.Connect()
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Bind(out _displayCurves)
-                .Subscribe()
+                .Subscribe(_ =>
+                {
+                    if (SelectedCurveItem == null && _displayCurves.Count > 0)
+                        SelectedCurveItem = _displayCurves[0];
+                })
                 .DisposeWith(_disposables);
 
         // IsVisible 改变时刷新Plot

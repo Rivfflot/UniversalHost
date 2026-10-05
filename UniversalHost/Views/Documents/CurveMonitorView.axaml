@@ -14,6 +14,10 @@
         <!-- 触发 ViewModel 中的 Command -->
         <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
         <KeyBinding Gesture="E" Command="{Binding ToggleYAxisAutoScaleCommand}" />
+        <KeyBinding Gesture="X" Command="{Binding ToggleMouseCoordinatesCommand}" />
+        <KeyBinding Gesture="C" Command="{Binding ToggleNearestPointCommand}" />
+        <KeyBinding Gesture="V" Command="{Binding ToggleVerticalCursorsCommand}" />
+        <KeyBinding Gesture="B" Command="{Binding ToggleHorizontalCursorsCommand}" />
     </UserControl.KeyBindings>
 
     <UserControl.Styles>
@@ -93,7 +97,7 @@
                 Height="25">
                 <MenuItem
                     Classes="toolbar-icon-button measurement-mode"
-                    ToolTip.Tip="显示鼠标坐标"
+                    ToolTip.Tip="显示鼠标坐标(X)"
                     ToggleType="CheckBox"
                     IsChecked="{Binding IsMouseCoordinatesEnabled, Mode=TwoWay}"
                     Cursor="Hand">
@@ -119,7 +123,7 @@
                 </MenuItem>
                 <MenuItem
                     Classes="toolbar-icon-button measurement-mode"
-                    ToolTip.Tip="鼠标靠近所选曲线时显示曲线上最近的点坐标"
+                    ToolTip.Tip="鼠标靠近所选曲线时显示曲线上最近的点坐标(C)"
                     ToggleType="CheckBox"
                     IsChecked="{Binding IsNearestPointEnabled, Mode=TwoWay}"
                     Cursor="Hand">
@@ -151,7 +155,7 @@
                 </MenuItem>
                 <MenuItem
                     Classes="toolbar-icon-button measurement-mode"
-                    ToolTip.Tip="垂直光标测量"
+                    ToolTip.Tip="垂直光标测量(V)"
                     ToggleType="CheckBox"
                     IsChecked="{Binding IsVerticalCursorsEnabled, Mode=TwoWay}"
                     Cursor="Hand">
@@ -197,7 +201,7 @@
                 </MenuItem>
                 <MenuItem
                     Classes="toolbar-icon-button measurement-mode"
-                    ToolTip.Tip="水平光标测量"
+                    ToolTip.Tip="水平光标测量(B)"
                     ToggleType="CheckBox"
                     IsChecked="{Binding IsHorizontalCursorsEnabled, Mode=TwoWay}"
                     Cursor="Hand">
