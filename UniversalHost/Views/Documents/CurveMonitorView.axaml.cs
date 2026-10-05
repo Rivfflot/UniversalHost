@@ -39,6 +39,22 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     public CurveMonitorView()
     {
         InitializeComponent();
+        if (CurvePlot.Menu != null)
+        {
+            // 仅翻译默认菜单文字，保留 ScottPlot 原有的点击回调。
+            for (int i = 0; i < CurvePlot.Menu.ContextMenuItems.Count; i++)
+            {
+                var item = CurvePlot.Menu.ContextMenuItems[i];
+                item.Label = item.Label switch
+                {
+                    "Save Image" => "保存图像",
+                    "Copy to Clipboard" => "复制图像",
+                    "Autoscale" => "坐标轴自适应",
+                    _ => item.Label,
+                };
+                CurvePlot.Menu.ContextMenuItems[i] = item;
+            }
+        }
         SymbolList.AddHandler(PointerPressedEvent, FirstRow_PointerPressed, handledEventsToo: true);
         SymbolList.AddHandler(DragDrop.DragOverEvent, ListBox_DragOver);
         SymbolList.AddHandler(DragDrop.DragLeaveEvent, ListBox_DragLeave);
