@@ -305,16 +305,17 @@ public class ProjectSaveService : ReactiveObject
         currentSettings.LogConfig.WhenAnyValue(
             x => x.LogEnabled,
             x => x.LogEventLevelSetting,
-            x => x.LogWriteToFileEnabled)
+            x => x.LogWriteToFileEnabled,
+            (enabled, level, writeToFile) => (Enabled: enabled, Level: level, WriteToFile: writeToFile))
         .Subscribe(values =>
         {
-            var effectiveLevel = values.Item1
-                ? values.Item2
+            var effectiveLevel = values.Enabled
+                ? values.Level
                 : Serilog.Events.LogEventLevel.Fatal + 1;
             // WhenAnyValue 首次推送的是已保存配置，并非用户修改。
             LogService.SetLogLevel(effectiveLevel, logChange: !isInitialLogConfiguration);
             isInitialLogConfiguration = false;
-            LogService.IsWriteToFileEnabled = values.Item3;
+            LogService.IsWriteToFileEnabled = values.WriteToFile;
         }).DisposeWith(Instance._disposables);
         //重建变量集合
         SymbolRuntimeService.RebuildSymbolRuntimes();

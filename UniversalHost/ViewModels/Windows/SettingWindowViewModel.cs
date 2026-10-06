@@ -719,11 +719,11 @@ public static class ReactiveExtensions
         where TViewModel : ReactiveObject
         where TProperty : struct
     {
-        var source = sourceExpr.Compile();
         var memberExpr = (MemberExpression)sourceExpr.Body;
         var propertyName = memberExpr.Member.Name;
 
-        var subscription = vm.WhenAnyValue(sourceExpr)
+        // 泛型辅助方法接收运行时表达式，无法使用绑定源生成器的编译期分派。
+        var subscription = vm.WhenAnyValueUnsafe(sourceExpr)
             .Subscribe(x =>
             {
                 apply(x ?? defaultValue);
