@@ -11,6 +11,7 @@
              x:Class="UniversalHost.Views.Documents.CurveMonitorView">
 
     <UserControl.KeyBindings>
+        <!-- 按住 Y + 左键拖动或滚轮调整所选变量的 Y 轴，由后台代码监听 KeyDown/KeyUp。 -->
         <!-- 触发 ViewModel 中的 Command -->
         <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
         <KeyBinding Gesture="E" Command="{Binding ToggleYAxisAutoScaleCommand}" />

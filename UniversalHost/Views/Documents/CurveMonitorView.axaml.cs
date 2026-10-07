@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -26,6 +27,9 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     private ListBoxItem? _currentHoveredItem;
     private CurveMeasurementController? _measurements;
     private IPointer? _measurementDragPointer;
+    private readonly CurveYAxisDragController _yAxisDrag;
+    private IPointer? _yAxisDragPointer;
+    private bool _isYAxisKeyPressed;
     private bool _plotInputWasEnabled;
     private sealed class CurveRenderState(ScottPlot.Plottables.Signal signal, ScottPlot.AxisPanels.LeftAxis yAxis)
     {
@@ -39,6 +43,10 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     public CurveMonitorView()
     {
         InitializeComponent();
+        _yAxisDrag = new(CurvePlot.Plot);
+        // Y 是按住生效的窗口级手势，需同时监听按下和松开，不能使用切换式 KeyBinding。
+        AddHandler(KeyDownEvent, CurveMonitorView_KeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(KeyUpEvent, CurveMonitorView_KeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
         if (CurvePlot.Menu != null)
         {
             // 仅翻译默认菜单文字，保留 ScottPlot 原有的点击回调。
@@ -58,23 +66,42 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         SymbolList.AddHandler(PointerPressedEvent, FirstRow_PointerPressed, handledEventsToo: true);
         SymbolList.AddHandler(DragDrop.DragOverEvent, ListBox_DragOver);
         SymbolList.AddHandler(DragDrop.DragLeaveEvent, ListBox_DragLeave);
-        // 在 AvaPlot 处理鼠标按下之前拦截光标拖动，避免同时启动图表平移。
+        // 在 AvaPlot 处理鼠标按下之前拦截选中 Y 轴和光标拖动，避免同时启动图表平移。
         CurvePlot.AddHandler(PointerPressedEvent, CurvePlot_PointerPressed, RoutingStrategies.Tunnel);
         CurvePlot.AddHandler(PointerMovedEvent, CurvePlot_PointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        CurvePlot.AddHandler(PointerReleasedEvent, CurvePlot_YAxisPointerReleased, RoutingStrategies.Tunnel);
         CurvePlot.AddHandler(PointerReleasedEvent, CurvePlot_PointerReleased, RoutingStrategies.Bubble, handledEventsToo: true);
+        CurvePlot.AddHandler(PointerWheelChangedEvent, CurvePlot_PointerWheelChanged, RoutingStrategies.Tunnel);
         CurvePlot.PointerExited += (_, _) =>
         {
             bool changed = _measurements?.PointerExited() == true;
-            if (_measurementDragPointer == null) CurvePlot.SetCursor(ScottPlot.Cursor.Arrow);
+            if (_measurementDragPointer == null && _yAxisDragPointer == null) CurvePlot.SetCursor(ScottPlot.Cursor.Arrow);
             if (changed) CurvePlot.Refresh();
         };
-        CurvePlot.PointerCaptureLost += (_, _) => EndMeasurementDrag();
+        CurvePlot.PointerCaptureLost += (_, _) =>
+        {
+            EndYAxisDrag();
+            EndMeasurementDrag();
+        };
         this.WhenActivated(disposables =>
         {
             var viewModel = ViewModel;
             if (viewModel == null) return;
 
             var subscriptions = new CompositeDisposable();
+            this.GetObservable(IsKeyboardFocusWithinProperty)
+                .Where(hasFocus => !hasFocus)
+                .Subscribe(_ => ResetYAxisInput()).DisposeWith(subscriptions);
+            if (TopLevel.GetTopLevel(this) is WindowBase window)
+            {
+                EventHandler deactivatedHandler = (_, _) => ResetYAxisInput();
+                window.Deactivated += deactivatedHandler;
+                Disposable.Create(() => window.Deactivated -= deactivatedHandler).DisposeWith(subscriptions);
+            }
+            viewModel.WhenAnyValue(x => x.SelectedCurveItem)
+                .Skip(1)
+                .ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ => EndYAxisDrag()).DisposeWith(subscriptions);
             var measurements = new CurveMeasurementController(CurvePlot.Plot,
                 () => GetMeasurementTarget(viewModel.SelectedCurveItem),
                 () => GetMeasurementTarget(viewModel.SelectedCurveItem) ??
@@ -143,6 +170,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 viewModel.RefreshCurve -= refreshCurveHandler;
                 ActualThemeVariantChanged -= themeChangedHandler;
                 subscriptions.Dispose();
+                ResetYAxisInput();
                 EndMeasurementDrag();
                 measurements.Dispose();
                 _measurements = null;
@@ -175,6 +203,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(mode =>
                 {
+                    EndYAxisDrag();
                     EndMeasurementDrag();
                     measurements.SetMode(mode);
                     CurvePlot.SetCursor(measurements.MouseCursor);
@@ -213,7 +242,28 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
 
     private void CurvePlot_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_measurements == null || e.GetCurrentPoint(CurvePlot).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed) return;
+        PointerUpdateKind kind = e.GetCurrentPoint(CurvePlot).Properties.PointerUpdateKind;
+        if (_isYAxisKeyPressed && kind == PointerUpdateKind.LeftButtonPressed)
+        {
+            // 没有可操作的选中轴时也不将 Y 手势退化为所有坐标轴的拖动。
+            e.Handled = true;
+            if (_measurementDragPointer != null || _yAxisDragPointer != null ||
+                ViewModel?.SelectedCurveItem is not { } selected || !_curves.TryGetValue(selected, out var curve))
+                return;
+
+            var mouse = e.GetPosition(CurvePlot);
+            if (!_yAxisDrag.TryBeginDrag(curve.YAxis, new((float)mouse.X, (float)mouse.Y))) return;
+
+            _plotInputWasEnabled = CurvePlot.UserInputProcessor.IsEnabled;
+            CurvePlot.UserInputProcessor.Disable();
+            _yAxisDragPointer = e.Pointer;
+            e.Pointer.Capture(CurvePlot);
+            CurvePlot.Focus();
+            CurvePlot.SetCursor(ScottPlot.Cursor.SizeNorthSouth);
+            return;
+        }
+
+        if (_measurements == null || kind != PointerUpdateKind.LeftButtonPressed) return;
         var point = e.GetPosition(CurvePlot);
         if (!_measurements.TryBeginDrag(new((float)point.X, (float)point.Y))) return;
 
@@ -228,9 +278,20 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
 
     private void CurvePlot_PointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_measurements == null) return;
         var point = e.GetPosition(CurvePlot);
         Pixel pixel = new((float)point.X, (float)point.Y);
+        if (_yAxisDragPointer != null)
+        {
+            if (!ReferenceEquals(e.Pointer, _yAxisDragPointer)) return;
+            bool axisChanged = _yAxisDrag.Move(pixel);
+            bool measurementsChanged = _measurements?.PointerMoved(pixel) == true;
+            CurvePlot.SetCursor(ScottPlot.Cursor.SizeNorthSouth);
+            e.Handled = true;
+            if (axisChanged || measurementsChanged) CurvePlot.Refresh();
+            return;
+        }
+
+        if (_measurements == null) return;
         bool changed = _measurements.PointerMoved(pixel);
         CurvePlot.SetCursor(_measurements.GetMouseCursor(pixel));
         if (_measurementDragPointer != null) e.Handled = true;
@@ -242,6 +303,63 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         if (_measurementDragPointer == null || e.InitialPressMouseButton != MouseButton.Left) return;
         EndMeasurementDrag();
         e.Handled = true;
+    }
+
+    private void CurvePlot_YAxisPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!ReferenceEquals(e.Pointer, _yAxisDragPointer) || e.InitialPressMouseButton != MouseButton.Left) return;
+        var point = e.GetPosition(CurvePlot);
+        _yAxisDrag.Move(new((float)point.X, (float)point.Y));
+        EndYAxisDrag();
+        e.Handled = true;
+        _measurements?.Update();
+        CurvePlot.Refresh();
+    }
+
+    private void CurvePlot_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (!_isYAxisKeyPressed) return;
+
+        e.Handled = true;
+        if (_yAxisDragPointer != null || _measurementDragPointer != null ||
+            ViewModel?.SelectedCurveItem is not { } selected || !_curves.TryGetValue(selected, out var curve))
+            return;
+
+        var point = e.GetPosition(CurvePlot);
+        if (!_yAxisDrag.ZoomWheel(curve.YAxis, new((float)point.X, (float)point.Y), e.Delta.Y)) return;
+        _measurements?.Update();
+        CurvePlot.Refresh();
+    }
+
+    private void CurveMonitorView_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Y || e.Handled || e.KeyModifiers != KeyModifiers.None) return;
+        _isYAxisKeyPressed = true;
+        e.Handled = true;
+    }
+
+    private void CurveMonitorView_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Y) return;
+        ResetYAxisInput();
+        e.Handled = true;
+    }
+
+    private void ResetYAxisInput()
+    {
+        _isYAxisKeyPressed = false;
+        EndYAxisDrag();
+    }
+
+    private void EndYAxisDrag()
+    {
+        _yAxisDrag.EndDrag();
+        if (_yAxisDragPointer is not { } pointer) return;
+
+        _yAxisDragPointer = null;
+        if (ReferenceEquals(pointer.Captured, CurvePlot)) pointer.Capture(null);
+        CurvePlot.UserInputProcessor.IsEnabled = _plotInputWasEnabled;
+        CurvePlot.SetCursor(_measurements?.MouseCursor ?? ScottPlot.Cursor.Arrow);
     }
 
     private void EndMeasurementDrag()
@@ -326,6 +444,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     {
         if (!_curves.Remove(item, out var curve)) return;
 
+        if (ReferenceEquals(_yAxisDrag.Axis, curve.YAxis)) EndYAxisDrag();
         CurvePlot.Plot.Remove(curve.Signal);
         CurvePlot.Plot.Remove(curve.YAxis);
         if (ReferenceEquals(item.Signal, curve.Signal)) item.Signal = null;
