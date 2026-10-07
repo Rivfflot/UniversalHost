@@ -1,5 +1,4 @@
 using ScottPlot;
-using System;
 
 namespace UniversalHost.Services.Plotting;
 
