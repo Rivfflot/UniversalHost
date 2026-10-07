@@ -106,7 +106,7 @@ public class ProjectSaveService : ReactiveObject
     }
 
     private readonly CompositeDisposable _disposables = [];
-    private static readonly Dock.Serializer.DockSerializer _dockSerializer = new();
+    private static readonly Dock.Serializer.SystemTextJson.DockSerializer _dockSerializer = new();
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true

@@ -3,7 +3,6 @@ using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI;
 using Dock.Model.ReactiveUI.Controls;
-using ScottPlot;
 using System;
 using System.Collections.Generic;
 using UniversalHost.Services;
