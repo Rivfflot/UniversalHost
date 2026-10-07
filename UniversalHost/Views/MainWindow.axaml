@@ -31,7 +31,7 @@
 
 	<DockPanel>
 		<!--  顶部菜单栏  -->
-		<Menu DockPanel.Dock="Top">
+		<Menu x:Name="MainMenu" DockPanel.Dock="Top">
 			<Menu.ItemsPanel>
 				<ItemsPanelTemplate>
 					<DockPanel LastChildFill="False" HorizontalAlignment="Stretch"/>
@@ -449,19 +449,6 @@
 					</TransitioningContentControl>
 				</MenuItem.Header>
 			</MenuItem>
-
-			<MenuItem
-				Command="{Binding ToggleRandomDataCommand}"
-				DockPanel.Dock="Right"
-				ToolTip.Tip="测试"
-				ToolTip.ShowOnDisabled="True"
-				IsEnabled="False"
-				Header="🔢"
-				Cursor="Hand"
-				FontFamily="Apple Color Emoji, Noto Color Emoji"
-				FontSize="18"
-				Padding="0"
-				/>
 
 		</Menu>
 		<!--  分隔线  -->

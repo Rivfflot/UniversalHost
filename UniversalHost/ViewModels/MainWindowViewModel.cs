@@ -557,14 +557,17 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         Factory.ShowOrCreateTool(Layout, DockableRegistry.FaultRecordToolId);
     }
 
-    private CancellationTokenSource randomCts = new();
+#if DEBUG
+    private CancellationTokenSource? randomCts;
 
     [ReactiveCommand]
     private void ToggleRandomData()
     {
-        if (randomCts.IsCancellationRequested)
+        if (randomCts is null || randomCts.IsCancellationRequested)
         {
+            randomCts?.Dispose();
             randomCts = new CancellationTokenSource();
+            var token = randomCts.Token;
             GlobalStatus.Instance.IsConnected = true;
             GlobalStatus.Instance.IsMonitoring = true;
             Task.Run(() =>
@@ -574,7 +577,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
 
                 Thread.CurrentThread.Priority = ThreadPriority.Highest;
 
-                while (!randomCts.Token.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
                     long currentTick = Stopwatch.GetTimestamp();
 
@@ -585,13 +588,13 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                     }
                     nextTriggerTick += intervalTicks;
 
-                    //TODO 生成随机数用来测试 调试完成后删除 252746382
+                    // 生成随机数用来测试。
                     foreach (var item in SymbolRuntimeService.MonitorSymbolRuntimesSource.Items)
                     {
                         item.AddRandomData();
                     }
                 }
-            }, randomCts.Token);
+            }, token);
         }
         else
         {
@@ -600,6 +603,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             GlobalStatus.Instance.IsMonitoring = false;
         }
     }
+#endif
 
     [ReactiveCommand]
     private void ToggleTheme()
@@ -623,6 +627,10 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
 
     public void Dispose()
     {
+#if DEBUG
+        randomCts?.Cancel();
+        randomCts?.Dispose();
+#endif
         _windowTitle.Dispose();
         _disposables.Dispose();
     }

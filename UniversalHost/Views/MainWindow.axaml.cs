@@ -5,6 +5,13 @@ using UniversalHost.Services;
 using UniversalHost.ViewModels;
 using UniversalHost.ViewModels.Windows;
 using UniversalHost.Views.Windows;
+#if DEBUG
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Data;
+using Avalonia.Input;
+using Avalonia.Media;
+#endif
 
 namespace UniversalHost.Views
 {
@@ -13,6 +20,24 @@ namespace UniversalHost.Views
         public MainWindow()
         {
             InitializeComponent();
+
+#if DEBUG
+            // 调试菜单在代码中创建，避免 Release XAML 引用已被条件编译移除的命令。
+            var randomDataMenuItem = new MenuItem
+            {
+                Header = "🔢",
+                Cursor = new Cursor(StandardCursorType.Hand),
+                FontFamily = new FontFamily("Apple Color Emoji, Noto Color Emoji"),
+                FontSize = 18,
+                Padding = new Thickness(0)
+            };
+            DockPanel.SetDock(randomDataMenuItem, Avalonia.Controls.Dock.Right);
+            ToolTip.SetTip(randomDataMenuItem, "测试");
+            ToolTip.SetShowOnDisabled(randomDataMenuItem, true);
+            randomDataMenuItem.Bind(MenuItem.CommandProperty,
+                new Binding(nameof(MainWindowViewModel.ToggleRandomDataCommand)));
+            MainMenu.Items.Add(randomDataMenuItem);
+#endif
 
             this.WhenActivated(disposables =>
             {

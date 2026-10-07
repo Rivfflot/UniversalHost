@@ -2,6 +2,7 @@
 
 2026-10-07
 
+- 随机数据测试按钮及命令仅在 Debug 编译中保留。
 - 曲线监控窗口新增缩放所选变量 Y 轴的快捷操作。
 - Dock.Avalonia的布局保存和恢复切换为使用Dock.Serializer.SystemTextJson
 - 断开设备时增加提示信息
