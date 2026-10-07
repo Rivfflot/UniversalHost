@@ -351,6 +351,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         try
         {
             await XcpService.DisconnectAsync();
+            NotificationService.Show("设备已断开", "", NotificationType.Success);
+            Serilog.Log.Information($"设备已断开");
         }
         catch (Exception ex)
         {

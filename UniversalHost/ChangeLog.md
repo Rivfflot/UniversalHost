@@ -3,6 +3,7 @@
 2026-10-07
 
 - Dock.Avalonia的布局保存和恢复切换为使用Dock.Serializer.SystemTextJson
+- 断开设备时增加提示信息
 
 2026-10-06
 
