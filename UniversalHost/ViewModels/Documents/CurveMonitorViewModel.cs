@@ -300,6 +300,13 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         }
     }
     [ReactiveCommand]
+    private void SelectCurveItem(int number)
+    {
+        // 编号从 1 开始，超出当前变量数量时保留原选择。
+        if (number < 1 || number > DisplayCurves.Count) return;
+        SelectedCurveItem = DisplayCurves[number - 1];
+    }
+    [ReactiveCommand]
     private void ToggleYAxisAutoScale()
     {
         CurvesLayout.IsYAxisAutoScaleEnabled = !CurvesLayout.IsYAxisAutoScaleEnabled;

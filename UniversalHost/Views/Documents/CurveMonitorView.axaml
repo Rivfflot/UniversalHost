@@ -13,6 +13,34 @@
     <UserControl.KeyBindings>
         <!-- 按住 Y + 左键拖动或滚轮调整所选变量的 Y 轴，由后台代码监听 KeyDown/KeyUp。 -->
         <!-- 触发 ViewModel 中的 Command -->
+        <!-- 主键盘数字键按当前列表顺序选中第 1–9 个变量，不包含小键盘。 -->
+        <KeyBinding Gesture="D1" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>1</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D2" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>2</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D3" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>3</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D4" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>4</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D5" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>5</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D6" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>6</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D7" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>7</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D8" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>8</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
+        <KeyBinding Gesture="D9" Command="{Binding SelectCurveItemCommand}">
+            <KeyBinding.CommandParameter><x:Int32>9</x:Int32></KeyBinding.CommandParameter>
+        </KeyBinding>
         <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
         <KeyBinding Gesture="E" Command="{Binding ToggleYAxisAutoScaleCommand}" />
         <KeyBinding Gesture="X" Command="{Binding ToggleMouseCoordinatesCommand}" />
