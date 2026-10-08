@@ -12,6 +12,7 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using UniversalHost.Models;
 
@@ -119,6 +120,7 @@ public class ProjectSaveService : ReactiveObject
 
     private static async Task SaveSettingsAsync(string path, ProjectSettings settings)
     {
+        var settingsSnapshot = CreateSettingsSnapshot(settings, path, path);
         await using var fileStream = new FileStream(
             path,
             FileMode.OpenOrCreate,
@@ -142,12 +144,13 @@ public class ProjectSaveService : ReactiveObject
         {
             await JsonSerializer.SerializeAsync(
                 stream,
-                settings,
+                settingsSnapshot,
                 _jsonOptions);
         }
     }
     public static async Task SaveProjectAsync(string path, IRootDock layout)
     {
+        var settingsSnapshot = CreateSettingsSnapshot(Instance.Settings, Instance.ProjectFilePath, path);
         var options = new JsonSerializerOptions
         {
             WriteIndented = true
@@ -174,7 +177,7 @@ public class ProjectSaveService : ReactiveObject
         {
             await JsonSerializer.SerializeAsync(
                 stream,
-                Instance.Settings,
+                settingsSnapshot,
                 options);
         }
 
@@ -206,6 +209,20 @@ public class ProjectSaveService : ReactiveObject
                 options);
         }
     }
+
+    // 仅调整保存快照：另存为到其他目录时继续指向原文件，不修改当前工程设置。
+    private static JsonNode CreateSettingsSnapshot(ProjectSettings settings, string sourcePath, string targetPath)
+    {
+        var snapshot = JsonSerializer.SerializeToNode(settings, _jsonOptions)!;
+        snapshot[nameof(ProjectSettings.IapConfig)]![nameof(IapConfig.IapFilePath)] =
+            ProjectFilePathService.RebasePath(settings.IapConfig.IapFilePath, sourcePath, targetPath);
+        var symbolPaths = new JsonArray();
+        foreach (var filePath in settings.DeviceConfig.SymbolFilePaths.Items)
+            symbolPaths.Add(ProjectFilePathService.RebasePath(filePath, sourcePath, targetPath));
+        snapshot[nameof(ProjectSettings.DeviceConfig)]!["SymbolFilePaths"] = symbolPaths;
+        return snapshot;
+    }
+
     // 先完整读取工程，再释放旧文档、切换设置和运行时，最后重建文档。
     public static IRootDock? LoadProject(string path)
     {

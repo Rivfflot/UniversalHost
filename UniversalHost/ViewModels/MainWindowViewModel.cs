@@ -100,7 +100,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             try
             {
-                var removedSymbols = ProjectSaveService.Instance.Settings.ReloadAllSymbols();
+                var removedSymbols = ProjectSaveService.Instance.Settings.ReloadAllSymbols(ProjectSaveService.Instance.ProjectFilePath);
                 Serilog.Log.Information($"符号表重新加载，从{ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count}个文件中加载了{ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count}个变量");
                 NotificationService.Show("符号表重新加载成功", $"从{ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count}个文件中加载了{ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count}个变量", NotificationType.Success);
                 if (removedSymbols.Count > 0)
@@ -297,7 +297,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             });
             if (result != null)
             {
-                await ProjectSaveService.SaveProjectAsync(result.Path.AbsolutePath, Layout);
+                await ProjectSaveService.SaveProjectAsync(result.Path.LocalPath, Layout);
 
                 Serilog.Log.Information($"成功另存为至 {result.Path.AbsolutePath}");
                 NotificationService.Show("另存为成功", $"路径: {result.Path.AbsolutePath}", NotificationType.Success);

@@ -13,6 +13,7 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using UniversalHost.Services;
 
 namespace UniversalHost.Models;
 
@@ -260,12 +261,12 @@ public partial class DeviceConfig : ReactiveObject
         }
         return addSymbolCount;
     }
-    public void ReloadSymbolTable()
+    public void ReloadSymbolTable(string projectFilePath)
     {
         this.Symbols.Clear();
         foreach (var path in this.SymbolFilePaths.Items)
         {
-            ReadElfFile(path);
+            ReadElfFile(ProjectFilePathService.ResolvePath(path, projectFilePath));
         }
     }
 }
@@ -451,11 +452,11 @@ public partial class ProjectSettings : ReactiveObject
     /// <returns>
     /// 移除的监控/标定变量。
     /// </returns>
-    public List<UserSymbolInfo> ReloadAllSymbols()
+    public List<UserSymbolInfo> ReloadAllSymbols(string projectFilePath)
     {
         var removedSymbols = new List<UserSymbolInfo>();
         //更新符号表
-        this.DeviceConfig.ReloadSymbolTable();
+        this.DeviceConfig.ReloadSymbolTable(projectFilePath);
 
         // 构建快速查找表：Key = (sourceFileName, Name)
         var symbolLookup = this.DeviceConfig.Symbols.Items

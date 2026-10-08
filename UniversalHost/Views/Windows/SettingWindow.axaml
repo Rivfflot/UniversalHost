@@ -91,6 +91,7 @@
 						<TabItem Header="ELF" FontSize="15" Margin="-4">
 							<ListBox
 								ItemsSource="{Binding SymbolFilePaths}"
+								ToolTip.Tip="以 .uhprj 所在目录为基准；工程目录及其子目录中的文件自动使用相对路径。"
 								MaxHeight="200"
 								Margin="0,1,0,0">
 								<ListBox.ItemTemplate>
@@ -963,6 +964,7 @@
 							 HorizontalAlignment="Left"
 							 VerticalContentAlignment="Center"
 							 InnerRightContent="{Binding IapFilePathError}"
+							 ToolTip.Tip="支持绝对路径或相对工程目录的路径，例如 .\BOOT.bin；工程目录中的文件自动使用相对路径。"
 							 Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
 					<TextBlock Grid.Row="1"
 							   Grid.Column="0"

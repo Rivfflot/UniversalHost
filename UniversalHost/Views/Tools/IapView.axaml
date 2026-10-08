@@ -31,6 +31,7 @@
 			Loaded="ShowIapFilePathEnd"
 			TextChanged="ShowIapFilePathEnd"
 			Width="260"
+			ToolTip.Tip="支持绝对路径或相对 .uhprj 所在目录的路径，例如 .\BOOT.bin。"
 			Text="{Binding Source={x:Static services:ProjectSaveService.Instance},Path=Settings.IapConfig.IapFilePath}" />
 
 

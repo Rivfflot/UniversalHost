@@ -246,7 +246,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         {
             try
             {
-                ProjectSaveService.Instance.Settings.ReloadAllSymbols();
+                ProjectSaveService.Instance.Settings.ReloadAllSymbols(ProjectSaveService.Instance.ProjectFilePath);
                 NotificationService.Show("符号表重新加载成功", $"从{ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count}个文件中加载了{ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count}个变量", NotificationType.Success);
             }
             catch (Exception ex)
@@ -283,6 +283,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             var (window, path) = tuple;
             if (!string.IsNullOrEmpty(path))
             {
+                path = ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath);
                 var topLevel = TopLevel.GetTopLevel(window);
                 if (topLevel?.Clipboard != null)
                 {
@@ -295,7 +296,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         {
             try
             {
-                var directory = Path.GetDirectoryName(path);
+                var directory = Path.GetDirectoryName(ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath));
                 // 根据操作系统打开文件夹
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
@@ -565,6 +566,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             try
             {
                 var path = files[0].Path.LocalPath;
+                var storedPath = ProjectFilePathService.ToStoredPath(path, ProjectSaveService.Instance.ProjectFilePath);
                 var elf = ELFReader.Load(path);
 
                 var errors = new List<string>();
@@ -572,13 +574,15 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                 {
                     throw new InvalidDataException("ELF错误：类型未知");
                 }
-                if (ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Items.Contains(path))
+                var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+                if (ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Items.Any(existing =>
+                    pathComparer.Equals(ProjectFilePathService.ResolvePath(existing, ProjectSaveService.Instance.ProjectFilePath), path)))
                 {
                     throw new Exception("文件已存在于列表中");
                 }
                 else
                 {
-                    ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Add(path);
+                    ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Add(storedPath);
                     var symbol_count = ProjectSaveService.Instance.Settings.DeviceConfig.ReadElfFile(path);
                     NotificationService.Show("添加成功", $"从{path}加载了{symbol_count}个变量", NotificationType.Success);
                 }
@@ -595,7 +599,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     {
         try
         {
-            var elf = ELFReader.Load(symbol_file_path);
+            var elf = ELFReader.Load(ProjectFilePathService.ResolvePath(symbol_file_path, ProjectSaveService.Instance.ProjectFilePath));
 
             var information = new List<string>
                 {
@@ -699,7 +703,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         try
         {
             // 获取完整路径，这会验证路径格式
-            string fullPath = Path.GetFullPath(path);
+            string fullPath = ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath);
             return true;
         }
         catch

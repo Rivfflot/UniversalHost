@@ -50,7 +50,8 @@ namespace UniversalHost.ViewModels.Tools
 
             if (files is { Count: > 0 })
             {
-                ProjectSaveService.Instance.Settings.IapConfig.IapFilePath = files[0].Path.LocalPath;
+                ProjectSaveService.Instance.Settings.IapConfig.IapFilePath =
+                    ProjectFilePathService.ToStoredPath(files[0].Path.LocalPath, ProjectSaveService.Instance.ProjectFilePath);
             }
         }
         private async Task StartIapAsync()

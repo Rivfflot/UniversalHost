@@ -41,7 +41,8 @@ public class IapService
     {
         _progress = iapProgress;
         _stage = stage;
-        _protocol = new IapProtocol(settings.IapConfig.IapFilePath, settings.DeviceConfig.DeviceID);
+        var iapFilePath = ProjectFilePathService.ResolvePath(settings.IapConfig.IapFilePath, ProjectSaveService.Instance.ProjectFilePath);
+        _protocol = new IapProtocol(iapFilePath, settings.DeviceConfig.DeviceID);
         // 升级期间即使修改设置或切换工程，本次会话仍使用启动时的参数。
         var config = settings.IapConfig;
         _config = new IapConfig
