@@ -70,4 +70,16 @@
 		<Delete Files="@(NativePdbFiles)" />
 	</Target>
 
+	<!-- 每次发布都从当前文档生成 PDF，包含跳过构建的发布。 -->
+	<PropertyGroup>
+		<ShortcutsPdfPython Condition="'$(ShortcutsPdfPython)' == ''">python</ShortcutsPdfPython>
+	</PropertyGroup>
+	<Target Name="GenerateShortcutsPdf" AfterTargets="Publish" Condition="'$(IsPublishable)' != 'false'">
+		<PropertyGroup>
+			<ShortcutsPdfBrowserArgument Condition="'$(ShortcutsPdfBrowser)' != ''">--browser &quot;$(ShortcutsPdfBrowser)&quot;</ShortcutsPdfBrowserArgument>
+		</PropertyGroup>
+		<Exec WorkingDirectory="$(MSBuildProjectDirectory)"
+		      Command="&quot;$(ShortcutsPdfPython)&quot; &quot;$(MSBuildProjectDirectory)/../tools/publish_shortcuts.py&quot; &quot;$(MSBuildProjectDirectory)/../docs/快捷键.md&quot; &quot;$(PublishDir)快捷键.pdf&quot; $(ShortcutsPdfBrowserArgument)" />
+	</Target>
+
 </Project>
