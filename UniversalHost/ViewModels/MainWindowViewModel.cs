@@ -9,6 +9,7 @@ using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -388,6 +389,34 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         catch (Exception ex)
         {
             NotificationService.Show("保存失败", ex.Message, NotificationType.Warning);
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task OpenShortcutsAsync()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "快捷键.pdf");
+        if (!File.Exists(path))
+        {
+            NotificationService.Show("打开快捷键失败", $"可执行文件目录中不存在快捷键.pdf：{path}", NotificationType.Error);
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "打开快捷键文档失败");
+            NotificationService.Show("打开快捷键失败", ex.Message, NotificationType.Error);
         }
     }
 
