@@ -165,14 +165,20 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                            .Bind(out _filteredMonitorSymbols)
                            .Subscribe().DisposeWith(_disposables);
 
-        // 统计已勾选的监控变量，不受搜索筛选影响。
+        // 按用户指定的数据类型统计已勾选的监控变量，不受搜索筛选影响。
         ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.MonitorConfig.MonitoredSymbols)
                             .Select(source => source.Connect())
                             .Switch()
                             .AutoRefresh(symbol => symbol.IsMonitored)
-                            .AutoRefresh(symbol => symbol.Size)
+                            .AutoRefresh(symbol => symbol.DataType)
                             .Filter(symbol => symbol.IsMonitored)
-                            .QueryWhenChanged(cache => (Count: cache.Count, TotalSize: cache.Items.Sum(symbol => (long)symbol.Size)))
+                            .QueryWhenChanged(cache => (Count: cache.Count, TotalSize: cache.Items.Sum(symbol => symbol.DataType switch
+                            {
+                                SymbolDataType.Int16 or SymbolDataType.Uint16 => 2L,
+                                SymbolDataType.Int32 or SymbolDataType.Uint32 or SymbolDataType.Float32 => 4L,
+                                SymbolDataType.Int64 or SymbolDataType.Uint64 or SymbolDataType.Float64 => 8L,
+                                _ => 1L, // Int8、Uint8、Boolean，以及运行时按 byte 处理的 Unknown。
+                            })))
                             .ObserveOn(AvaloniaScheduler.Instance)
                             .Subscribe(statistics =>
                             {
