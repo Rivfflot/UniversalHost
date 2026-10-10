@@ -1,4 +1,4 @@
-"""Render the shortcuts Markdown with Python's standard library and Edge/Chrome."""
+"""Render user documentation Markdown with Python's standard library and Edge/Chrome."""
 
 import argparse
 import html
@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 
 def inline(text: str) -> str:
@@ -61,9 +62,11 @@ def cells(line: str) -> list[str]:
 
 
 def markdown_body(markdown: str) -> str:
-    """Support the headings, paragraphs, tables and code spans used by this doc."""
+    """Support headings, paragraphs, flat lists, tables and code spans."""
     lines = markdown.splitlines()
     blocks = []
+    headings = []
+    toc_position = 0
     index = 0
     while index < len(lines):
         line = lines[index].strip()
@@ -73,8 +76,31 @@ def markdown_body(markdown: str) -> str:
         heading = re.fullmatch(r"(#{1,6})\s+(.+)", line)
         if heading:
             level = len(heading.group(1))
-            blocks.append(f"<h{level}>{inline(heading.group(2))}</h{level}>")
+            anchor = f"section-{len(headings) + 1}"
+            title = inline(heading.group(2))
+            headings.append((level, anchor, title))
+            if len(headings) == 1 and level == 1:
+                # The visible document title must not wrap the PDF bookmarks.
+                blocks.append(f'<div class="document-title" id="{anchor}">{title}</div>')
+                toc_position = len(blocks)
+            else:
+                blocks.append(f'<h{level} id="{anchor}">{title}</h{level}>')
             index += 1
+            continue
+        list_item = re.fullmatch(r"(?:(\d+)[.)]|([-+*]))\s+(.+)", line)
+        if list_item:
+            ordered = list_item.group(1) is not None
+            tag = "ol" if ordered else "ul"
+            start = f' start="{int(list_item.group(1))}"' if ordered else ""
+            items = [f"<{tag}{start}>"]
+            while index < len(lines):
+                item = re.fullmatch(r"(?:(\d+)[.)]|([-+*]))\s+(.+)", lines[index].strip())
+                if not item or (item.group(1) is not None) != ordered:
+                    break
+                items.append(f"<li>{inline(item.group(3))}</li>")
+                index += 1
+            items.append(f"</{tag}>")
+            blocks.append("\n".join(items))
             continue
         if "|" in line and index + 1 < len(lines):
             separators = cells(lines[index + 1].strip())
@@ -100,9 +126,18 @@ def markdown_body(markdown: str) -> str:
         while index < len(lines) and lines[index].strip():
             if lines[index].lstrip().startswith(("#", "|")):
                 break
+            if re.fullmatch(r"(?:(\d+)[.)]|([-+*]))\s+(.+)", lines[index].strip()):
+                break
             paragraph.append(lines[index].strip())
             index += 1
         blocks.append(f"<p>{inline(' '.join(paragraph))}</p>")
+    entries = [
+        f'<li class="toc-level-{level}"><a href="#{anchor}">{title}</a></li>'
+        for level, anchor, title in headings if level > 1
+    ]
+    if entries:
+        blocks.insert(toc_position, '<nav class="toc" aria-label="目录">'
+                      '<h2>目录</h2><ul>' + "\n".join(entries) + '</ul></nav>')
     return "\n".join(blocks)
 
 
@@ -127,14 +162,17 @@ def find_browser(explicit: str | None) -> Path:
 
 
 STYLE = """
-@page { size: A4; margin: 15mm; }
+@page { size: A4; margin: 15mm;
+        @bottom-center { content: counter(page); font-size: 9pt; color: #66758a; } }
 body { font-family: 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
        font-size: 10pt; line-height: 1.55; color: #202b38; }
-h1 { font-size: 22pt; margin: 0 0 12pt; }
+h1, .document-title { font-size: 22pt; font-weight: bold; margin: 0 0 12pt; }
 h2 { font-size: 14pt; margin: 16pt 0 6pt; border-bottom: 1pt solid #b7c4d3; }
 h3 { font-size: 11pt; margin: 12pt 0 5pt; }
-h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+h1, h2, h3, h4, h5, h6, .document-title { break-after: avoid; }
 p { margin: 5pt 0 8pt; }
+ol, ul { margin: 5pt 0 8pt; padding-left: 20pt; }
+li { margin: 0 0 5pt; break-inside: avoid; }
 table { width: 100%; border-collapse: collapse; margin: 0 0 10pt; font-size: 9pt; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
@@ -142,6 +180,15 @@ th, td { border: 0.5pt solid #c6ced8; padding: 5pt 7pt;
          text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 th { background: #eaf0f7; font-weight: 600; }
 code { font-family: Consolas, 'Microsoft YaHei', 'Noto Sans CJK SC', monospace; }
+.toc { break-after: page; }
+.toc h2 { margin: 8pt 0 10pt; }
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc li { margin: 0; line-height: 1.35; }
+.toc a { display: block; padding: 2pt 0; color: #202b38; text-decoration: none; }
+.toc .toc-level-3 { margin-left: 14pt; }
+.toc .toc-level-4 { margin-left: 28pt; }
+.toc .toc-level-5 { margin-left: 42pt; }
+.toc .toc-level-6 { margin-left: 56pt; }
 """
 
 
@@ -153,24 +200,37 @@ def convert(source: Path, destination: Path, browser: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     # Keep Chromium's profile isolated from the user's running browser. A fresh
     # temporary PDF also ensures that an old publish file cannot mask failure.
-    with tempfile.TemporaryDirectory(prefix="universalhost-pdf-") as directory:
+    with tempfile.TemporaryDirectory(prefix="universalhost-pdf-", ignore_cleanup_errors=True) as directory:
         temporary = Path(directory)
-        input_html = temporary / "shortcuts.html"
-        output_pdf = temporary / "shortcuts.pdf"
+        input_html = temporary / "document.html"
+        output_pdf = temporary / "document.pdf"
         input_html.write_text(document, encoding="utf-8")
+        deadline = time.monotonic() + 90
         result = subprocess.run([
             str(browser), "--headless", "--disable-gpu", "--no-first-run",
             "--no-default-browser-check", "--disable-extensions",
             f"--user-data-dir={temporary / 'profile'}",
             "--no-pdf-header-footer", "--print-to-pdf-no-header",
+            "--export-tagged-pdf", "--generate-pdf-document-outline",
             f"--print-to-pdf={output_pdf}", input_html.as_uri(),
         ], capture_output=True, timeout=90)
-        if result.returncode or not output_pdf.is_file() or output_pdf.stat().st_size < 5:
+        # On Windows the browser launcher can exit before its worker writes the
+        # PDF. Keep the HTML/profile alive and wait for a complete file, within
+        # the same overall timeout, rather than accepting a partly written PDF.
+        while result.returncode == 0 and time.monotonic() < deadline:
+            try:
+                with output_pdf.open("rb") as stream:
+                    header = stream.read(5)
+                    stream.seek(0, os.SEEK_END)
+                    stream.seek(max(0, stream.tell() - 32))
+                    if header == b"%PDF-" and stream.read().rstrip().endswith(b"%%EOF"):
+                        break
+            except OSError:
+                pass
+            time.sleep(0.1)
+        else:
             details = result.stderr.decode("utf-8", errors="replace")[-3000:]
             raise RuntimeError(f"Browser PDF conversion failed (exit {result.returncode}): {details}")
-        with output_pdf.open("rb") as stream:
-            if stream.read(5) != b"%PDF-":
-                raise RuntimeError("Browser output is not a PDF")
         shutil.copyfile(output_pdf, destination)
 
 
@@ -183,14 +243,14 @@ def main() -> int:
     try:
         browser = find_browser(arguments.browser)
     except FileNotFoundError as error:
-        print(f"warning SHORTCUTSPDF001: {error} Skipping shortcuts PDF generation; publish will continue.")
+        print(f"warning SHORTCUTSPDF001: {error} Skipping PDF generation for {arguments.source.name}; publish will continue.")
         return 0
     try:
         convert(arguments.source.resolve(), arguments.destination.resolve(), browser)
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
-        print(f"Shortcuts PDF: {error}", file=sys.stderr)
+        print(f"Documentation PDF ({arguments.source.name}): {error}", file=sys.stderr)
         return 1
-    print(f"Shortcuts PDF generated: {arguments.destination.resolve()}")
+    print(f"Documentation PDF generated: {arguments.destination.resolve()}")
     return 0
 
 

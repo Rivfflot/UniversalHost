@@ -74,12 +74,15 @@
 	<PropertyGroup>
 		<ShortcutsPdfPython Condition="'$(ShortcutsPdfPython)' == ''">python</ShortcutsPdfPython>
 	</PropertyGroup>
-	<Target Name="GenerateShortcutsPdf" AfterTargets="Publish" Condition="'$(IsPublishable)' != 'false'">
+	<Target Name="GenerateDocumentationPdfs" AfterTargets="Publish" Condition="'$(IsPublishable)' != 'false'">
 		<PropertyGroup>
 			<ShortcutsPdfBrowserArgument Condition="'$(ShortcutsPdfBrowser)' != ''">--browser &quot;$(ShortcutsPdfBrowser)&quot;</ShortcutsPdfBrowserArgument>
 		</PropertyGroup>
+		<ItemGroup>
+			<DocumentationMarkdown Include="$(MSBuildProjectDirectory)/../docs/快捷键.md;$(MSBuildProjectDirectory)/../docs/使用说明.md" />
+		</ItemGroup>
 		<Exec WorkingDirectory="$(MSBuildProjectDirectory)"
-		      Command="&quot;$(ShortcutsPdfPython)&quot; &quot;$(MSBuildProjectDirectory)/../tools/publish_shortcuts.py&quot; &quot;$(MSBuildProjectDirectory)/../docs/快捷键.md&quot; &quot;$(PublishDir)快捷键.pdf&quot; $(ShortcutsPdfBrowserArgument)" />
+		      Command="&quot;$(ShortcutsPdfPython)&quot; &quot;$(MSBuildProjectDirectory)/../tools/publish_shortcuts.py&quot; &quot;%(DocumentationMarkdown.Identity)&quot; &quot;$(PublishDir)%(DocumentationMarkdown.Filename).pdf&quot; $(ShortcutsPdfBrowserArgument)" />
 	</Target>
 
 </Project>
