@@ -393,12 +393,18 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     }
 
     [ReactiveCommand]
-    private async Task OpenShortcutsAsync()
+    private Task OpenShortcutsAsync() => OpenDocumentationAsync("快捷键");
+
+    [ReactiveCommand]
+    private Task OpenUserManualAsync() => OpenDocumentationAsync("使用说明");
+
+    private static async Task OpenDocumentationAsync(string title)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "快捷键.pdf");
+        var fileName = $"{title}.pdf";
+        var path = Path.Combine(AppContext.BaseDirectory, fileName);
         if (!File.Exists(path))
         {
-            NotificationService.Show("打开快捷键失败", $"可执行文件目录中不存在快捷键.pdf：{path}", NotificationType.Error);
+            NotificationService.Show($"打开{title}失败", $"可执行文件目录中不存在{fileName}：{path}", NotificationType.Error);
             return;
         }
 
@@ -415,8 +421,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "打开快捷键文档失败");
-            NotificationService.Show("打开快捷键失败", ex.Message, NotificationType.Error);
+            Serilog.Log.Error(ex, "打开{Title}文档失败", title);
+            NotificationService.Show($"打开{title}失败", ex.Message, NotificationType.Error);
         }
     }
 

@@ -35,14 +35,15 @@ UniversalHost 用于与支持 XCP 或自定义 IAP 协议的设备进行通信�
 
 2. 运行 `dotnet publish UniversalHost/UniversalHost.csproj -c Release` 编译发布。
 
-   发布时自动将 `docs/快捷键.md` 转换为 `快捷键.pdf`，放在发布目录中，与可执行文件同级（包括单文件发布和 `--no-build` 发布）。构建机器需要 Python 3.10 或更高版本，以及 Microsoft Edge 或 Chrome；无需安装 Python 第三方包。发布后的程序不需要 Python 或浏览器。
+   发布时自动将 `docs/使用说明.md` 和 `docs/快捷键.md` 转换为 `使用说明.pdf` 和 `快捷键.pdf`，放在发布目录中，与可执行文件同级（包括单文件发布和 `--no-build` 发布）。构建机器需要 Python 3.10 或更高版本，以及 Microsoft Edge 或 Chrome；无需安装 Python 第三方包。发布后的程序不需要 Python 或浏览器。
 
-   默认通过 `PATH` 中的 `python` 启动转换程序，自动查找浏览器。如需指定路径，可传入 `-p:ShortcutsPdfPython="C:/Python/python.exe"` 和 `-p:ShortcutsPdfBrowser="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"`。找不到浏览器时提示警告并跳过 PDF 生成，发布继续；其他转换错误仍会使发布失败。
+   默认通过 `PATH` 中的 `python` 启动转换程序，自动查找浏览器。如需指定路径，可传入 `-p:ShortcutsPdfPython="C:/Python/python.exe"` 和 `-p:ShortcutsPdfBrowser="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"`，这两个设置同时适用于两份文档。找不到浏览器时提示警告并跳过 PDF 生成，发布继续；其他转换错误仍会使发布失败。
 
    也可以单独生成：
 
    ```powershell
    python tools/publish_shortcuts.py docs/快捷键.md UniversalHost/bin/Publish/快捷键.pdf
+   python tools/publish_shortcuts.py docs/使用说明.md UniversalHost/bin/Publish/使用说明.pdf
    ```
    
 3. 运行。
@@ -69,7 +70,7 @@ XCP（Universal Measurement and Calibration Protocol）是一种用于测量、�
 
 自定义 IAP 协议用于设备固件升级及相关控制操作，具体数据格式和命令定义以项目实现及设备协议文档为准。
 
-详细说明集中在 `docs/`：UDP 与串口通信规则见 [传输层约定.md](docs/传输层约定.md)，IAP 定义见 [IAP协议.md](docs/IAP协议.md)，故障录波格式见 [故障录波结构体定义.md](docs/故障录波结构体定义.md)，快捷键见 [快捷键.md](docs/快捷键.md)。
+面向操作人员的完整使用流程见 [使用说明.md](docs/使用说明.md)，键鼠操作见 [快捷键.md](docs/快捷键.md)。协议说明也集中在 `docs/`：UDP 与串口通信规则见 [传输层约定.md](docs/传输层约定.md)，IAP 定义见 [IAP协议.md](docs/IAP协议.md)，故障录波格式见 [故障录波结构体定义.md](docs/故障录波结构体定义.md)。
 
 ## 许可证
 

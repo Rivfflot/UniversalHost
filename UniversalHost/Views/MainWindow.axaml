@@ -191,6 +191,7 @@
 						  IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
 						  Command="{Binding ResetDockLayoutCommand}"
 						  />
+				<MenuItem Header="使用说明" Command="{Binding OpenUserManualCommand}" />
 				<MenuItem Header="快捷键" Command="{Binding OpenShortcutsCommand}" />
 				<MenuItem Header="{Binding AppVersion}" Classes="version-info" IsEnabled="False" />
 			</MenuItem>
