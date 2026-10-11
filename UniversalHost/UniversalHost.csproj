@@ -61,6 +61,12 @@
 		</PackageReference>
 		<PackageReference Include="System.IO.Ports" Version="10.0.12" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<DocumentationMarkdown Include="../docs/快捷键.md;../docs/使用说明.md" />
+	</ItemGroup>
+
+	<Import Project="../build/Documentation.targets" />
 	
 	<!-- 发布后删除pdb文件 -->
 	<Target Name="RemoveNativePdbFiles" AfterTargets="Publish" Condition="'$(Configuration)'=='Release'">
@@ -68,21 +74,6 @@
 			<NativePdbFiles Include="$(PublishDir)**\*.pdb" />
 		</ItemGroup>
 		<Delete Files="@(NativePdbFiles)" />
-	</Target>
-
-	<!-- 每次发布都从当前文档生成 PDF，包含跳过构建的发布。 -->
-	<PropertyGroup>
-		<ShortcutsPdfPython Condition="'$(ShortcutsPdfPython)' == ''">python</ShortcutsPdfPython>
-	</PropertyGroup>
-	<Target Name="GenerateDocumentationPdfs" AfterTargets="Publish" Condition="'$(IsPublishable)' != 'false'">
-		<PropertyGroup>
-			<ShortcutsPdfBrowserArgument Condition="'$(ShortcutsPdfBrowser)' != ''">--browser &quot;$(ShortcutsPdfBrowser)&quot;</ShortcutsPdfBrowserArgument>
-		</PropertyGroup>
-		<ItemGroup>
-			<DocumentationMarkdown Include="$(MSBuildProjectDirectory)/../docs/快捷键.md;$(MSBuildProjectDirectory)/../docs/使用说明.md" />
-		</ItemGroup>
-		<Exec WorkingDirectory="$(MSBuildProjectDirectory)"
-		      Command="&quot;$(ShortcutsPdfPython)&quot; &quot;$(MSBuildProjectDirectory)/../tools/publish_shortcuts.py&quot; &quot;%(DocumentationMarkdown.Identity)&quot; &quot;$(PublishDir)%(DocumentationMarkdown.Filename).pdf&quot; $(ShortcutsPdfBrowserArgument)" />
 	</Target>
 
 </Project>

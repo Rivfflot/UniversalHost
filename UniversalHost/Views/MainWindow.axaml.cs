@@ -1,5 +1,6 @@
 using ReactiveUI.Reactive;
 using ReactiveUI.Avalonia.Reactive;
+using System.Reactive;
 using System.Reactive.Disposables.Fluent;
 using UniversalHost.Services;
 using UniversalHost.ViewModels;
@@ -45,6 +46,14 @@ namespace UniversalHost.Views
                 NotificationService.Register(this);
 
                 if (DataContext is not MainWindowViewModel vm) return;
+
+                vm.ShowDocumentationWindow.RegisterHandler(interaction =>
+                    {
+                        var window = new DocumentationWindow(interaction.Input);
+                        window.Show(this);
+                        interaction.SetOutput(Unit.Default);
+                    })
+                    .DisposeWith(disposables);
 
                 vm.ShowRenameDialog.RegisterHandler(async interaction =>
                     {

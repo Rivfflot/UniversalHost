@@ -49,6 +49,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> OpenIapWindowCommand { get; }
 
     public Interaction<string, string?> ShowRenameDialog { get; } = new Interaction<string, string?>();
+    public Interaction<Documentation, Unit> ShowDocumentationWindow { get; } = new();
 
     [Reactive] private IRootDock _layout;
     [Reactive] private UniversalHost.DockFactory _factory;
@@ -398,26 +399,12 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private Task OpenUserManualAsync() => OpenDocumentationAsync("使用说明");
 
-    private static async Task OpenDocumentationAsync(string title)
+    private async Task OpenDocumentationAsync(string title)
     {
-        var fileName = $"{title}.pdf";
-        var path = Path.Combine(AppContext.BaseDirectory, fileName);
-        if (!File.Exists(path))
-        {
-            NotificationService.Show($"打开{title}失败", $"可执行文件目录中不存在{fileName}：{path}", NotificationType.Error);
-            return;
-        }
-
         try
         {
-            await Task.Run(() =>
-            {
-                using var process = Process.Start(new ProcessStartInfo
-                {
-                    FileName = path,
-                    UseShellExecute = true
-                });
-            });
+            var document = await DocumentationService.LoadAsync(title);
+            await ShowDocumentationWindow.Handle(document);
         }
         catch (Exception ex)
         {

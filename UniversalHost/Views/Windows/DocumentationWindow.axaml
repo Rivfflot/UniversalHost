@@ -1,0 +1,80 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:UniversalHost.ViewModels.Windows"
+        xmlns:controls="using:UniversalHost.Views.Controls"
+        x:Class="UniversalHost.Views.Windows.DocumentationWindow"
+        x:DataType="vm:DocumentationWindowViewModel"
+        Title="{Binding Title}"
+        Background="{DynamicResource DocumentationBackgroundBrush}"
+        Width="1100" Height="760"
+        MinWidth="720" MinHeight="440"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="DocumentationBackgroundBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="DocumentationSidebarBrush" Color="#F5F5F5" />
+                    <SolidColorBrush x:Key="DocumentationBorderBrush" Color="#D4D4D4" />
+                    <SolidColorBrush x:Key="DocumentationTableHeaderBrush" Color="#EAEAEA" />
+                    <SolidColorBrush x:Key="DocumentationTableAlternateBrush" Color="#F8F8F8" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="DocumentationBackgroundBrush" Color="#202020" />
+                    <SolidColorBrush x:Key="DocumentationSidebarBrush" Color="#252525" />
+                    <SolidColorBrush x:Key="DocumentationBorderBrush" Color="#4B4B4B" />
+                    <SolidColorBrush x:Key="DocumentationTableHeaderBrush" Color="#343434" />
+                    <SolidColorBrush x:Key="DocumentationTableAlternateBrush" Color="#282828" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Window.Styles>
+        <Style Selector="ListBox#ContentsList ListBoxItem">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Border.documentation-table-cell">
+            <Setter Property="BorderBrush" Value="{DynamicResource DocumentationBorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource DocumentationBackgroundBrush}" />
+        </Style>
+        <Style Selector="Border.documentation-table-header">
+            <Setter Property="Background" Value="{DynamicResource DocumentationTableHeaderBrush}" />
+        </Style>
+        <Style Selector="Border.documentation-table-alternate">
+            <Setter Property="Background" Value="{DynamicResource DocumentationTableAlternateBrush}" />
+        </Style>
+    </Window.Styles>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" MinWidth="180" MaxWidth="400" />
+            <ColumnDefinition Width="5" />
+            <ColumnDefinition Width="*" MinWidth="360" />
+        </Grid.ColumnDefinitions>
+        <Border Background="{DynamicResource DocumentationSidebarBrush}" Padding="8,16,8,8">
+            <Grid RowDefinitions="Auto,*">
+                <TextBlock Text="目录" FontSize="17" FontWeight="SemiBold" Margin="10,0,10,12" />
+                <ListBox x:Name="ContentsList" Grid.Row="1"
+                         ItemsSource="{Binding Headings}"
+                         SelectionChanged="ContentsListSelectionChanged"
+                         PointerReleased="ContentsListPointerReleased"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DocumentationHeadingViewModel">
+                            <TextBlock Text="{Binding Title}" Margin="{Binding Indent}"
+                                       TextWrapping="Wrap" ToolTip.Tip="{Binding Title}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="{DynamicResource DocumentationBorderBrush}" />
+        <ScrollViewer x:Name="DocumentScroller" Grid.Column="2"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      BringIntoViewOnFocusChange="False">
+            <controls:MarkdownDocumentView x:Name="DocumentPanel" Margin="24,24,24,0" />
+        </ScrollViewer>
+    </Grid>
+</Window>

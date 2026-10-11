@@ -47,16 +47,7 @@ UniversalHost 是面向嵌入式设备开发与调试的通用桌面上位机，
 
 2. 运行 `dotnet publish UniversalHost/UniversalHost.csproj -c Release` 编译发布。
 
-   发布时自动将 `docs/使用说明.md` 和 `docs/快捷键.md` 转换为 `使用说明.pdf` 和 `快捷键.pdf`，放在发布目录中，与可执行文件同级（包括单文件发布和 `--no-build` 发布）。构建机器需要 Python 3.10 或更高版本，以及 Microsoft Edge 或 Chrome；无需安装 Python 第三方包。发布后的程序不需要 Python 或浏览器。
 
-   默认通过 `PATH` 中的 `python` 启动转换程序，自动查找浏览器。如需指定路径，可传入 `-p:ShortcutsPdfPython="C:/Python/python.exe"` 和 `-p:ShortcutsPdfBrowser="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"`，这两个设置同时适用于两份文档。找不到浏览器时提示警告并跳过 PDF 生成，发布继续；其他转换错误仍会使发布失败。
-
-   也可以单独生成：
-
-   ```powershell
-   python tools/publish_shortcuts.py docs/快捷键.md UniversalHost/bin/Publish/快捷键.pdf
-   python tools/publish_shortcuts.py docs/使用说明.md UniversalHost/bin/Publish/使用说明.pdf
-   ```
    
 3. 运行。
 

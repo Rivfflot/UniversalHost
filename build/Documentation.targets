@@ -1,0 +1,28 @@
+<Project>
+  <UsingTask TaskName="UniversalHost.Build.CompileDocumentation"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)DocumentationCompiler.cs" />
+    </Task>
+  </UsingTask>
+
+  <Target Name="GenerateDocumentationSource"
+          Inputs="@(DocumentationMarkdown);$(MSBuildProjectFullPath);$(MSBuildThisFileFullPath);$(MSBuildThisFileDirectory)DocumentationCompiler.cs"
+          Outputs="$(IntermediateOutputPath)Generated/Documentation.g.cs">
+    <CompileDocumentation Sources="@(DocumentationMarkdown)"
+                          OutputFile="$(IntermediateOutputPath)Generated/Documentation.g.cs" />
+  </Target>
+
+  <!-- 独立收集生成文件，保证增量构建跳过生成任务时仍会参与 C# 编译。 -->
+  <Target Name="IncludeCompiledDocumentation" BeforeTargets="CoreCompile" DependsOnTargets="GenerateDocumentationSource">
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)Generated/Documentation.g.cs" />
+      <FileWrites Include="$(IntermediateOutputPath)Generated/Documentation.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
