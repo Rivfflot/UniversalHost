@@ -14,7 +14,6 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
@@ -27,9 +26,7 @@ namespace UniversalHost.ViewModels;
 
 public partial class MainWindowViewModel : ReactiveObject, IDisposable
 {
-    public string AppVersion { get; } = typeof(MainWindowViewModel).Assembly
-        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-        .InformationalVersion.Split('+')[0] ?? "未知";
+    public string AppVersion { get; } = AppInfo.Version;
 
     private readonly ObservableAsPropertyHelper<string> _windowTitle;
     public string WindowTitle => _windowTitle.Value;
@@ -259,8 +256,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             var path = files[0].Path.LocalPath;
             try
             {
-                _disposables.Clear();
                 var layout = ProjectSaveService.LoadProject(path);
+                _disposables.Clear();
                 if (layout == null)
                 {
                     layout = Factory.CreateLayout();

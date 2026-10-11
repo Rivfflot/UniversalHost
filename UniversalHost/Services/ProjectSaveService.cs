@@ -132,6 +132,9 @@ public class ProjectSaveService : ReactiveObject
         using var archive =
             new ZipArchive(fileStream, ZipArchiveMode.Update);
 
+        // 更新前检查格式版本，避免覆盖当前程序无法读取的工程。
+        ProjectMetadataService.Read(archive);
+
         //删除旧 ProjectSaveService.Instance.Settings.json
         archive.GetEntry(SettingsEntryName)?.Delete();
 
@@ -147,6 +150,7 @@ public class ProjectSaveService : ReactiveObject
                 settingsSnapshot,
                 _jsonOptions);
         }
+        await ProjectMetadataService.SaveAsync(archive);
     }
     public static async Task SaveProjectAsync(string path, IRootDock layout)
     {
@@ -166,6 +170,8 @@ public class ProjectSaveService : ReactiveObject
 
         using var archive =
             new ZipArchive(fileStream, ZipArchiveMode.Create);
+
+        await ProjectMetadataService.SaveAsync(archive);
 
         // settings.json
         var settingsEntry =
@@ -226,9 +232,12 @@ public class ProjectSaveService : ReactiveObject
     // 先完整读取工程，再释放旧文档、切换设置和运行时，最后重建文档。
     public static IRootDock? LoadProject(string path)
     {
-        using var fileStream = new FileStream(path, FileMode.Open);
+        using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
+
+        // 先确定格式版本；后续格式迁移应在反序列化业务模型前完成。
+        ProjectMetadataService.Read(archive);
 
         // 读取 settings.json
         ProjectSettings? settings = null;
