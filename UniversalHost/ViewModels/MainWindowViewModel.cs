@@ -396,6 +396,23 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private Task OpenUserManualAsync() => OpenDocumentationAsync("使用说明");
 
+    [ReactiveCommand]
+    private void OpenGitHubRepository()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/Rivfflot/UniversalHost",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Show("打开 GitHub 失败", ex.Message, NotificationType.Warning);
+        }
+    }
+
     private async Task OpenDocumentationAsync(string title)
     {
         try
