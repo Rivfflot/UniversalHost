@@ -182,7 +182,8 @@
 							<ComboBox
 								Margin="8,0,0,0"
 								ItemsSource="{Binding AvailableSerialPorts}"
-								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort}" />
+								SelectedValueBinding="{Binding}"
+								SelectedValue="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort, Mode=TwoWay}" />
 						</StackPanel>
 
 					</Grid>
@@ -341,7 +342,8 @@
 							<ComboBox
 								Margin="8,0,0,0"
 								ItemsSource="{Binding AvailableIPv4Addresses}"
-								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress}" />
+								SelectedValueBinding="{Binding}"
+								SelectedValue="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress, Mode=TwoWay}" />
 						</StackPanel>
 
 					</Grid>

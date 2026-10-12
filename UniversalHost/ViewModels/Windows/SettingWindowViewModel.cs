@@ -236,7 +236,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         _serialPortSource = new SourceList<string>();
         _serialPortSource.AddRange(SerialPort.GetPortNames());
         _serialPortSource.Connect()
-                       .ObserveOn(AvaloniaScheduler.Instance)
                        .Bind(out _availableSerialPorts)
                        .Subscribe().DisposeWith(_disposables);
 
@@ -244,7 +243,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         _localIPSource = new SourceList<string>();
         _localIPSource.AddRange(GetLocalIPv4Addresses());
         _localIPSource.Connect()
-                    .ObserveOn(AvaloniaScheduler.Instance)
                     .Bind(out _availableIPv4Addresses)
                     .Subscribe().DisposeWith(_disposables);
 
@@ -639,14 +637,10 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     {
         var current_selection = ProjectSaveService.Instance.Settings.SerialConfig.SelectedSerialPort;
 
-        // 更新串口SourceList
-        _serialPortSource.Edit(list =>
-        {
-            list.Clear();
-            list.AddRange(SerialPort.GetPortNames());
-        });
+        // 同步增量更新，保留仍可用的列表项及其选择。
+        UpdateAvailableItems(_serialPortSource, SerialPort.GetPortNames());
 
-        // 刷新后恢复原选择。若没有原选择且有串口，默认选择第一个串口。
+        // 刷新后恢复原选择。若原串口已不可用且有串口，默认选择第一个串口。
         if (_availableSerialPorts.Contains(current_selection))
         {
             ProjectSaveService.Instance.Settings.SerialConfig.SelectedSerialPort = current_selection;
@@ -679,17 +673,29 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     {
         var current = ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress;
 
-        // 更新IP SourceList
-        _localIPSource.Edit(list =>
-        {
-            list.Clear();
-            list.AddRange(GetLocalIPv4Addresses());
-        });
+        UpdateAvailableItems(_localIPSource, GetLocalIPv4Addresses());
 
         if (_availableIPv4Addresses.Contains(current))
             ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress = current;
 
-        NotificationService.Show("本地IP刷新成功", String.Join(" ,", ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress), NotificationType.Success);
+        NotificationService.Show("本地IP刷新成功", String.Join(" ,", _availableIPv4Addresses), NotificationType.Success);
+    }
+
+    // 由 UI 线程上的初始化/刷新调用；不要清空仍有效的项，以免 ComboBox 丢失选择。
+    private static void UpdateAvailableItems(SourceList<string> source, IEnumerable<string> items)
+    {
+        var available = items.Distinct().ToList();
+        source.Edit(list =>
+        {
+            foreach (var item in list.Where(item => !available.Contains(item)).ToList())
+                list.Remove(item);
+
+            foreach (var item in available)
+            {
+                if (!list.Contains(item))
+                    list.Add(item);
+            }
+        });
     }
 
     // 判断ipv4是否合法
