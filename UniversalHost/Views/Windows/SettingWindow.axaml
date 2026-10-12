@@ -157,358 +157,358 @@
 		<!--  通信设置  -->
 		<TabItem Header="通信">
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-			<Grid ColumnDefinitions="*,Auto,*" IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
-				<!--  串口  -->
-				<StackPanel Grid.Column="0" Grid.IsSharedSizeScope="True" >
-					<TextBlock FontSize="18" Text="串口" VerticalAlignment="Center" FontWeight="Heavy"/>
-					<!--  选择串口  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+				<Grid ColumnDefinitions="*,Auto,*" IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
+					<!--  串口  -->
+					<StackPanel Grid.Column="0" Grid.IsSharedSizeScope="True" >
+						<TextBlock FontSize="18" Text="串口" VerticalAlignment="Center" FontWeight="Heavy"/>
+						<!--  选择串口  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="串口选择" />
-						<StackPanel
-							Grid.Column="1"
-							Orientation="Horizontal">
-							<Button
-								Command="{Binding RefreshPortsCommand}"
-								Content="刷新" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="串口选择" />
+							<StackPanel
+								Grid.Column="1"
+								Orientation="Horizontal">
+								<Button
+									Command="{Binding RefreshPortsCommand}"
+									Content="刷新" />
+								<ComboBox
+									Margin="8,0,0,0"
+									ItemsSource="{Binding AvailableSerialPorts}"
+									SelectedValueBinding="{Binding}"
+									SelectedValue="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort, Mode=TwoWay}" />
+							</StackPanel>
+
+						</Grid>
+						<!--  波特率  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="波特率" />
+							<NumericUpDown
+								Grid.Column="1"
+								Width="120"
+								HorizontalAlignment="Left"
+								Maximum="10000000"
+								Minimum="1"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding BaudRateTemp}" />
+
+						</Grid>
+						<!--   校验位  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="校验位" />
 							<ComboBox
-								Margin="8,0,0,0"
-								ItemsSource="{Binding AvailableSerialPorts}"
-								SelectedValueBinding="{Binding}"
-								SelectedValue="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort, Mode=TwoWay}" />
-						</StackPanel>
+								Grid.Column="1"
+								ItemsSource="{Binding AvailableParities}"
+								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.ParitySetting}" />
 
-					</Grid>
-					<!--  波特率  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<!--  数据位  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="波特率" />
-						<NumericUpDown
-							Grid.Column="1"
-							Width="120"
-							HorizontalAlignment="Left"
-							Maximum="10000000"
-							Minimum="1"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding BaudRateTemp}" />
-
-					</Grid>
-					<!--   校验位  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
-
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="校验位" />
-						<ComboBox
-							Grid.Column="1"
-							ItemsSource="{Binding AvailableParities}"
-							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.ParitySetting}" />
-
-					</Grid>
-					<!--  数据位  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
-
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="停止位" />
-						<ComboBox
-							Grid.Column="1"
-							ItemsSource="{Binding AvailableStopBits}"
-							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.StopBitsSetting}" />
-
-					</Grid>
-					<!--  超时时间  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
-
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="超时时间ℹ"
-							ToolTip.Tip="单位 ms；设备处理及调度裕量，另计完整应答的线上时间；请求发送完成后开始计时"/>
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="1"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding SerialTimeoutTemp}" />
-
-					</Grid>
-					<!-- 重试次数 -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
-
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="重试次数" />
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding SerialRetryTimesTemp}" />
-
-					</Grid>
-					<Grid ColumnDefinitions="Auto,*">
-						<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="物理双工ℹ"
-							ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP；HalfDuplex：半双工（如两线 RS485），仅支持 IAP。按实际物理链路选择。" />
-						<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDuplexModes}"
-							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DuplexMode}" />
-					</Grid>
-					<Grid ColumnDefinitions="Auto,*">
-						<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="方向控制ℹ"
-							ToolTip.Tip="Automatic：适配器自动换向；RtsHighWhileSending / RtsLowWhileSending：半双工发送时 RTS 高 / 低电平。全双工选 Automatic。" />
-						<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDirectionControls}"
-							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DirectionControl}" />
-					</Grid>
-					<Grid ColumnDefinitions="Auto,*">
-						<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="换向延时ℹ"
-							ToolTip.Tip="单位 ms；半双工收发器和适配器的方向转换裕量，按硬件要求设置。" />
-						<NumericUpDown Grid.Column="1" Width="80" HorizontalAlignment="Left" Minimum="0" Maximum="65535"
-							ShowButtonSpinner="False" ParsingNumberStyle="Integer" Value="{Binding SerialTurnaroundDelayTemp}" />
-					</Grid>
-					<CheckBox Content="适配器有本机回显" IsChecked="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.HasLocalEcho}"
-						ToolTip.Tip="仅在适配器确实返回所发送的完整帧时开启；会消费一份回显后再接受设备应答。" />
-					<TextBlock Text="固定 8 数据位；串口 IAP 前须断开 XCP。" TextWrapping="Wrap" Margin="0,6,0,0" />
-				</StackPanel>
-
-				<Separator Grid.Column="1" HorizontalAlignment="Center" Height="NaN" Width="1"/>
-
-				<!--  UDP  -->
-				<StackPanel Grid.Column="2" Grid.IsSharedSizeScope="True">
-					<TextBlock FontSize="18" Text="UDP" VerticalAlignment="Center" FontWeight="Heavy"/>
-					<!-- 本地IP  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
-
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="本地IP" />
-						<StackPanel
-							Grid.Column="1"
-							Orientation="Horizontal">
-							<Button
-								Command="{Binding RefreshIPCommand}"
-								Content="刷新" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="停止位" />
 							<ComboBox
-								Margin="8,0,0,0"
-								ItemsSource="{Binding AvailableIPv4Addresses}"
-								SelectedValueBinding="{Binding}"
-								SelectedValue="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress, Mode=TwoWay}" />
-						</StackPanel>
+								Grid.Column="1"
+								ItemsSource="{Binding AvailableStopBits}"
+								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.StopBitsSetting}" />
 
-					</Grid>
-					<!--  远程IP  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<!--  超时时间  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="远程IP" />
-						<TextBox
-							Grid.Column="1"
-							MinWidth="130"
-							HorizontalAlignment="Left"
-							VerticalContentAlignment="Center"
-							InnerRightContent="{Binding RemoteAddressError}"
-							Text="{Binding RemoteAddressTemp, Mode=TwoWay}" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="超时时间ℹ"
+								ToolTip.Tip="单位 ms；设备处理及调度裕量，另计完整应答的线上时间；请求发送完成后开始计时"/>
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="1"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding SerialTimeoutTemp}" />
 
-					</Grid>
-					<!--  IAP本地端口  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<!-- 重试次数 -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="IAP本地端口" />
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding IapLocalPortTemp}" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="重试次数" />
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding SerialRetryTimesTemp}" />
 
-					</Grid>
-					<!--  IAP远程端口  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<Grid ColumnDefinitions="Auto,*">
+							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="物理双工ℹ"
+									   ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP；HalfDuplex：半双工（如两线 RS485），仅支持 IAP。按实际物理链路选择。" />
+							<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDuplexModes}"
+									  SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DuplexMode}" />
+						</Grid>
+						<Grid ColumnDefinitions="Auto,*">
+							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="方向控制ℹ"
+									   ToolTip.Tip="Automatic：适配器自动换向；RtsHighWhileSending / RtsLowWhileSending：半双工发送时 RTS 高 / 低电平。全双工选 Automatic。" />
+							<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDirectionControls}"
+									  SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DirectionControl}" />
+						</Grid>
+						<Grid ColumnDefinitions="Auto,*">
+							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="换向延时ℹ"
+									   ToolTip.Tip="单位 ms；半双工收发器和适配器的方向转换裕量，按硬件要求设置。" />
+							<NumericUpDown Grid.Column="1" Width="80" HorizontalAlignment="Left" Minimum="0" Maximum="65535"
+										   ShowButtonSpinner="False" ParsingNumberStyle="Integer" Value="{Binding SerialTurnaroundDelayTemp}" />
+						</Grid>
+						<CheckBox Content="适配器有本机回显" IsChecked="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.HasLocalEcho}"
+								  ToolTip.Tip="仅在适配器确实返回所发送的完整帧时开启；会消费一份回显后再接受设备应答。" />
+						<TextBlock Text="固定 8 数据位；串口 IAP 前须断开 XCP。" TextWrapping="Wrap" Margin="0,6,0,0" />
+					</StackPanel>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="IAP远程端口" />
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding IapRemotePortTemp}" />
+					<Separator Grid.Column="1" HorizontalAlignment="Center" Height="NaN" Width="1"/>
 
-					</Grid>
-					<!--  XCP本地端口  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+					<!--  UDP  -->
+					<StackPanel Grid.Column="2" Grid.IsSharedSizeScope="True">
+						<TextBlock FontSize="18" Text="UDP" VerticalAlignment="Center" FontWeight="Heavy"/>
+						<!-- 本地IP  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="XCP本地端口" />
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding XcpLocalPortTemp}" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="本地IP" />
+							<StackPanel
+								Grid.Column="1"
+								Orientation="Horizontal">
+								<Button
+									Command="{Binding RefreshIPCommand}"
+									Content="刷新" />
+								<ComboBox
+									Margin="8,0,0,0"
+									ItemsSource="{Binding AvailableIPv4Addresses}"
+									SelectedValueBinding="{Binding}"
+									SelectedValue="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress, Mode=TwoWay}" />
+							</StackPanel>
 
-					</Grid>
-					<!--  XCP远程端口  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<!--  远程IP  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="XCP远程端口" />
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding XcpRemotePortTemp}" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="远程IP" />
+							<TextBox
+								Grid.Column="1"
+								MinWidth="130"
+								HorizontalAlignment="Left"
+								VerticalContentAlignment="Center"
+								InnerRightContent="{Binding RemoteAddressError}"
+								Text="{Binding RemoteAddressTemp, Mode=TwoWay}" />
 
-					</Grid>
-					<!--  超时时间  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<!--  IAP本地端口  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="超时时间ℹ"
-							ToolTip.Tip="单位 ms"/>
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding UdpTimeoutTemp}" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="IAP本地端口" />
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding IapLocalPortTemp}" />
 
-					</Grid>
-					<!--  重试次数  -->
-					<Grid>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+						</Grid>
+						<!--  IAP远程端口  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Column="0"
-							Margin="0,0,10,0"
-							VerticalAlignment="Center"
-							Text="重试次数"/>
-						<NumericUpDown
-							Grid.Column="1"
-							Width="80"
-							HorizontalAlignment="Left"
-							Maximum="65535"
-							Minimum="0"
-							ParsingNumberStyle="Integer"
-							ShowButtonSpinner="False"
-							Value="{Binding UdpRetryTimesTemp}" />
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="IAP远程端口" />
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding IapRemotePortTemp}" />
 
-					</Grid>
-				</StackPanel>
-			</Grid>
+						</Grid>
+						<!--  XCP本地端口  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="XCP本地端口" />
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding XcpLocalPortTemp}" />
+
+						</Grid>
+						<!--  XCP远程端口  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="XCP远程端口" />
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding XcpRemotePortTemp}" />
+
+						</Grid>
+						<!--  超时时间  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="超时时间ℹ"
+								ToolTip.Tip="单位 ms"/>
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding UdpTimeoutTemp}" />
+
+						</Grid>
+						<!--  重试次数  -->
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<TextBlock
+								Grid.Column="0"
+								Margin="0,0,10,0"
+								VerticalAlignment="Center"
+								Text="重试次数"/>
+							<NumericUpDown
+								Grid.Column="1"
+								Width="80"
+								HorizontalAlignment="Left"
+								Maximum="65535"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding UdpRetryTimesTemp}" />
+
+						</Grid>
+					</StackPanel>
+				</Grid>
 			</ScrollViewer>
 		</TabItem>
 		<!--  监控设置  -->
@@ -570,6 +570,11 @@
 							Content="删除重复监控变量"
 							ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
 							Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
+							ToolTip.ShowOnDisabled="True"/>
+						<Button
+							Content="清空所有位别名"
+							ToolTip.Tip="清空所有监控和标定变量的位别名"
+							Command="{Binding ClearAllBitAliasesCommand}"
 							ToolTip.ShowOnDisabled="True"/>
 					</StackPanel>
 					<!--  第 3 行：已勾选的监控变量统计  -->
@@ -971,16 +976,16 @@
 					<TextBlock Grid.Row="1"
 							   Grid.Column="0"
 							   Margin="0,0,10,0"
-							   VerticalAlignment="Center" 
+							   VerticalAlignment="Center"
 							   Text="握手总超时ℹ"
 							   ToolTip.Tip="单位 s；每隔 0.5 秒重发握手，须覆盖复位、IAP 启动及通信初始化" />
-					<NumericUpDown Grid.Row="1" 
+					<NumericUpDown Grid.Row="1"
 								   Grid.Column="1"
 								   Width="80"
 								   HorizontalAlignment="Left"
 								   Maximum="65535"
 								   Minimum="1"
-								   ParsingNumberStyle="Integer" 
+								   ParsingNumberStyle="Integer"
 								   ShowButtonSpinner="False"
 								   Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
 					<TextBlock Grid.Row="2"
@@ -989,23 +994,23 @@
 							   VerticalAlignment="Center"
 							   Text="擦除总超时ℹ"
 							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，须覆盖最坏擦除耗时及通信延时" />
-					<NumericUpDown Grid.Row="2" 
-								   Grid.Column="1" 
+					<NumericUpDown Grid.Row="2"
+								   Grid.Column="1"
 								   Width="80"
 								   HorizontalAlignment="Left"
-								   Maximum="65535" 
+								   Maximum="65535"
 								   Minimum="1"
 								   ParsingNumberStyle="Integer"
 								   ShowButtonSpinner="False"
 								   Value="{Binding WaitForEraseTimeoutSecondsTemp}" />
-					<TextBlock Grid.Row="3" 
-							   Grid.Column="0" 
+					<TextBlock Grid.Row="3"
+							   Grid.Column="0"
 							   Margin="0,0,10,0"
-							   VerticalAlignment="Center" 
+							   VerticalAlignment="Center"
 							   Text="写入总超时ℹ"
 							   ToolTip.Tip="单位 s；整体写入模式每隔 0.5 秒重发，须覆盖最坏写入耗时及通信延时" />
 					<NumericUpDown Grid.Row="3"
-								   Grid.Column="1" 
+								   Grid.Column="1"
 								   Width="80"
 								   HorizontalAlignment="Left"
 								   Maximum="65535"
@@ -1014,31 +1019,31 @@
 								   ShowButtonSpinner="False"
 								   Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
 					<TextBlock Grid.Row="4"
-							   Grid.Column="0" 
+							   Grid.Column="0"
 							   Margin="0,0,10,0"
-							   VerticalAlignment="Center" 
+							   VerticalAlignment="Center"
 							   Text="校验总超时ℹ"
 							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，等待目标回读 CRC32 校验完成" />
-					<NumericUpDown Grid.Row="4" 
+					<NumericUpDown Grid.Row="4"
 								   Grid.Column="1"
 								   Width="80"
 								   HorizontalAlignment="Left"
-								   Maximum="65535" 
+								   Maximum="65535"
 								   Minimum="1"
 								   ParsingNumberStyle="Integer"
 								   ShowButtonSpinner="False"
 								   Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
-					<TextBlock Grid.Row="5" 
-							   Grid.Column="0" 
+					<TextBlock Grid.Row="5"
+							   Grid.Column="0"
 							   Margin="0,0,10,0"
 							   VerticalAlignment="Center"
 							   Text="重启总超时ℹ"
 							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，须覆盖复位、APP 启动及通信初始化" />
 					<NumericUpDown Grid.Row="5"
-								   Grid.Column="1" 
+								   Grid.Column="1"
 								   Width="80"
-								   HorizontalAlignment="Left" 
-								   Maximum="65535" 
+								   HorizontalAlignment="Left"
+								   Maximum="65535"
 								   Minimum="1"
 								   ParsingNumberStyle="Integer"
 								   ShowButtonSpinner="False"

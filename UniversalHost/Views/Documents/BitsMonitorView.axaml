@@ -112,7 +112,7 @@
                                                      BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                                                      CornerRadius="0"
                                                      BorderThickness="0.5,0,0.5,0"
-                                                     Text="{Binding Alias}"
+                                                     Text="{Binding AliasInfo.Alias, Mode=TwoWay}"
                                                      IsVisible="{Binding $parent[UserControl].DataContext.Layout.IsAliasVisible}"/>
                                             <!-- Value -->
                                             <TextBlock

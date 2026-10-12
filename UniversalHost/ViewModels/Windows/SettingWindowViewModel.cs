@@ -552,6 +552,21 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     }
     #endregion
 
+    [ReactiveCommand]
+    private void ClearAllBitAliases()
+    {
+        var settings = ProjectSaveService.Instance.Settings;
+        var count = 0;
+        foreach (var symbol in settings.MonitorConfig.MonitoredSymbols.Items
+            .Concat(settings.CalibrateConfig.CalibratedSymbols.Items))
+        {
+            if (symbol.BitAliasesStorage != null)
+                count++;
+            symbol.BitAliasesStorage = null;
+        }
+        NotificationService.Show("位别名已清空", $"已清空 {count} 个变量的位别名", NotificationType.Success);
+    }
+
     private async Task SelectSymbolFileAsync(Window window)
     {
         var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions

@@ -13,6 +13,7 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using System.Threading;
 using UniversalHost.Services;
 
 namespace UniversalHost.Models;
@@ -107,6 +108,62 @@ public partial class UserSymbolInfo : SymbolInfo
     [Reactive] private string _unit = string.Empty;
     [Reactive] private string _description = string.Empty;
     [Reactive] private SymbolDataType _dataType = SymbolDataType.Unknown;
+
+    private readonly Dictionary<int, SymbolBitAlias> _bitAliases = [];
+
+    // 只保存非空别名；没有位别名的变量不输出此属性。
+    [JsonPropertyName("BitAliases")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<int, string>? BitAliasesStorage
+    {
+        get
+        {
+            // 自动保存在线程池读取快照，窗口可能同时按需创建位别名。
+            lock (_bitAliases)
+            {
+                Dictionary<int, string>? aliases = null;
+                foreach (var (index, bitAlias) in _bitAliases)
+                {
+                    var alias = bitAlias.Alias;
+                    if (string.IsNullOrWhiteSpace(alias)) continue;
+                    (aliases ??= [])[index] = alias;
+                }
+                return aliases;
+            }
+        }
+        set
+        {
+            lock (_bitAliases)
+            {
+                foreach (var bitAlias in _bitAliases.Values.ToArray())
+                    bitAlias.Alias = string.Empty;
+
+                if (value == null) return;
+                foreach (var (index, alias) in value)
+                {
+                    if (index >= 0 && index < 64 && !string.IsNullOrWhiteSpace(alias))
+                        GetBitAlias(index).Alias = alias;
+                }
+            }
+        }
+    }
+
+    public SymbolBitAlias GetBitAlias(int index)
+    {
+        if (index < 0 || index >= 64)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        lock (_bitAliases)
+        {
+            if (!_bitAliases.TryGetValue(index, out var bitAlias))
+            {
+                bitAlias = new SymbolBitAlias(index,
+                    () => this.RaisePropertyChanged(nameof(BitAliasesStorage)));
+                _bitAliases.Add(index, bitAlias);
+            }
+            return bitAlias;
+        }
+    }
 
     public static Func<UserSymbolInfo, bool> CreateUserSymbolInfoSearchFilter(string? searchText)
     {
@@ -527,15 +584,19 @@ public static class AppSettingsReactiveObjectExtensions
         var allChanges = GetAllChanges(root);
 
         // 使用 Observable.Merge 合并所有事件流
-        return Observable.Merge(allChanges)
+        // 只忽略订阅时同步发出的集合快照，保留初始化后的第一笔用户修改。
+        var initialized = false;
+        var subscription = Observable.Merge(allChanges)
+            .Where(_ => Volatile.Read(ref initialized))
             //.Do(_ => Debug.WriteLine($"Change detected in {root.GetType().Name}")) // 可选：用于调试哪些对象触发了变更
             .Throttle(TimeSpan.FromSeconds(1)) // 1s 防抖
-            .Skip(1)
             .Subscribe(_ =>
             {
                 Debug.WriteLine("Auto save triggered."); // 确保这个回调被触发
                 callback();
             });
+        Volatile.Write(ref initialized, true);
+        return subscription;
     }
     private static IEnumerable<IObservable<Unit>> GetAllChanges(object obj, HashSet<object>? visited = null)
     {

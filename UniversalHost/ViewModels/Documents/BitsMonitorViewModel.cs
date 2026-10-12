@@ -25,10 +25,10 @@ public partial class BitsMonitorLayout : ReactiveObject
     private static readonly string OneString = "1";
     private static readonly IBrush DefaultBackground = Brushes.Transparent;
     private static readonly IBrush ActiveBackground = Brush.Parse("rgba(255,165,0,0.4)");
-    public partial class BitStyle : ReactiveObject
+    public class BitStyle : ReactiveObject
     {
-        [Reactive] private string _name = "";
-        [Reactive] private string _alias = "";
+        public string Name => $"Bit {AliasInfo.Index}";
+        public SymbolBitAlias AliasInfo { get; }
         private string _valueString = ZeroString;
         [JsonIgnore]
         public string ValueString
@@ -44,25 +44,23 @@ public partial class BitsMonitorLayout : ReactiveObject
             }
         }
         [JsonIgnore] public IBrush BackgroundBrush => _valueString == OneString ? ActiveBackground : DefaultBackground;
-        public BitStyle() { }
-        public BitStyle(string name) { _name = name; }
+        public BitStyle(SymbolBitAlias aliasInfo) { AliasInfo = aliasInfo; }
     }
     public partial class BitsMonitorSymbol : ReactiveObject
     {
         public Guid Id { get; init; } = Guid.NewGuid();
         [JsonIgnore] public SymbolRuntime Runtime { get; } = new SymbolRuntime<byte>(new UserSymbolInfo(), 1);
 
-        public ObservableCollection<BitStyle> Bits { get; init; } = new ObservableCollection<BitStyle>();
+        [JsonIgnore] public ObservableCollection<BitStyle> Bits { get; } = [];
         [Reactive] private bool _isExpanded = true;
         public BitsMonitorSymbol() { }
         public BitsMonitorSymbol(SymbolRuntime runtime)
         {
             Runtime = runtime;
             Id = runtime.Symbol.Id;
-            Bits = [];
             for (int i = 0; i < (runtime.ValueSizeInBytes * 8); i++)
             {
-                Bits.Add(new BitStyle($"Bit {i}"));
+                Bits.Add(new BitStyle(runtime.Symbol.GetBitAlias(i)));
             }
         }
         public void RefreshBits(Span<byte> buffer)
@@ -98,18 +96,8 @@ public partial class BitsMonitorLayout : ReactiveObject
 
             var item = new BitsMonitorSymbol(lookup.Value)
             {
-                Bits = storage.Bits,
                 IsExpanded = storage.IsExpanded,
             };
-            int newBitNum = lookup.Value.ValueSizeInBytes * 8;
-            while (item.Bits.Count > newBitNum)
-            {
-                item.Bits.RemoveAt(newBitNum);
-            }
-            while (item.Bits.Count < newBitNum)
-            {
-                item.Bits.Add(new BitStyle($"Bit {item.Bits.Count}"));
-            }
             BitsMonitorSymbols.Add(item);
         }
         _pendingSymbols = null;
@@ -155,28 +143,13 @@ public partial class BitsMonitorViewModel : ReactiveObject, IDisposable
 
                       if (oldSymbol != null)
                       {
-                          int oldBitNum = oldSymbol.Bits.Count;
-                          int newBitNum = current.ValueSizeInBytes * 8;
-                          if (oldBitNum > newBitNum)
-                          {
-                              for (int i = newBitNum; i < oldBitNum; i++)
-                              {
-                                  oldSymbol.Bits.RemoveAt(newBitNum);
-                              }
-                          }
-                          else if (newBitNum > oldBitNum)
-                          {
-                              for (int i = oldBitNum; i < newBitNum; i++)
-                              {
-                                  oldSymbol.Bits.Add(new BitsMonitorLayout.BitStyle($"Bit {i}"));
-                              }
-                          }
-
                           var newSymbol = new BitsMonitorLayout.BitsMonitorSymbol(current)
                           {
-                              Bits = oldSymbol.Bits,
+                              IsExpanded = oldSymbol.IsExpanded,
                           };
                           Layout.BitsMonitorSymbols.Replace(oldSymbol, newSymbol);
+                          if (SelectedBitsMonitorSymbol == oldSymbol)
+                              SelectedBitsMonitorSymbol = newSymbol;
                       }
                   })
                   .Subscribe()
