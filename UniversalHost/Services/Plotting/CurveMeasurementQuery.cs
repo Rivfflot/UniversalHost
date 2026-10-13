@@ -1,5 +1,6 @@
 using System;
 using UniversalHost.Models;
+using UniversalHost.Models.Plotting;
 
 namespace UniversalHost.Services.Plotting;
 

@@ -114,6 +114,7 @@ public static class DockableRegistry
         //更新曲线监控窗口
         foreach (var item in CurveMonitorDocuments)
         {
+            item.Value.CapturePlotState?.Invoke();
             ContextSave.CurveMonitorIdLayoutPairs.Add(item.Key, item.Value.CurvesLayout);
         }
         //更新表格监控窗口

@@ -17,6 +17,7 @@ using System.Reactive.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using UniversalHost.Models.Plotting;
 using UniversalHost.Services;
 using UniversalHost.ViewModels.Windows;
 
@@ -29,6 +30,8 @@ public partial class CurveMonitorLayout : ReactiveObject
     {
         public Guid Id { get; set; }
         public bool IsVisible { get; set; }
+        public uint? ColorArgb { get; set; }
+        public CurveAxisRange? YAxisRange { get; set; }
     }
     //曲线绑定项
     public partial class CurveItem : ReactiveObject
@@ -37,6 +40,7 @@ public partial class CurveMonitorLayout : ReactiveObject
         public SymbolRuntime Runtime { get; }
         public ScottPlot.Plottables.Signal? Signal;
         public ScottPlot.AxisPanels.LeftAxis? YAxis;
+        public CurveAxisRange? YAxisRange { get; set; }
         #region Curve Sytle
         private bool _isVisible = true;
         public bool IsVisible
@@ -71,6 +75,8 @@ public partial class CurveMonitorLayout : ReactiveObject
         public void ApplyStorage(CurveItemStorage storage)
         {
             IsVisible = storage.IsVisible;
+            YAxisRange = storage.YAxisRange is { IsValid: true } ? storage.YAxisRange : null;
+            if (storage.ColorArgb is { } color) Color = Avalonia.Media.Color.FromUInt32(color);
         }
     }
     [JsonIgnore] private readonly SourceList<CurveItem> _curvesSource = new();
@@ -86,6 +92,8 @@ public partial class CurveMonitorLayout : ReactiveObject
                             {
                                 Id = x.Id,
                                 IsVisible = x.IsVisible,
+                                ColorArgb = x.HasColor ? x.Color.ToUInt32() : null,
+                                YAxisRange = x.YAxisRange,
                             }).ToList(); // 保存时：从 SourceList 转换到 List
         // 反序列化只保存 Id 和样式，不能查询上一工程或尚未建立的运行时。
         set => _pendingCurves = value ?? [];
@@ -111,6 +119,8 @@ public partial class CurveMonitorLayout : ReactiveObject
         _pendingCurves = null;
     }
     //页面布局保存项
+    public CurveAxisRange? XAxisRange { get; set; }
+    public Guid? SelectedCurveId { get; set; }
     [JsonIgnore][Reactive] private GridLength _leftPanelLength = new(150);
     [JsonPropertyName("LeftPanelLength")]
     public double LeftPanelLengthStorage
@@ -136,6 +146,8 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
     public Action<CurveMonitorLayout.CurveItem>? RemoveCurve;
     public Action<CurveMonitorLayout.CurveItem>? AddCurve;
     public Action? RefreshCurve;
+    // 激活的视图提供实时坐标快照；隐藏窗口直接使用布局中暂存的范围。
+    public Action? CapturePlotState;
     [Reactive] private CurveMonitorLayout.CurveItem? _selectedCurveItem;
     // 测量模式和读数属于窗口运行时状态，不写入工程布局。
     private CurveMeasurementMode _measurementMode;
@@ -230,9 +242,11 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
                             {
                                 IsVisible = oldItem.IsVisible,
                             };
+                            // 移除绘图对象前采集旧轴，运行时重建也保留独立纵轴范围。
+                            RemoveCurve?.Invoke(oldItem);
+                            newItem.YAxisRange = oldItem.YAxisRange;
                             if (oldItem.HasColor) newItem.Color = oldItem.Color;
                             CurvesLayout.CurvesSource.Replace(oldItem, newItem);
-                            RemoveCurve?.Invoke(oldItem);
                             AddCurve?.Invoke(newItem);
                             if (wasSelected)
                             {
@@ -254,7 +268,8 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
                 .Subscribe(_ =>
                 {
                     if (SelectedCurveItem == null && _displayCurves.Count > 0)
-                        SelectedCurveItem = _displayCurves[0];
+                        SelectedCurveItem = _displayCurves.FirstOrDefault(x => x.Id == CurvesLayout.SelectedCurveId)
+                            ?? _displayCurves[0];
                 })
                 .DisposeWith(_disposables);
 
@@ -267,6 +282,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         //只显示选中变量的Y轴
         this.WhenAnyValue(x => x.SelectedCurveItem).Subscribe(s =>
         {
+            if (s != null) CurvesLayout.SelectedCurveId = s.Id;
             foreach (var item in DisplayCurves)
             {
                 item.YAxis?.IsVisible = false;

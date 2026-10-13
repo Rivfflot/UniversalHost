@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UniversalHost.Models;
+using UniversalHost.Models.Plotting;
 
 namespace UniversalHost.Services.Plotting;
 

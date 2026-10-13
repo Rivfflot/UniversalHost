@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using UniversalHost.Models;
+using UniversalHost.Models.Plotting;
 
 namespace UniversalHost.Services.Plotting;
 

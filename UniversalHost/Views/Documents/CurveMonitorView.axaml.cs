@@ -15,6 +15,8 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
+using UniversalHost.Models;
+using UniversalHost.Models.Plotting;
 using UniversalHost.Services;
 using UniversalHost.Services.Plotting;
 using UniversalHost.ViewModels.Documents;
@@ -36,6 +38,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         public ScottPlot.Plottables.Signal Signal { get; } = signal;
         public ScottPlot.AxisPanels.LeftAxis YAxis { get; } = yAxis;
         public long LastVersion { get; set; } = -1;
+        public long LastAutoScaleVersion { get; set; } = -1;
     }
     private readonly Dictionary<CurveMonitorLayout.CurveItem, CurveRenderState> _curves = [];
     private static readonly DataFormat<CurveMonitorLayout.CurveItem> RowFormat =
@@ -115,10 +118,13 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 CurvePlot.Plot.Axes.SetLimitsX(0, monitorConfig.MaxSaveLen * (1 + XAxisRightMargin));
             }
             CurvePlot.Plot.Axes.Margins(0, XAxisRightMargin, 0.05, 0.05);
-            SetXAxisLimits();
+            if (viewModel.CurvesLayout.XAxisRange is { IsValid: true } xRange)
+                CurvePlot.Plot.Axes.SetLimitsX(xRange.Min, xRange.Max);
+            else
+                SetXAxisLimits();
             var scanLine = CurvePlot.Plot.Add.VerticalLine(0, 0.95f, Colors.Red);
             scanLine.IsVisible = false;
-            void RefreshPlot(bool force = true)
+            void RefreshPlot(bool force = true, bool resetAutoScale = false)
             {
                 bool changed = UpdateCurveRenderRanges();
                 if (!force && !changed)
@@ -143,12 +149,19 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 }
                 if (viewModel.CurvesLayout.IsYAxisAutoScaleEnabled)
                 {
+                    bool autoScaled = resetAutoScale;
                     foreach (var curveState in _curves.Values)
                     {
-                        if (curveState.Signal.IsVisible)
+                        // 切换标签、选择曲线等无数据变化的重绘不能覆盖暂存的范围。
+                        if (curveState.Signal.IsVisible &&
+                            (resetAutoScale || curveState.LastAutoScaleVersion != curveState.LastVersion))
+                        {
                             CurvePlot.Plot.Axes.AutoScaleY(curveState.YAxis);
+                            curveState.LastAutoScaleVersion = curveState.LastVersion;
+                            autoScaled = true;
+                        }
                     }
-                    SetXAxisLimits();
+                    if (autoScaled) SetXAxisLimits();
                 }
                 measurements.Update();
                 measurements.BringToFront();
@@ -157,17 +170,27 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             Action<CurveMonitorLayout.CurveItem> removeCurveHandler = RemoveCurve;
             Action<CurveMonitorLayout.CurveItem> addCurveHandler = AddCurve;
             Action refreshCurveHandler = () => RefreshPlot();
+            Action capturePlotStateHandler = () =>
+            {
+                var xAxis = CurvePlot.Plot.Axes.Bottom;
+                viewModel.CurvesLayout.XAxisRange = CurveAxisRange.Create(xAxis.Min, xAxis.Max);
+                foreach (var (item, curve) in _curves)
+                    item.YAxisRange = CurveAxisRange.Create(curve.YAxis.Min, curve.YAxis.Max);
+            };
             var themeChangedHandler = new EventHandler((s, e) => ApplyPlotTheme());
             viewModel.RemoveCurve += removeCurveHandler;
             viewModel.AddCurve += addCurveHandler;
             viewModel.RefreshCurve += refreshCurveHandler;
+            viewModel.CapturePlotState += capturePlotStateHandler;
             ActualThemeVariantChanged += themeChangedHandler;
 
             Disposable.Create(() =>
             {
+                capturePlotStateHandler();
                 viewModel.RemoveCurve -= removeCurveHandler;
                 viewModel.AddCurve -= addCurveHandler;
                 viewModel.RefreshCurve -= refreshCurveHandler;
+                viewModel.CapturePlotState -= capturePlotStateHandler;
                 ActualThemeVariantChanged -= themeChangedHandler;
                 subscriptions.Dispose();
                 ResetYAxisInput();
@@ -198,7 +221,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             viewModel.CurvesLayout.WhenAnyValue(x => x.IsYAxisAutoScaleEnabled)
                 .Skip(1)
                 .ObserveOn(AvaloniaScheduler.Instance)
-                .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
+                .Subscribe(_ => RefreshPlot(resetAutoScale: true)).DisposeWith(subscriptions);
             viewModel.WhenAnyValue(x => x.MeasurementMode)
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(mode =>
@@ -213,7 +236,11 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             monitorConfig.WhenAnyValue(x => x.MaxSaveLen)
                 .Skip(1)
                 .ObserveOn(AvaloniaScheduler.Instance)
-                .Subscribe(_ => RefreshPlot()).DisposeWith(subscriptions);
+                .Subscribe(_ =>
+                {
+                    SetXAxisLimits();
+                    RefreshPlot(resetAutoScale: true);
+                }).DisposeWith(subscriptions);
 
             // UI 定时器不会积压后台 Interval 排入的刷新事件；空闲或隐藏窗口不重绘。
             // 持续检查版本，也覆盖停止监控后的最后一帧、清空历史和重新显示窗口。
@@ -436,7 +463,13 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         item.YAxis.IsVisible = isFirst;
         item.Signal.Axes.XAxis = CurvePlot.Plot.Axes.Bottom;
         item.Signal.Axes.YAxis = item.YAxis;
-        _curves.Add(item, new CurveRenderState(item.Signal, item.YAxis));
+        var renderState = new CurveRenderState(item.Signal, item.YAxis);
+        if (item.YAxisRange is { IsValid: true } range)
+        {
+            item.YAxis.Range.Set(range.Min, range.Max);
+            renderState.LastAutoScaleVersion = item.Runtime.PlotHistory.Version;
+        }
+        _curves.Add(item, renderState);
         UpdateCurveRenderRanges();
         ApplyPlotTheme();
     }
@@ -444,6 +477,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     {
         if (!_curves.Remove(item, out var curve)) return;
 
+        item.YAxisRange = CurveAxisRange.Create(curve.YAxis.Min, curve.YAxis.Max);
         if (ReferenceEquals(_yAxisDrag.Axis, curve.YAxis)) EndYAxisDrag();
         CurvePlot.Plot.Remove(curve.Signal);
         CurvePlot.Plot.Remove(curve.YAxis);

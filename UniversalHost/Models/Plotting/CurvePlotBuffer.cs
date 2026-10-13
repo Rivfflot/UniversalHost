@@ -1,6 +1,6 @@
 using System;
 
-namespace UniversalHost.Models;
+namespace UniversalHost.Models.Plotting;
 
 /// <summary>
 /// 曲线专用环形缓冲区。索引和导出仍按最新到最旧排列；绘图查询使用物理索引，

@@ -1,4 +1,4 @@
-namespace UniversalHost.Models;
+namespace UniversalHost.Models.Plotting;
 
 public enum CurveMeasurementMode
 {
