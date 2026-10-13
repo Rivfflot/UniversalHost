@@ -14,7 +14,7 @@
         Text="{Binding Stage}"
         HorizontalAlignment="Left"
         Height="22"
-        MaxWidth="100"/>
+        MaxWidth="200"/>
 
         <StackPanel Orientation="Horizontal">
             <Button
