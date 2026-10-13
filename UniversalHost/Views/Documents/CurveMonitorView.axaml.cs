@@ -156,7 +156,8 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                         if (curveState.Signal.IsVisible &&
                             (resetAutoScale || curveState.LastAutoScaleVersion != curveState.LastVersion))
                         {
-                            CurvePlot.Plot.Axes.AutoScaleY(curveState.YAxis);
+                            if (!CurveAxisAutoScaler.TryAutoScaleY(curveState.Signal, CurvePlot.Plot.Axes.AutoScaler))
+                                CurvePlot.Plot.Axes.AutoScaleY(curveState.YAxis);
                             curveState.LastAutoScaleVersion = curveState.LastVersion;
                             autoScaled = true;
                         }
@@ -460,6 +461,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             item.Color = Avalonia.Media.Color.FromUInt32(item.Signal.Color.ARGB);
         }
         item.YAxis = CurvePlot.Plot.Axes.AddLeftAxis();
+        item.YAxis.TickGenerator = new CurveAxisTicks(item.YAxis, item.YAxis.TickGenerator);
         item.YAxis.IsVisible = isFirst;
         item.Signal.Axes.XAxis = CurvePlot.Plot.Axes.Bottom;
         item.Signal.Axes.YAxis = item.YAxis;
@@ -479,8 +481,13 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
 
         item.YAxisRange = CurveAxisRange.Create(curve.YAxis.Min, curve.YAxis.Max);
         if (ReferenceEquals(_yAxisDrag.Axis, curve.YAxis)) EndYAxisDrag();
-        CurvePlot.Plot.Remove(curve.Signal);
-        CurvePlot.Plot.Remove(curve.YAxis);
+        // 与 ScottPlot 的渲染锁同步，确保原生路径不会在绘图中途被释放。
+        lock (CurvePlot.Plot.Sync)
+        {
+            CurvePlot.Plot.Remove(curve.Signal);
+            if (curve.Signal is IDisposable disposable) disposable.Dispose();
+            CurvePlot.Plot.Remove(curve.YAxis);
+        }
         if (ReferenceEquals(item.Signal, curve.Signal)) item.Signal = null;
         if (ReferenceEquals(item.YAxis, curve.YAxis)) item.YAxis = null;
     }

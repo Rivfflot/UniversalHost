@@ -52,6 +52,17 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
     public PixelColumn GetPixelColumn(IAxes axes, int xPixelIndex)
     {
         float x = axes.DataRect.Left + xPixelIndex;
+        CurvePixelColumn column = GetColumn(axes, xPixelIndex);
+        return column.Range.HasValues ? new PixelColumn(x,
+            axes.GetPixelY(column.Enter * YScale + YOffset),
+            axes.GetPixelY(column.Exit * YScale + YOffset),
+            axes.GetPixelY(column.Range.Minimum * YScale + YOffset),
+            axes.GetPixelY(column.Range.Maximum * YScale + YOffset)) : PixelColumn.WithoutData(x);
+    }
+
+    internal CurvePixelColumn GetColumn(IAxes axes, int xPixelIndex)
+    {
+        float x = axes.DataRect.Left + xPixelIndex;
         double x1 = axes.GetCoordinateX(x);
         double x2 = axes.GetCoordinateX(x + 1);
         double left = Math.Min(x1, x2);
@@ -59,22 +70,18 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
         int first = MinRenderIndex;
         int last = MaxRenderIndex;
         if (first > last || !RangeContainsSignal(left, right))
-            return PixelColumn.WithoutData(x);
+            return CurvePixelColumn.Empty;
         int i1 = GetIndex(left, true);
         int i2 = GetIndex(right, true);
         CurvePlotRange range = history.GetRange(i1, i2);
-        if (!range.HasValues) return PixelColumn.WithoutData(x);
+        if (!range.HasValues) return CurvePixelColumn.Empty;
 
         double enter = history.GetPhysicalValue(i1);
         double exit = history.GetPhysicalValue(i2);
         // 非有限设备值不参与缩放，也不让它遮掉同一像素内的有效尖峰。
         if (!double.IsFinite(enter)) enter = range.Minimum;
         if (!double.IsFinite(exit)) exit = range.Maximum;
-        return new PixelColumn(x,
-            axes.GetPixelY(enter * YScale + YOffset),
-            axes.GetPixelY(exit * YScale + YOffset),
-            axes.GetPixelY(range.Minimum * YScale + YOffset),
-            axes.GetPixelY(range.Maximum * YScale + YOffset));
+        return new(range, enter, exit);
     }
 
     int IDataSource.GetXClosestIndex(Coordinates location) => GetIndex(location.X, true);
@@ -94,80 +101,149 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
 }
 
 /// <summary>无锁读取历史的屏幕数据，保留逐像素包络与原始点绘制。</summary>
-internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
+internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal, IDisposable
 {
     private readonly CurvePlotBuffer _history;
+    private readonly CurvePixelColumnCache _columnCache;
     private PixelColumn[] _columns = [];
+    private readonly List<Pixel> _markers = [];
+    private SkiaSharp.SKPath? _path;
+    private SkiaSharp.SKRect[] _rectangles = [];
+    private int _rectangleCount;
+    private GeometryKey? _geometryKey;
+    private GeometryKind _geometryKind;
+    private enum GeometryKind { Points, ColumnPath, SmoothEnvelope, Rectangles }
+    private readonly record struct GeometryKey(PixelRect Rect, double XMin, double XMax, double YMin, double YMax,
+        double Period, double XOffset, double YScale, double YOffset, int First, int Last,
+        bool LowDensity, bool Envelope, long Revision);
+    private SkiaSharp.SKPath Path => _path ??= new();
 
     public CurvePlotSignal(CurvePlotBuffer history) : base(new CurvePlotSignalSource(history) { Period = 1 })
     {
         _history = history;
+        _columnCache = new(history);
     }
 
     public override void Render(RenderPack rp)
     {
-        using SkiaSharp.SKPath path = new();
-        List<Pixel>? markers = null;
-        int columnCount = 0;
         int first = Math.Max(0, MinRenderIndex);
         int last = Math.Min(_history.Count - 1, MaxRenderIndex);
-        if (first > last || Axes.DataRect.Width <= 0) return;
+        if (first > last || Axes.DataRect.Width <= 0 || Axes.DataRect.Height <= 0 ||
+            Data.Period <= 0 || !double.IsFinite(Data.Period)) return;
 
         double left = Axes.GetCoordinateX(Axes.DataRect.Left);
         double right = Axes.GetCoordinateX(Axes.DataRect.Right);
         double xMin = Math.Min(left, right);
         double xMax = Math.Max(left, right);
+        if (!double.IsFinite(xMin) || !double.IsFinite(xMax) || xMin == xMax) return;
         double pointsPerPixel = (xMax - xMin) / Axes.DataRect.Width / Data.Period;
-        bool connected = false;
-        if (pointsPerPixel < 1 || AlwaysUseLowDensityMode)
+        bool lowDensity = pointsPerPixel < 1 || AlwaysUseLowDensityMode;
+        bool envelope = !lowDensity && LineWidth == 1 && !LineStyle.Hairline &&
+            !LineStyle.HandDrawn && LinePattern.Equals(ScottPlot.LinePattern.Solid) &&
+            LineStyle.StrokeCap == SkiaSharp.SKStrokeCap.Butt;
+        long revision;
+        if (lowDensity)
+            revision = _history.Version;
+        else
         {
-            int i1 = Data.GetIndex(xMin, true);
-            int i2 = Data.GetIndex(xMax + Data.Period, true);
-            markers = [];
-            for (int i = i1; i <= i2; i++)
+            _columnCache.Update(Axes, (CurvePlotSignalSource)Data);
+            revision = _columnCache.Revision;
+        }
+        var key = new GeometryKey(Axes.DataRect, xMin, xMax, Axes.YAxis.Min, Axes.YAxis.Max,
+            Data.Period, Data.XOffset, Data.YScale, Data.YOffset, first, last, lowDensity, envelope, revision);
+        if (_geometryKey != key)
+        {
+            if (lowDensity)
             {
-                double y = Data.GetY(i) * Data.YScale + Data.YOffset;
-                if (!double.IsFinite(y))
-                {
-                    connected = false;
-                    continue;
-                }
-                Pixel pixel = new(Axes.GetPixelX(Data.GetX(i)), Axes.GetPixelY(y));
-                if (connected) path.LineTo(pixel.X, pixel.Y);
-                else path.MoveTo(pixel.X, pixel.Y);
-                connected = true;
-                markers.Add(pixel);
+                BuildPointPath(xMin, xMax);
+                _geometryKind = GeometryKind.Points;
             }
+            else
+            {
+                UpdatePixelColumns();
+                int count = _columnCache.ColumnCount;
+                if (envelope)
+                {
+                    if (HasSmoothWideEnvelope(count))
+                    {
+                        BuildSmoothEnvelope(Path, count);
+                        _geometryKind = GeometryKind.SmoothEnvelope;
+                    }
+                    else
+                    {
+                        BuildEnvelopeRectangles(count);
+                        _geometryKind = GeometryKind.Rectangles;
+                    }
+                }
+                else
+                {
+                    Path.Rewind();
+                    BuildColumnPath(Path, count);
+                    _geometryKind = GeometryKind.ColumnPath;
+                }
+            }
+            _geometryKey = key;
+        }
+
+        // 同一视野的无变化重绘（光标、其他窗口或布局刷新）复用已生成的几何对象。
+        if (_geometryKind is GeometryKind.Rectangles or GeometryKind.SmoothEnvelope)
+        {
+            if (!LineStyle.CanBeRendered) return;
+            LineStyle.ApplyToPaint(rp.Paint);
+            rp.Paint.IsStroke = false;
+            if (_geometryKind == GeometryKind.SmoothEnvelope) rp.Canvas.DrawPath(Path, rp.Paint.SKPaint);
+            else
+                for (int i = 0; i < _rectangleCount; i++) rp.Canvas.DrawRect(_rectangles[i], rp.Paint.SKPaint);
         }
         else
         {
-            columnCount = (int)Axes.DataRect.Width;
-            if (_columns.Length < columnCount) _columns = new PixelColumn[columnCount];
-            for (int x = 0; x < columnCount; x++)
-                _columns[x] = Data.GetPixelColumn(Axes, x);
-        }
-
-        // 普通细实线直接绘制像素列矩形，避免中间密度下复杂路径的填充/描边低谷。
-        if (markers == null)
-        {
-            bool useEnvelopeRendering = LineWidth == 1 && !LineStyle.Hairline &&
-                !LineStyle.HandDrawn && LinePattern.Equals(ScottPlot.LinePattern.Solid) &&
-                LineStyle.StrokeCap == SkiaSharp.SKStrokeCap.Butt;
-            if (useEnvelopeRendering)
+            Drawing.DrawPath(rp.Canvas, rp.Paint, Path, LineStyle);
+            if (lowDensity && pointsPerPixel < 1)
             {
-                if (HasSmoothWideEnvelope(columnCount)) RenderSmoothEnvelope(rp, path, columnCount);
-                else RenderEnvelopeRectangles(rp, columnCount);
-                return;
+                float radius = (float)Math.Min(Math.Sqrt(.2 / pointsPerPixel), MaximumMarkerSize);
+                MarkerSize = radius * MaximumMarkerSize * .2f;
+                Drawing.DrawMarkers(rp.Canvas, rp.Paint, _markers, MarkerStyle);
             }
-            BuildColumnPath(path, columnCount);
         }
-        // 特殊线型和放大后的原始点保留折线绘制。
-        Drawing.DrawPath(rp.Canvas, rp.Paint, path, LineStyle);
-        if (markers != null && pointsPerPixel < 1)
+    }
+
+    private void BuildPointPath(double xMin, double xMax)
+    {
+        Path.Rewind();
+        _markers.Clear();
+        int i1 = Data.GetIndex(xMin, true);
+        int i2 = Data.GetIndex(xMax + Data.Period, true);
+        bool connected = false;
+        for (int i = i1; i <= i2; i++)
         {
-            float radius = (float)Math.Min(Math.Sqrt(.2 / pointsPerPixel), MaximumMarkerSize);
-            MarkerSize = radius * MaximumMarkerSize * .2f;
-            Drawing.DrawMarkers(rp.Canvas, rp.Paint, markers, MarkerStyle);
+            double y = Data.GetY(i) * Data.YScale + Data.YOffset;
+            if (!double.IsFinite(y))
+            {
+                connected = false;
+                continue;
+            }
+            Pixel pixel = new(Axes.GetPixelX(Data.GetX(i)), Axes.GetPixelY(y));
+            if (connected) Path.LineTo(pixel.X, pixel.Y);
+            else Path.MoveTo(pixel.X, pixel.Y);
+            connected = true;
+            _markers.Add(pixel);
+        }
+    }
+
+    private void UpdatePixelColumns()
+    {
+        int count = _columnCache.ColumnCount;
+        if (_columns.Length < count) _columns = new PixelColumn[count];
+        var columns = _columnCache.Columns;
+        for (int i = 0; i < count; i++)
+        {
+            CurvePixelColumn column = columns[i];
+            float x = Axes.DataRect.Left + i;
+            _columns[i] = column.Range.HasValues ? new PixelColumn(x,
+                Axes.GetPixelY(column.Enter * Data.YScale + Data.YOffset),
+                Axes.GetPixelY(column.Exit * Data.YScale + Data.YOffset),
+                Axes.GetPixelY(column.Range.Minimum * Data.YScale + Data.YOffset),
+                Axes.GetPixelY(column.Range.Maximum * Data.YScale + Data.YOffset)) : PixelColumn.WithoutData(x);
         }
     }
 
@@ -208,9 +284,9 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
         return column.HasData && top < bottom;
     }
 
-    private void RenderSmoothEnvelope(RenderPack rp, SkiaSharp.SKPath path, int count)
+    private void BuildSmoothEnvelope(SkiaSharp.SKPath path, int count)
     {
-        if (!LineStyle.CanBeRendered) return;
+        path.Rewind();
         int first = 0;
         while (first < count)
         {
@@ -235,16 +311,12 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
             path.Close();
             first = end;
         }
-        LineStyle.ApplyToPaint(rp.Paint);
-        rp.Paint.IsStroke = false;
-        rp.Canvas.DrawPath(path, rp.Paint.SKPaint);
     }
 
-    private void RenderEnvelopeRectangles(RenderPack rp, int count)
+    private void BuildEnvelopeRectangles(int count)
     {
-        if (!LineStyle.CanBeRendered) return;
-        LineStyle.ApplyToPaint(rp.Paint);
-        rp.Paint.IsStroke = false;
+        if (_rectangles.Length < count) _rectangles = new SkiaSharp.SKRect[count];
+        _rectangleCount = 0;
 
         const float mergeTolerance = .25f;
         bool active = false;
@@ -255,7 +327,7 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
             PixelColumn column = _columns[i];
             if (!TryGetVisibleEdges(column, out float top, out float bottom))
             {
-                if (active) rp.Canvas.DrawRect(new SkiaSharp.SKRect(left, topMin, right, bottomMax), rp.Paint.SKPaint);
+                if (active) _rectangles[_rectangleCount++] = new(left, topMin, right, bottomMax);
                 active = false;
                 continue;
             }
@@ -275,14 +347,14 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
                 continue;
             }
 
-            if (active) rp.Canvas.DrawRect(new SkiaSharp.SKRect(left, topMin, right, bottomMax), rp.Paint.SKPaint);
+            if (active) _rectangles[_rectangleCount++] = new(left, topMin, right, bottomMax);
             active = true;
             left = columnLeft;
             right = columnRight;
             topMin = topMax = top;
             bottomMin = bottomMax = bottom;
         }
-        if (active) rp.Canvas.DrawRect(new SkiaSharp.SKRect(left, topMin, right, bottomMax), rp.Paint.SKPaint);
+        if (active) _rectangles[_rectangleCount++] = new(left, topMin, right, bottomMax);
     }
 
     private void BuildColumnPath(SkiaSharp.SKPath path, int count)
@@ -316,5 +388,12 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal
             return (center - .5f, center + .5f);
         }
         return (top, bottom);
+    }
+
+    public void Dispose()
+    {
+        _path?.Dispose();
+        _path = null;
+        _geometryKey = null;
     }
 }

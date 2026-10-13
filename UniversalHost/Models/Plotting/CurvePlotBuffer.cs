@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace UniversalHost.Models.Plotting;
 
@@ -16,6 +17,8 @@ public sealed class CurvePlotBuffer
     private int _writeIndex;
     private int _count;
     private long _version;
+    private long _lastClearVersion;
+    private int _mutationVersion;
 
     internal double GetPhysicalValue(int index) => index >= 0 && index < _count
         ? _buffer[index] : double.NaN;
@@ -24,6 +27,7 @@ public sealed class CurvePlotBuffer
     public int Count => _count;
     public int WriteIndex => _writeIndex;
     public long Version => _version;
+    internal long LastClearVersion => _lastClearVersion;
 
     public CurvePlotBuffer(int capacity)
     {
@@ -39,17 +43,29 @@ public sealed class CurvePlotBuffer
 
     public (int Count, int WriteIndex, long Version) GetState() => (_count, _writeIndex, _version);
 
+    internal bool TryGetStableState(out (int Count, int WriteIndex, long Version) state)
+    {
+        int before = Volatile.Read(ref _mutationVersion);
+        state = GetState();
+        // 增量缓存只能接受同一次完整写入后的版本和游标，避免错算脏区间后长期遗漏尖峰。
+        return (before & 1) == 0 && before == Volatile.Read(ref _mutationVersion);
+    }
+
     public void Clear()
     {
+        Interlocked.Increment(ref _mutationVersion);
         Array.Clear(_buffer);
         Array.Fill(_ranges, CurvePlotRange.Empty);
         _writeIndex = 0;
         _count = 0;
         _version++;
+        _lastClearVersion = _version;
+        Interlocked.Increment(ref _mutationVersion);
     }
 
     public void Add(double value)
     {
+        Interlocked.Increment(ref _mutationVersion);
         int index = _writeIndex;
         double previousValue = _buffer[index];
         bool overwriting = _count == Capacity;
@@ -59,6 +75,7 @@ public sealed class CurvePlotBuffer
         if (overwriting && value.Equals(previousValue))
         {
             _version++;
+            Interlocked.Increment(ref _mutationVersion);
             return;
         }
 
@@ -85,6 +102,7 @@ public sealed class CurvePlotBuffer
             range = _ranges[node * 2].Combine(_ranges[node * 2 + 1]);
         }
         _version++;
+        Interlocked.Increment(ref _mutationVersion);
     }
 
     /// <summary>最新值为 0，保留原缓冲区的历史访问语义。</summary>
