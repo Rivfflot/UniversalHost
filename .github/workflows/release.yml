@@ -25,7 +25,9 @@ jobs:
         run: >-
           dotnet publish UniversalHost/UniversalHost.csproj
           --configuration Release
-          --publish-profile win_x64
+          --runtime win-x64
+          --self-contained false
+          -p:PublishSingleFile=true
 
       - name: Package release
         run: Compress-Archive -Path UniversalHost/bin/Release/net10.0/win-x64/publish/* -DestinationPath UniversalHost-win-x64.zip
