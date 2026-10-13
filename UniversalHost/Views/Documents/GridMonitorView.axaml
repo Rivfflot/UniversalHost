@@ -8,6 +8,9 @@
 			 x:Name="PanelRootControl"
 			 mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="200"
 			 x:Class="UniversalHost.Views.Documents.GridMonitorView">
+	<UserControl.KeyBindings>
+		<KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedSymbolCommand}" />
+	</UserControl.KeyBindings>
 	<UserControl.Styles>
 		<!-- 鼠标悬停时的行是伪类 drag-hover -->
 		<Style Selector="DataGridRow.drag-hover">

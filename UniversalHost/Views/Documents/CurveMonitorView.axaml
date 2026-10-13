@@ -41,6 +41,7 @@
         <KeyBinding Gesture="D9" Command="{Binding SelectCurveItemCommand}">
             <KeyBinding.CommandParameter><x:Int32>9</x:Int32></KeyBinding.CommandParameter>
         </KeyBinding>
+        <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedSymbolCommand}" />
         <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
         <KeyBinding Gesture="E" Command="{Binding ToggleYAxisAutoScaleCommand}" />
         <KeyBinding Gesture="X" Command="{Binding ToggleMouseCoordinatesCommand}" />

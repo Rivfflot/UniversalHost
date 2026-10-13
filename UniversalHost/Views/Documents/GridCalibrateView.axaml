@@ -7,6 +7,11 @@
 			 xmlns:services="clr-namespace:UniversalHost.Services"
 			 mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="200"
 			 x:Class="UniversalHost.Views.Documents.GridCalibrateView">
+	<UserControl.KeyBindings>
+		<KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedSymbolCommand}" />
+		<KeyBinding Gesture="U" Command="{Binding UploadSelectedSymbolValueCommand}" />
+		<KeyBinding Gesture="D" Command="{Binding DownloadSelectedSymbolValueCommand}" />
+	</UserControl.KeyBindings>
 	<UserControl.Styles>
 		<!-- 鼠标悬停时的行是伪类 drag-hover -->
 		<Style Selector="DataGridRow.drag-hover">

@@ -8,6 +8,9 @@
 			 x:DataType="vm:UserCommandViewModel"
 			 mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="200"
 			 x:Class="UniversalHost.Views.Documents.UserCommandView">
+	<UserControl.KeyBindings>
+		<KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommandCommand}" />
+	</UserControl.KeyBindings>
 
 	<UserControl.Styles>
 		<!-- 鼠标悬停时的行是伪类 drag-hover -->
