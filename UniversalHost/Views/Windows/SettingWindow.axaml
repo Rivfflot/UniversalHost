@@ -7,12 +7,19 @@
 	xmlns:models="using:UniversalHost.Models"
 	xmlns:vm="using:UniversalHost.ViewModels.Windows"
 	Title="设置"
-	Width="800"
-	Height="600"
+	Width="900"
+	Height="750"
 	x:DataType="vm:SettingWindowViewModel"
 	mc:Ignorable="d">
 
 
+
+	<Window.Styles>
+		<Style Selector="DataGrid">
+			<Setter Property="BorderThickness" Value="0,1" />
+			<Setter Property="BorderBrush" Value="{Binding HorizontalGridLinesBrush, RelativeSource={RelativeSource Self}}" />
+		</Style>
+	</Window.Styles>
 
 	<TabControl SelectedIndex="{Binding SelectedSettingTab}">
 		<!--  通用设置  -->
@@ -87,6 +94,7 @@
 					</StackPanel>
 					<!--  第 7 行 -->
 					<TabControl Grid.Row="6"
+								Padding="0,12,12,12"
 								Grid.ColumnSpan="2">
 						<TabItem Header="ELF" FontSize="15" Margin="-4">
 							<ListBox
@@ -591,6 +599,7 @@
 					</StackPanel>
 					<!--  第 4 行  -->
 					<TabControl Grid.Row="3"
+								Padding="0,12,12,12"
 								Grid.ColumnSpan="2"
 								Margin="0,0,4,0" >
 						<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
@@ -768,6 +777,7 @@
 					</StackPanel>
 					<!--  第 2 行  -->
 					<TabControl Grid.Row="1"
+								Padding="0,12,12,12"
 								Grid.ColumnSpan="2"
 								Margin="0,0,4,0" >
 						<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
