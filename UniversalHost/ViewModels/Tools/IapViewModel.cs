@@ -64,26 +64,26 @@ namespace UniversalHost.ViewModels.Tools
             {
                 var iapProgress = new Progress<double>(value => IapProgressBar = value);
                 var stageProgress = new Progress<string>(value => CurrentStage = value);
-                Serilog.Log.Debug("在线升级开始");
+                LogService.ForModule(LogModule.Iap).Debug("在线升级开始");
                 var iapCommService = new IapService(iapProgress, stageProgress);
                 await iapCommService.RunIapSequenceAsync(_iapCancellation.Token);
                 CurrentStage = "升级完成";
                 IapProgressBar = 100;
-                Serilog.Log.Information("在线升级完成");
+                LogService.ForModule(LogModule.Iap).Information("在线升级完成");
             }
             catch (OperationCanceledException ex)
             {
                 CurrentStage = "升级取消";
                 IapProgressBar = 0;
                 NotificationService.Show("在线升级任务已取消", ex.Message, NotificationType.Info);
-                Serilog.Log.Information($"在线升级任务已取消,{ex.Message}");
+                LogService.ForModule(LogModule.Iap).Information("在线升级任务已取消,{Reason}", ex.Message);
             }
             catch (Exception ex)
             {
                 CurrentStage = "升级停止";
                 IapProgressBar = 0;
                 NotificationService.Show("在线升级停止", ex.Message, NotificationType.Error);
-                Serilog.Log.Error($"在线升级停止，{ex.Message}");
+                LogService.ForModule(LogModule.Iap).Error(ex, "在线升级停止，{Reason}", ex.Message);
             }
             finally
             {

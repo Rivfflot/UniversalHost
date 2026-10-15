@@ -47,7 +47,7 @@ public static class XcpService
             catch
             {
                 try { await Client.DisposeAsync(); }
-                catch (Exception ex) { Serilog.Log.Error(ex, "连接失败后的 XCP 清理异常"); }
+                catch (Exception ex) { LogService.ForModule(LogModule.Xcp).Error(ex, "连接失败后的 XCP 清理异常"); }
                 Client = null;
                 GlobalStatus.Instance.IsConnected = false;
                 GlobalStatus.Instance.IsMonitoring = false;
@@ -82,7 +82,7 @@ public static class XcpService
     private static async Task DisposeDisconnectedClientAsync(XcpClient expectedClient)
     {
         try { await DisposeClientAsync(expectedClient); }
-        catch (Exception ex) { Serilog.Log.Error(ex, "设备连接清理失败"); }
+        catch (Exception ex) { LogService.ForModule(LogModule.Xcp).Error(ex, "设备连接清理失败"); }
     }
 
     public static Task DisposeClientAsync() => DisposeClientAsync(null);
@@ -437,7 +437,13 @@ public class XcpClient : IAsyncDisposable
             return false;
         }
         await Cal.ShortDownloadAsync(symbolRuntime.Symbol.ActualAddress, symbolRuntime.StringToValue());
-        Serilog.Log.Information($"CAL {symbolRuntime.Symbol.Name}({symbolRuntime.Symbol.Alias}) : {OldValue} -> {NewValue}");
+        LogService.ForModule(LogModule.Calibration)
+            .ForContext("EventType", "CalibrationChanged")
+            .ForContext("SymbolId", symbolRuntime.Symbol.Id)
+            .ForContext("SymbolAddress", symbolRuntime.Symbol.ActualAddress)
+            .ForContext("SymbolSourceFile", symbolRuntime.Symbol.SourceFileName)
+            .Information("CAL {SymbolName:l}({SymbolAlias:l}) : {OldValue:l} -> {NewValue:l}",
+                symbolRuntime.Symbol.Name, symbolRuntime.Symbol.Alias, OldValue, NewValue);
         return true;
     }
 
@@ -453,7 +459,7 @@ public class XcpClient : IAsyncDisposable
                 throw new InvalidOperationException($"串口 DAQ 布局长度 {payloadLength} 超过设备 MAX_DTO {DeviceStatus.ConnectRes.MaxDtoLen}");
             int wireLength = SerialTransportProtocol.GetMaxWireLength(payloadLength + 7);
             double byteRate = _serialOptions.BaudRate / _serialOptions.BitsPerCharacter;
-            Serilog.Log.Information("串口 DAQ 带宽预算：每事件线上上限={WireLength} 字节，接收理论上限={ByteRate:F0} 字节/秒，预留 20% 带宽时建议采样不超过 {SampleRate:F1} 次/秒；采样率由设备配置",
+            LogService.ForModule(LogModule.Monitoring).Information("串口 DAQ 带宽预算：每事件线上上限={WireLength} 字节，接收理论上限={ByteRate:F0} 字节/秒，预留 20% 带宽时建议采样不超过 {SampleRate:F1} 次/秒；采样率由设备配置",
                 wireLength, byteRate, byteRate * 0.8 / wireLength);
         }
         Volatile.Write(ref _acceptDaqFrames, false);
@@ -559,7 +565,7 @@ public class XcpClient : IAsyncDisposable
                 if (len - offset < 5)
                 {
                     ReceiveStatistics.RecordMalformedDatagram();
-                    Serilog.Log.Warning("XCP 数据报帧头不完整：长度 {Length}，偏移 {Offset}", len, offset);
+                    LogService.ForModule(LogModule.Xcp).Warning("XCP 数据报帧头不完整：长度 {Length}，偏移 {Offset}", len, offset);
                     break;
                 }
 
@@ -567,7 +573,7 @@ public class XcpClient : IAsyncDisposable
                 if (payloadLength == 0 || payloadLength > len - offset - 4)
                 {
                     ReceiveStatistics.RecordMalformedDatagram();
-                    Serilog.Log.Warning("XCP 数据报帧长度无效：LEN={PayloadLength}，长度 {Length}，偏移 {Offset}", payloadLength, len, offset);
+                    LogService.ForModule(LogModule.Xcp).Warning("XCP 数据报帧长度无效：LEN={PayloadLength}，长度 {Length}，偏移 {Offset}", payloadLength, len, offset);
                     break;
                 }
 
@@ -684,14 +690,14 @@ public class XcpClient : IAsyncDisposable
                 if (stats.InactiveDaqFrames != lastInactiveDaqCount)
                 {
                     lastInactiveDaqCount = stats.InactiveDaqFrames;
-                    Serilog.Log.Verbose("XCP 监控未运行时忽略 DTO：累计={Ignored}", stats.InactiveDaqFrames);
+                    LogService.ForModule(LogModule.Xcp).Verbose("XCP 监控未运行时忽略 DTO：累计={Ignored}", stats.InactiveDaqFrames);
                 }
                 long errorCount = stats.CounterGapFrames + stats.DuplicateOrReorderedFrames +
                     stats.QueueDrops + stats.UnknownPidFrames + stats.ParseErrors + stats.MalformedDatagrams;
                 if (errorCount != lastErrorCount)
                 {
                     lastErrorCount = errorCount;
-                    Serilog.Log.Warning("XCP 接收累计诊断：CTR前向缺口={CounterGaps}，重复/乱序={Reordered}，DAQ队列丢帧={QueueDrops}，未知PID={UnknownPid}，解析失败={ParseErrors}，无效数据报文={Malformed}，DAQ接收/解析={Received}/{Decoded}",
+                    LogService.ForModule(LogModule.Xcp).Warning("XCP 接收累计诊断：CTR前向缺口={CounterGaps}，重复/乱序={Reordered}，DAQ队列丢帧={QueueDrops}，未知PID={UnknownPid}，解析失败={ParseErrors}，无效数据报文={Malformed}，DAQ接收/解析={Received}/{Decoded}",
                         stats.CounterGapFrames, stats.DuplicateOrReorderedFrames, stats.QueueDrops,
                         stats.UnknownPidFrames, stats.ParseErrors, stats.MalformedDatagrams,
                         stats.DaqReceived, stats.DaqDecoded);
@@ -737,7 +743,7 @@ public class XcpClient : IAsyncDisposable
                 {
                     NotificationService.Show("设备断开", $"设备连接超时, {syncEx.Message}", NotificationType.Error);
                     Debug.WriteLine($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
-                    Serilog.Log.Debug($"[心跳致命错误] SYNCH 命令复位超时。下位机失联。{syncEx.Message}");
+                    LogService.ForModule(LogModule.Xcp).Debug(syncEx, "[心跳致命错误] SYNCH 命令复位超时。下位机失联。{Reason}", syncEx.Message);
                     GlobalStatus.Instance.IsConnected = false;
                     break;
                 }
@@ -746,7 +752,7 @@ public class XcpClient : IAsyncDisposable
             {
                 NotificationService.Show("设备断开", $"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}", NotificationType.Error);
                 Debug.WriteLine($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
-                Serilog.Log.Debug($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
+                LogService.ForModule(LogModule.Xcp).Debug(unkownEx, "[心跳未知错误] 通信组件发生异常: {Reason}", unkownEx.Message);
                 GlobalStatus.Instance.IsConnected = false;
                 break;
             }
@@ -759,7 +765,7 @@ public class XcpClient : IAsyncDisposable
         catch (Exception) when (_cts.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "XCP 收发任务异常，终止设备会话");
+            LogService.ForModule(LogModule.Xcp).Error(ex, "XCP 收发任务异常，终止设备会话");
             _ctoTcs?.TrySetException(ex);
             _cts.Cancel();
             GlobalStatus.Instance.IsConnected = false;
@@ -768,7 +774,7 @@ public class XcpClient : IAsyncDisposable
             _ = Task.Run(async () =>
             {
                 try { await DisposeAsync(); }
-                catch (Exception cleanupEx) { Serilog.Log.Error(cleanupEx, "XCP 会话清理失败"); }
+                catch (Exception cleanupEx) { LogService.ForModule(LogModule.Xcp).Error(cleanupEx, "XCP 会话清理失败"); }
             });
         }
     }

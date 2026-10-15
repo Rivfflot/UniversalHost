@@ -320,7 +320,7 @@ public class ProjectSaveService : ReactiveObject
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "自动保存设置失败: {ProjectPath}", path);
+                LogService.ForModule(LogModule.Project).Error(ex, "自动保存设置失败: {ProjectPath}", path);
             }
         }).DisposeWith(Instance._disposables);
         //日志初始化

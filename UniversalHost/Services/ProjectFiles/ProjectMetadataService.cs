@@ -48,7 +48,7 @@ internal static class ProjectMetadataService
         if (metadata.FormatVersion > ProjectMetadata.CurrentFormatVersion)
         {
             var savedAppVersion = string.IsNullOrWhiteSpace(metadata.AppVersion) ? "未知" : metadata.AppVersion;
-            Serilog.Log.Warning(
+            LogService.ForModule(LogModule.Project).Warning(
                 "工程文件格式版本 {FormatVersion} 高于当前支持的版本 {SupportedFormatVersion}；保存程序版本 {SavedAppVersion}，当前程序版本 {AppVersion}",
                 metadata.FormatVersion, ProjectMetadata.CurrentFormatVersion, savedAppVersion, AppInfo.Version);
             throw new InvalidDataException(

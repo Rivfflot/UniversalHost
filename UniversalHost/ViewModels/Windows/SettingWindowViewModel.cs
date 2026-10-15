@@ -255,7 +255,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error($"读取错误{ex.Message}");
+                LogService.ForModule(LogModule.Symbols).Error(ex, "读取错误{Reason}", ex.Message);
                 NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
             }
         });
@@ -310,7 +310,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error($"打开错误 {ex.Message}");
+                LogService.ForModule(LogModule.Symbols).Error(ex, "打开错误 {Reason}", ex.Message);
                 NotificationService.Show("打开错误", ex.Message, NotificationType.Error);
             }
         });
@@ -608,7 +608,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error($"读取elf文件错误 {ex.Message}");
+                LogService.ForModule(LogModule.Symbols).Error(ex, "读取elf文件错误 {Reason}", ex.Message);
                 NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
                 return;
             }
@@ -633,7 +633,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error($"读取elf文件错误 {ex.Message}");
+            LogService.ForModule(LogModule.Symbols).Error(ex, "读取elf文件错误 {Reason}", ex.Message);
             NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
             return;
         }

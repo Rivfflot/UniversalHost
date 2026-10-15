@@ -99,7 +99,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             try
             {
                 var removedSymbols = ProjectSaveService.Instance.Settings.ReloadAllSymbols(ProjectSaveService.Instance.ProjectFilePath);
-                Serilog.Log.Information($"符号表重新加载，从{ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count}个文件中加载了{ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count}个变量");
+                LogService.ForModule(LogModule.Symbols).Information("符号表重新加载，从{FileCount}个文件中加载了{SymbolCount}个变量",
+                    ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count, ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count);
                 NotificationService.Show("符号表重新加载成功", $"从{ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count}个文件中加载了{ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count}个变量", NotificationType.Success);
                 if (removedSymbols.Count > 0)
                 {
@@ -108,13 +109,13 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                     {
                         removedSymbolsMessage.Add($"{symbol.SourceFileName} : {symbol.Name}");
                     }
-                    Serilog.Log.Information($"删除{removedSymbols.Count}个不存在于新文件中的监控/标定变量");
+                    LogService.ForModule(LogModule.Symbols).Information("删除{SymbolCount}个不存在于新文件中的监控/标定变量", removedSymbols.Count);
                     NotificationService.Show($"删除{removedSymbols.Count}个不存在于新文件中的监控/标定变量", string.Join(Environment.NewLine, removedSymbolsMessage), NotificationType.Warning);
                 }
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error($"重新加载错误，{ex.Message}");
+                LogService.ForModule(LogModule.Symbols).Error(ex, "重新加载错误，{Reason}", ex.Message);
                 NotificationService.Show("重新加载错误", $"{ex.Message}", NotificationType.Error);
             }
         }));
@@ -159,13 +160,13 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                     item.ClearHistory();
                 }
                 await XcpService.Client!.StartDaq(SymbolRuntimeService.MonitorSymbolRuntimesSource.Items);
-                Serilog.Log.Information("监控开始");
+                LogService.ForModule(LogModule.Monitoring).Information("监控开始");
                 NotificationService.Show("监控开始", "", NotificationType.Info);
             }
             catch (Exception ex)
             {
                 NotificationService.Show("监控开始异常", ex.Message, NotificationType.Warning);
-                Serilog.Log.Warning($"监控开始异常,{ex.Message}");
+                LogService.ForModule(LogModule.Monitoring).Warning(ex, "监控开始异常,{Reason}", ex.Message);
             }
         }));
         //停止监控命令
@@ -226,13 +227,13 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 await ProjectSaveService.SaveProjectAsync(result.Path.LocalPath, Layout);
 
                 GlobalStatus.Instance.IsProjectOpened = true;
-                Serilog.Log.Information($"新建工程成功，路径: {result.Path.AbsolutePath}");
+                LogService.ForModule(LogModule.Project).Information("新建工程成功，路径: {ProjectPath}", result.Path.LocalPath);
                 NotificationService.Show("新建工程成功", $"路径: {result.Path.AbsolutePath}", NotificationType.Success);
             }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error($"新建错误，{ex.Message}");
+            LogService.ForModule(LogModule.Project).Error(ex, "新建错误，{Reason}", ex.Message);
             NotificationService.Show("新建错误", ex.Message, NotificationType.Error);
         }
     }
@@ -268,12 +269,12 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 // 绑定监控符号运行时集合
 
                 GlobalStatus.Instance.IsProjectOpened = true;
-                Serilog.Log.Information($"已加载文件: {path}");
+                LogService.ForModule(LogModule.Project).Information("已加载文件: {ProjectPath}", path);
                 NotificationService.Show("读取成功", $"已加载文件: {path}", NotificationType.Success);
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error($"读取错误，{ex.Message}");
+                LogService.ForModule(LogModule.Project).Error(ex, "读取错误，{Reason}", ex.Message);
                 NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
             }
         }
@@ -297,7 +298,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             {
                 await ProjectSaveService.SaveProjectAsync(result.Path.LocalPath, Layout);
 
-                Serilog.Log.Information($"成功另存为至 {result.Path.AbsolutePath}");
+                LogService.ForModule(LogModule.Project).Information("成功另存为至 {ProjectPath}", result.Path.LocalPath);
                 NotificationService.Show("另存为成功", $"路径: {result.Path.AbsolutePath}", NotificationType.Success);
             }
             else
@@ -307,7 +308,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error($"另存为错误, {ex.Message}");
+            LogService.ForModule(LogModule.Project).Error(ex, "另存为错误, {Reason}", ex.Message);
             NotificationService.Show("另存为错误", ex.Message, NotificationType.Error);
         }
     }
@@ -325,17 +326,17 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 runtime.ClearHistory();
                 runtime.ValueString = string.Empty;
             }
-            Serilog.Log.Information($"设备连接成功");
+            LogService.ForModule(LogModule.Xcp).Information("设备连接成功");
             NotificationService.Show("设备已连接", "", NotificationType.Success);
         }
         catch (Exception ex) when (ex is TimeoutException || ex is TaskCanceledException)
         {
-            Serilog.Log.Error(ex, "设备连接超时");
+            LogService.ForModule(LogModule.Xcp).Error(ex, "设备连接超时");
             NotificationService.Show("设备连接错误", "连接超时", NotificationType.Error);
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error($"设备连接错误，{ex.Message}");
+            LogService.ForModule(LogModule.Xcp).Error(ex, "设备连接错误，{Reason}", ex.Message);
             NotificationService.Show("设备连接错误", ex.Message, NotificationType.Error);
         }
     }
@@ -350,11 +351,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             await XcpService.DisconnectAsync();
             NotificationService.Show("设备已断开", "", NotificationType.Success);
-            Serilog.Log.Information($"设备已断开");
+            LogService.ForModule(LogModule.Xcp).Information("设备已断开");
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error($"设备断开连接错误，{ex.Message}");
+            LogService.ForModule(LogModule.Xcp).Error(ex, "设备断开连接错误，{Reason}", ex.Message);
             NotificationService.Show("设备断开连接错误", ex.Message, NotificationType.Error);
         }
     }
@@ -381,7 +382,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             var path = await Task.Run(() => DataSaveService.SaveToCsv(SymbolRuntimeService.MonitorSymbolRuntimesSource.Items, "data"));
             NotificationService.Show("保存成功", path, NotificationType.Success);
-            Serilog.Log.Information($"监控数据保存至 {path}");
+            LogService.ForModule(LogModule.Monitoring).Information("监控数据保存至 {Path}", path);
         }
         catch (Exception ex)
         {
@@ -421,7 +422,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "打开{Title}文档失败", title);
+            LogService.ForModule(LogModule.Application).Error(ex, "打开{Title}文档失败", title);
             NotificationService.Show($"打开{title}失败", ex.Message, NotificationType.Error);
         }
     }
@@ -549,7 +550,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             string path = await CalibrateParametersSaveService.SaveAsync();
             NotificationService.Show("参数已保存", path, NotificationType.Success);
-            Serilog.Log.Information($"参数已保存, {path}");
+            LogService.ForModule(LogModule.Calibration).Information("参数已保存, {Path}", path);
         }
         catch (Exception ex)
         {
@@ -577,7 +578,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             {
                 await CalibrateParametersSaveService.LoadAsync(path);
                 NotificationService.Show("参数已读取", path, NotificationType.Success);
-                Serilog.Log.Information($"标定参数读取, {path}");
+                LogService.ForModule(LogModule.Calibration).Information("标定参数读取, {Path}", path);
             }
             catch (Exception ex)
             {

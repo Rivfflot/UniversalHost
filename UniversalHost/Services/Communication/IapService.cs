@@ -157,7 +157,7 @@ public class IapService
     {
         _stage.Report(stage);
         _progress.Report(progress);
-        Serilog.Log.Verbose("IAP {Stage}", stage);
+        LogService.ForModule(LogModule.Iap).Verbose("IAP {Stage}", stage);
     }
 
     // retryTimes 为 null 时仅受总超时限制；其他请求首次发送外最多重发 K 次。
@@ -208,7 +208,7 @@ public class IapService
                         nextSendTime = sw.Elapsed + serialResponseWait.Value;
                     attempts++;
                     if (attempts > 1)
-                        Serilog.Log.Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，第 {Attempt} 次发送", stage, frameIndex, attempts);
+                        LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，第 {Attempt} 次发送", stage, frameIndex, attempts);
                 }
 
                 var receiveWait = nextSendTime - sw.Elapsed;
@@ -263,7 +263,7 @@ public class IapService
                 break;
             var status = _protocol.ReceivePacketAnalysis(stage, remaining[..frameLength], frameIndex);
             if (stage != Stage.SendData || frameIndex % 10 == 0 || status != Status.Success)
-                Serilog.Log.Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，响应状态 {Status}", stage, frameIndex, status);
+                LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，响应状态 {Status}", stage, frameIndex, status);
             if (status == Status.Success)
                 return true;
             offset += frameLength;
