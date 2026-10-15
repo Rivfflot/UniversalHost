@@ -2,7 +2,7 @@ using System;
 using System.Buffers.Binary;
 using System.IO;
 
-namespace UniversalHost.Models;
+namespace UniversalHost.Models.Communication;
 
 public class IapProtocol
 {

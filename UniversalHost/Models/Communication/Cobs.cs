@@ -1,6 +1,6 @@
 using System;
 
-namespace UniversalHost.Models;
+namespace UniversalHost.Models.Communication;
 
 /// <summary>普通 COBS；发送时保留末尾结束块，分隔符由传输层添加。</summary>
 public static class Cobs

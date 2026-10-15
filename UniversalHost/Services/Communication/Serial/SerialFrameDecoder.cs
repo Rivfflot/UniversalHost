@@ -1,6 +1,6 @@
 using System;
 using System.Diagnostics;
-using UniversalHost.Models;
+using UniversalHost.Models.Communication;
 
 namespace UniversalHost.Services.Communication.Serial;
 

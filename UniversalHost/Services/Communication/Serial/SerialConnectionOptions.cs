@@ -1,6 +1,7 @@
 using System;
 using System.IO.Ports;
 using UniversalHost.Models;
+using UniversalHost.Models.Communication;
 
 namespace UniversalHost.Services.Communication.Serial;
 

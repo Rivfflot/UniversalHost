@@ -1,7 +1,7 @@
 using System;
 using System.Buffers.Binary;
 
-namespace UniversalHost.Models;
+namespace UniversalHost.Models.Communication;
 
 public enum SerialProtocol : byte
 {

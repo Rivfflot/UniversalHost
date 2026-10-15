@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace UniversalHost.Models;
+namespace UniversalHost.Models.Communication;
 
 public static class Crc
 {

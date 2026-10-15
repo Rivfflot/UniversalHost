@@ -8,8 +8,9 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using UniversalHost.Models.Communication;
 using UniversalHost.Services.Communication.Serial;
-using static UniversalHost.Models.XcpProtocol;
+using static UniversalHost.Models.Communication.XcpProtocol;
 
 namespace UniversalHost.Services.Communication;
 

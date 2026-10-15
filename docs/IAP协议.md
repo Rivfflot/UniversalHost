@@ -43,7 +43,7 @@
 
 ## CRC 校验
 
-上位机和下位机使用相同的 CRC 算法及参数。实现见 [Crc.cs](../UniversalHost/Models/Crc.cs) 中的 `Crc.Crc16Modbus.Calculate` 和 `Crc.Crc32.Calculate`。
+上位机和下位机使用相同的 CRC 算法及参数。实现见 [Crc.cs](../UniversalHost/Models/Communication/Crc.cs) 中的 `Crc.Crc16Modbus.Calculate` 和 `Crc.Crc32.Calculate`。
 
 | 参数 | 帧 CRC16 | ROM CRC32 |
 | --- | --- | --- |

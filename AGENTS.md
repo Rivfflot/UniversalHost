@@ -18,7 +18,7 @@
 
 - 保持 `Nullable` 启用，并遵循相邻文件已有的命名、格式和命名空间风格；新增依赖前先确认现有包不能满足需求。
 - 界面耗时工作和通信使用异步流程，避免阻塞 UI 线程；遵循现有资源释放、取消和订阅清理方式。
-- XCP/IAP 的帧格式、字节序、地址计算、CRC、超时、重试和阶段顺序都属于设备通信契约。修改前检查 `Models/XcpProtocol.cs`、`Models/IapProtocol.cs` 及 `Services/Communication/` 中对应实现，不要凭推测改变线上行为。
+- XCP/IAP 的帧格式、字节序、地址计算、CRC、超时、重试和阶段顺序都属于设备通信契约。修改前检查 `Models/Communication/XcpProtocol.cs`、`Models/Communication/IapProtocol.cs` 及 `Services/Communication/` 中对应实现，不要凭推测改变线上行为。
 - 项目文件是 ZIP 容器，设置、Dock 布局和窗口上下文以 JSON 项保存。修改序列化模型时，无需考虑已有项目文件的兼容性。
 - 仅在版本号变更时更新根目录 `ChangeLog.md`，按版本号记录；不再记录逐日功能开发历史。
 

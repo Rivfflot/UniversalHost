@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using UniversalHost.Models.Communication;
 
 namespace UniversalHost.Services.Communication.Serial;
 

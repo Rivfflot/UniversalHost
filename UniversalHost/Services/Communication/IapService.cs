@@ -4,8 +4,9 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
+using UniversalHost.Models.Communication;
 using UniversalHost.Services.Communication.Serial;
-using static UniversalHost.Models.IapProtocol;
+using static UniversalHost.Models.Communication.IapProtocol;
 
 namespace UniversalHost.Services.Communication;
 
