@@ -29,7 +29,9 @@ public class IapProtocol
         DeviceIDError,
         FrameIndexMismatch,
         DeviceFrameCheckError,
-        DeviceLengthError
+        DeviceLengthError,
+        Progress,
+        InvalidProgress
     }
 
     public const int MaxBytesPerFrame = 1372;
@@ -131,8 +133,9 @@ public class IapProtocol
         return frameLength;
     }
 
-    public Status ReceivePacketAnalysis(Stage stage, ReadOnlySpan<byte> data, uint sendFrameIndex = 0)
+    public Status ReceivePacketAnalysis(Stage stage, ReadOnlySpan<byte> data, out byte progress, uint sendFrameIndex = 0)
     {
+        progress = 0;
         if (data.Length < 7)
             return Status.LengthError;
         // 非目标从站的响应（包括通用错误）不能影响当前升级。
@@ -196,7 +199,15 @@ public class IapProtocol
             case Stage.Reboot:
                 if (payload.Length != 2)
                     return Status.LengthError;
-                return ReceiveOperationResult(stage, BinaryPrimitives.ReadUInt16BigEndian(payload));
+                ushort operationResult = BinaryPrimitives.ReadUInt16BigEndian(payload);
+                if (stage is Stage.StartErase or Stage.StartWrite or Stage.StartCheck && operationResult <= 0x00FE)
+                {
+                    if (operationResult > 100)
+                        return Status.InvalidProgress;
+                    progress = (byte)operationResult;
+                    return Status.Progress;
+                }
+                return ReceiveOperationResult(stage, operationResult);
             default:
                 return Status.StageError;
         }
@@ -222,7 +233,7 @@ public class IapProtocol
         if (_binData == null)
             throw new InvalidOperationException("IAP 文件尚未读取");
 
-        // bit0 以外均为保留位，不再读取旧协议的重启标志。
+        // bit0 为写入方式，其余位保留，进度回报由设备按阶段选择实现。
         IsFlashPerFrame = (payload[1] & 0x01) != 0;
         _bytesPerFrame = bytesPerFrame;
         FrameNum = (uint)((_binData.Length + (long)bytesPerFrame - 1) / bytesPerFrame);

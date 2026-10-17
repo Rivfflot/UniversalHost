@@ -150,7 +150,7 @@ public class IapService
             _config.WaitForWriteTimeoutSeconds == 0 ||
             _config.WaitForCheckTimeoutSeconds == 0 ||
             _config.WaitForRebootTimeoutSeconds == 0)
-            throw new InvalidOperationException("IAP 通信接收超时及各阶段总超时必须大于 0");
+            throw new InvalidOperationException("IAP 通信接收超时及各阶段超时必须大于 0");
     }
 
     private void Report(string stage, double progress)
@@ -160,7 +160,7 @@ public class IapService
         LogService.ForModule(LogModule.Iap).Verbose("IAP {Stage}", stage);
     }
 
-    // retryTimes 为 null 时仅受总超时限制；其他请求首次发送外最多重发 K 次。
+    // retryTimes 为 null 时按阶段期限等待；擦除、写入、校验仅在有效进度超过历史最大值时延长期限。
     // 信息帧、数据帧及发送完成不设独立总超时，每次等待仅由通信接收超时决定。
     private async Task RunRequestAsync(ICommService comm, Stage stage, ushort? timeoutSeconds,
         CancellationToken ct, int? retryTimes = null, TimeSpan? retryInterval = null, uint frameIndex = 0)
@@ -182,75 +182,93 @@ public class IapService
                 interval = serialWait;
         }
         TimeSpan? timeout = timeoutSeconds.HasValue ? TimeSpan.FromSeconds(timeoutSeconds.Value) : null;
+        byte highestProgress = 0;
         var sw = Stopwatch.StartNew();
-        using var stageCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        if (timeout.HasValue)
-            stageCts.CancelAfter(timeout.Value);
+        TimeSpan? deadline = timeout;
         int packetLength = _protocol.GetSendPacket(_sendBuffer, stage, frameIndex);
         var packet = _sendBuffer.AsMemory(0, packetLength);
         int attempts = 0;
         var nextSendTime = TimeSpan.Zero;
-        try
+        while (!deadline.HasValue || sw.Elapsed < deadline.Value)
         {
-            while (!timeout.HasValue || sw.Elapsed < timeout.Value)
+            ct.ThrowIfCancellationRequested();
+            if (attempts == 0 || sw.Elapsed >= nextSendTime)
             {
-                ct.ThrowIfCancellationRequested();
-                stageCts.Token.ThrowIfCancellationRequested();
-                if (attempts == 0 || sw.Elapsed >= nextSendTime)
+                if (retryTimes.HasValue && attempts >= retryTimes.Value + 1)
+                    throw new TimeoutException($"IAP 阶段 {stage}，帧号 {frameIndex}，超过重试次数（{retryTimes} 次重试）");
+                // 每次重发完全相同的请求，不因迟到、无关 ACK 或进度帧改变发送节奏。
+                nextSendTime = sw.Elapsed + interval;
+                // 每次 I/O 按当前截止时间设置取消预算，避免旧阶段定时器在进度延长期限后取消等待。
+                using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                if (deadline.HasValue)
                 {
-                    if (retryTimes.HasValue && attempts >= retryTimes.Value + 1)
-                        throw new TimeoutException($"IAP 阶段 {stage}，帧号 {frameIndex}，超过重试次数（{retryTimes} 次重试）");
-                    // 每次重发完全相同的请求，不因迟到或无关 ACK 立即重发。
-                    nextSendTime = sw.Elapsed + interval;
-                    await comm.SendAsync(packet, stageCts.Token);
-                    // 保留耗时操作 0.5 秒的发送周期；低波特率时至少留出发送完成后的完整应答窗口。
-                    if (serialResponseWait.HasValue && sw.Elapsed + serialResponseWait.Value > nextSendTime)
-                        nextSendTime = sw.Elapsed + serialResponseWait.Value;
-                    attempts++;
-                    if (attempts > 1)
-                        LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，第 {Attempt} 次发送", stage, frameIndex, attempts);
+                    var remainingSendTime = deadline.Value - sw.Elapsed;
+                    if (remainingSendTime <= TimeSpan.Zero)
+                        break;
+                    sendCts.CancelAfter(remainingSendTime);
                 }
-
-                var receiveWait = nextSendTime - sw.Elapsed;
-                if (timeout.HasValue)
-                {
-                    var remainingStageTime = timeout.Value - sw.Elapsed;
-                    if (remainingStageTime < receiveWait)
-                        receiveWait = remainingStageTime;
-                }
-                if (receiveWait <= TimeSpan.Zero)
-                    continue;
-
-                using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(stageCts.Token);
-                receiveCts.CancelAfter(receiveWait);
-                int receivedLength;
                 try
                 {
-                    receivedLength = await comm.ReceiveAsync(_receiveBuffer, receiveCts.Token);
+                    await comm.SendAsync(packet, sendCts.Token);
                 }
-                catch (OperationCanceledException) when (!stageCts.IsCancellationRequested && receiveCts.IsCancellationRequested)
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested && sendCts.IsCancellationRequested)
                 {
-                    receivedLength = 0;
-                }
-                ct.ThrowIfCancellationRequested();
-                stageCts.Token.ThrowIfCancellationRequested();
-                if (timeout.HasValue && sw.Elapsed >= timeout.Value)
                     break;
-                if (receivedLength > 0 && HasMatchingAcknowledgement(stage, frameIndex, receivedLength))
-                    return;
+                }
+                // 保留耗时操作 0.5 秒的发送周期；低波特率时至少留出发送完成后的完整应答窗口。
+                if (serialResponseWait.HasValue && sw.Elapsed + serialResponseWait.Value > nextSendTime)
+                    nextSendTime = sw.Elapsed + serialResponseWait.Value;
+                attempts++;
+                if (attempts > 1)
+                    LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，第 {Attempt} 次发送", stage, frameIndex, attempts);
             }
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested && stageCts.IsCancellationRequested)
-        {
-            throw new TimeoutException($"IAP 阶段 {stage}，帧号 {frameIndex}，等待应答超时（{timeoutSeconds} 秒）");
+
+            var receiveWait = nextSendTime - sw.Elapsed;
+            if (deadline.HasValue)
+            {
+                var remainingStageTime = deadline.Value - sw.Elapsed;
+                if (remainingStageTime < receiveWait)
+                    receiveWait = remainingStageTime;
+            }
+            if (receiveWait <= TimeSpan.Zero)
+                continue;
+
+            using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            receiveCts.CancelAfter(receiveWait);
+            int receivedLength;
+            try
+            {
+                receivedLength = await comm.ReceiveAsync(_receiveBuffer, receiveCts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested && receiveCts.IsCancellationRequested)
+            {
+                receivedLength = 0;
+            }
+            ct.ThrowIfCancellationRequested();
+            var receivedAt = sw.Elapsed;
+            if (deadline.HasValue && receivedAt >= deadline.Value)
+                break;
+            if (receivedLength > 0)
+            {
+                if (HasMatchingAcknowledgement(stage, frameIndex, receivedLength, out byte progress))
+                    return;
+                if (timeout.HasValue && progress > highestProgress)
+                {
+                    highestProgress = progress;
+                    deadline = receivedAt + timeout.Value;
+                }
+            }
         }
 
         ct.ThrowIfCancellationRequested();
+        if (highestProgress > 0)
+            throw new TimeoutException($"IAP 阶段 {stage}，无进展超时（{timeoutSeconds} 秒，最高进度 {highestProgress}%）");
         throw new TimeoutException($"IAP 阶段 {stage}，帧号 {frameIndex}，等待应答超时（{timeoutSeconds} 秒）");
     }
 
-    private bool HasMatchingAcknowledgement(Stage stage, uint frameIndex, int receivedLength)
+    private bool HasMatchingAcknowledgement(Stage stage, uint frameIndex, int receivedLength, out byte highestProgress)
     {
+        highestProgress = 0;
         var datagram = _receiveBuffer.AsSpan(0, receivedLength);
         int offset = 0;
         while (offset < datagram.Length)
@@ -261,8 +279,14 @@ public class IapService
             int frameLength = BinaryPrimitives.ReadUInt16BigEndian(remaining[2..4]) + 7;
             if (frameLength > remaining.Length)
                 break;
-            var status = _protocol.ReceivePacketAnalysis(stage, remaining[..frameLength], frameIndex);
-            if (stage != Stage.SendData || frameIndex % 10 == 0 || status != Status.Success)
+            var status = _protocol.ReceivePacketAnalysis(stage, remaining[..frameLength], out byte progress, frameIndex);
+            if (status == Status.Progress)
+            {
+                // 包括重复和倒退的有效百分比，逐条保留设备实际回报值，便于诊断停滞。
+                LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，进度 {Progress}%", stage, progress);
+                highestProgress = Math.Max(highestProgress, progress);
+            }
+            else if (stage != Stage.SendData || frameIndex % 10 == 0 || status != Status.Success)
                 LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，响应状态 {Status}", stage, frameIndex, status);
             if (status == Status.Success)
                 return true;

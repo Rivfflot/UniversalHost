@@ -99,7 +99,7 @@
 						<TabItem Header="ELF" FontSize="15" Margin="-4">
 							<ListBox
 								ItemsSource="{Binding SymbolFilePaths}"
-								ToolTip.Tip="以 .uhprj 所在目录为基准；工程目录及其子目录中的文件自动使用相对路径。"
+								ToolTip.Tip="以 .uhprj 所在目录为基准。&#10;工程目录内的文件自动使用相对路径。"
 								MaxHeight="200"
 								Margin="0,1,0,0">
 								<ListBox.ItemTemplate>
@@ -266,7 +266,7 @@
 								Margin="0,0,10,0"
 								VerticalAlignment="Center"
 								Text="超时时间ℹ"
-								ToolTip.Tip="单位 ms；设备处理及调度裕量，另计完整应答的线上时间；请求发送完成后开始计时"/>
+								ToolTip.Tip="单位 ms；设备处理及调度裕量。&#10;发送完成后计时，另计应答传输时间。"/>
 							<NumericUpDown
 								Grid.Column="1"
 								Width="80"
@@ -303,24 +303,24 @@
 						</Grid>
 						<Grid ColumnDefinitions="Auto,*">
 							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="物理双工ℹ"
-									   ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP；HalfDuplex：半双工（如两线 RS485），仅支持 IAP。按实际物理链路选择。" />
+									   ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP。&#10;HalfDuplex：半双工，仅支持 IAP。" />
 							<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDuplexModes}"
 									  SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DuplexMode}" />
 						</Grid>
 						<Grid ColumnDefinitions="Auto,*">
 							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="方向控制ℹ"
-									   ToolTip.Tip="Automatic：适配器自动换向；RtsHighWhileSending / RtsLowWhileSending：半双工发送时 RTS 高 / 低电平。全双工选 Automatic。" />
+									   ToolTip.Tip="Automatic：自动换向，全双工选此项。&#10;RtsHighWhileSending：发送时 RTS 为高。&#10;RtsLowWhileSending：发送时 RTS 为低。" />
 							<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDirectionControls}"
 									  SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DirectionControl}" />
 						</Grid>
 						<Grid ColumnDefinitions="Auto,*">
 							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="换向延时ℹ"
-									   ToolTip.Tip="单位 ms；半双工收发器和适配器的方向转换裕量，按硬件要求设置。" />
+									   ToolTip.Tip="单位 ms；半双工换向裕量，按硬件要求设置。" />
 							<NumericUpDown Grid.Column="1" Width="80" HorizontalAlignment="Left" Minimum="0" Maximum="65535"
 										   ShowButtonSpinner="False" ParsingNumberStyle="Integer" Value="{Binding SerialTurnaroundDelayTemp}" />
 						</Grid>
 						<CheckBox Content="适配器有本机回显" IsChecked="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.HasLocalEcho}"
-								  ToolTip.Tip="仅在适配器确实返回所发送的完整帧时开启；会消费一份回显后再接受设备应答。" />
+								  ToolTip.Tip="适配器返回完整发送帧时开启。&#10;过滤本机回显后接收设备应答。" />
 						<TextBlock Text="固定 8 数据位；串口 IAP 前须断开 XCP。" TextWrapping="Wrap" Margin="0,6,0,0" />
 					</StackPanel>
 
@@ -576,7 +576,7 @@
 							Command="{Binding ClearMonitorSymbolsCommand}"/>
 						<Button
 							Content="删除重复监控变量"
-							ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
+							ToolTip.Tip="名称、地址、偏移量均相同的变量仅保留一个。"
 							Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
 							ToolTip.ShowOnDisabled="True"/>
 						<Button
@@ -771,7 +771,7 @@
 							Command="{Binding ClearCalibrateSymbolsCommand}"/>
 						<Button
 							Content="删除重复标定变量"
-							ToolTip.Tip="重复变量仅保留一个。名称、地址、偏移量相同判断为重复变量"
+							ToolTip.Tip="名称、地址、偏移量均相同的变量仅保留一个。"
 							Command="{Binding RemoveDuplicateCalibrateSymbolsCommand}"
 							ToolTip.ShowOnDisabled="True"/>
 					</StackPanel>
@@ -981,14 +981,14 @@
 							 HorizontalAlignment="Left"
 							 VerticalContentAlignment="Center"
 							 InnerRightContent="{Binding IapFilePathError}"
-							 ToolTip.Tip="支持绝对路径或相对工程目录的路径，例如 .\BOOT.bin；工程目录中的文件自动使用相对路径。"
+							 ToolTip.Tip="支持绝对路径或相对工程目录的路径。&#10;示例：.\BOOT.bin"
 							 Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
 					<TextBlock Grid.Row="1"
 							   Grid.Column="0"
 							   Margin="0,0,10,0"
 							   VerticalAlignment="Center"
 							   Text="握手总超时ℹ"
-							   ToolTip.Tip="单位 s；每隔 0.5 秒重发握手，须覆盖复位、IAP 启动及通信初始化" />
+							   ToolTip.Tip="单位 s；须覆盖复位、IAP 启动及通信初始化。" />
 					<NumericUpDown Grid.Row="1"
 								   Grid.Column="1"
 								   Width="80"
@@ -1002,8 +1002,8 @@
 							   Grid.Column="0"
 							   Margin="0,0,10,0"
 							   VerticalAlignment="Center"
-							   Text="擦除总超时ℹ"
-							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，须覆盖最坏擦除耗时及通信延时" />
+							   Text="擦除超时ℹ"
+							   ToolTip.Tip="单位 s。无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
 					<NumericUpDown Grid.Row="2"
 								   Grid.Column="1"
 								   Width="80"
@@ -1017,8 +1017,8 @@
 							   Grid.Column="0"
 							   Margin="0,0,10,0"
 							   VerticalAlignment="Center"
-							   Text="写入总超时ℹ"
-							   ToolTip.Tip="单位 s；整体写入模式每隔 0.5 秒重发，须覆盖最坏写入耗时及通信延时" />
+							   Text="写入超时ℹ"
+							   ToolTip.Tip="仅用于整体写入，单位 s。&#10;无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
 					<NumericUpDown Grid.Row="3"
 								   Grid.Column="1"
 								   Width="80"
@@ -1032,8 +1032,8 @@
 							   Grid.Column="0"
 							   Margin="0,0,10,0"
 							   VerticalAlignment="Center"
-							   Text="校验总超时ℹ"
-							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，等待目标回读 CRC32 校验完成" />
+							   Text="校验超时ℹ"
+							   ToolTip.Tip="单位 s。无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
 					<NumericUpDown Grid.Row="4"
 								   Grid.Column="1"
 								   Width="80"
@@ -1048,7 +1048,7 @@
 							   Margin="0,0,10,0"
 							   VerticalAlignment="Center"
 							   Text="重启总超时ℹ"
-							   ToolTip.Tip="单位 s；每隔 0.5 秒重发，须覆盖复位、APP 启动及通信初始化" />
+							   ToolTip.Tip="单位 s；须覆盖复位、APP 启动及通信初始化。" />
 					<NumericUpDown Grid.Row="5"
 								   Grid.Column="1"
 								   Width="80"
