@@ -20,6 +20,7 @@ namespace UniversalHost.ViewModels.Tools
 
         [Reactive] private double _iapProgressBar;
         [Reactive] private string _currentStage = "准备就绪";
+        [Reactive] private string _stageTimestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
         [Reactive] private bool _isRunning;
         public ReactiveCommand<Window, Unit> SelectIapFileCommand { get; }
         public ReactiveCommand<Unit, Unit> StartIapCommand { get; }
@@ -63,24 +64,24 @@ namespace UniversalHost.ViewModels.Tools
             try
             {
                 var iapProgress = new Progress<double>(value => IapProgressBar = value);
-                var stageProgress = new Progress<string>(value => CurrentStage = value);
+                var stageProgress = new Progress<string>(UpdateStage);
                 LogService.ForModule(LogModule.Iap).Debug("在线升级开始");
                 var iapCommService = new IapService(iapProgress, stageProgress);
                 await iapCommService.RunIapSequenceAsync(_iapCancellation.Token);
-                CurrentStage = "升级完成";
+                UpdateStage("升级完成");
                 IapProgressBar = 100;
                 LogService.ForModule(LogModule.Iap).Information("在线升级完成");
             }
             catch (OperationCanceledException ex)
             {
-                CurrentStage = "升级取消";
+                UpdateStage("升级取消");
                 IapProgressBar = 0;
                 NotificationService.Show("在线升级任务已取消", ex.Message, NotificationType.Info);
                 LogService.ForModule(LogModule.Iap).Information("在线升级任务已取消,{Reason}", ex.Message);
             }
             catch (Exception ex)
             {
-                CurrentStage = "升级停止";
+                UpdateStage("升级停止");
                 IapProgressBar = 0;
                 NotificationService.Show("在线升级停止", ex.Message, NotificationType.Error);
                 LogService.ForModule(LogModule.Iap).Error(ex, "在线升级停止，{Reason}", ex.Message);
@@ -91,6 +92,12 @@ namespace UniversalHost.ViewModels.Tools
                 _iapCancellation = null;
                 IsRunning = false;
             }
+        }
+
+        private void UpdateStage(string stage)
+        {
+            StageTimestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            CurrentStage = stage;
         }
     }
 }

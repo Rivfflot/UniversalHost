@@ -155,35 +155,68 @@ public class DockFactory : Factory
     }
     public Tool CreateIapTool()
     {
-        return new Tool
+        var tool = new Tool
         {
             Id = DockableRegistry.IapToolId,
             Title = "在线升级",
             CanClose = true,
             CanFloat = false,
             CanPin = true,
-            MdiBounds = new DockRect(0, 0, 360, 120),
-            MinWidth = 360,
-            MaxHeight = 120,
+            MdiBounds = default,
             Context = DockableRegistry.IapToolViewModel
         };
+        ApplyToolSize(tool);
+        return tool;
     }
 
     public Tool CreateFaultRecordTool()
     {
-        return new Tool
+        var tool = new Tool
         {
             Id = DockableRegistry.FaultRecordToolId,
             Title = "故障录波",
             CanClose = true,
             CanFloat = false,
             CanPin = true,
-            MdiBounds = new DockRect(0, 0, 260, 100),
-            MinWidth = 260,
-            MinHeight = 100,
-            MaxHeight = 100,
+            MdiBounds = default,
             Context = DockableRegistry.FaultRecordViewModel
         };
+        ApplyToolSize(tool);
+        return tool;
+    }
+
+    private static void ApplyToolSize(IDockable dockable)
+    {
+        if (dockable is not Tool tool) return;
+
+        double minWidth;
+        double height;
+        switch (tool.Id)
+        {
+            case DockableRegistry.IapToolId:
+                minWidth = 360;
+                height = 135;
+                break;
+            case DockableRegistry.FaultRecordToolId:
+                minWidth = 260;
+                height = 100;
+                break;
+            default:
+                return;
+        }
+
+        // 固定工具的尺寸由当前界面决定，工程只保留位置和可用的宽度。
+        var bounds = tool.MdiBounds;
+        tool.MinWidth = minWidth;
+        tool.MinHeight = height;
+        tool.MaxHeight = height;
+        tool.MdiBounds = new DockRect(bounds.X, bounds.Y, Math.Max(bounds.Width, minWidth), height);
+    }
+
+    public override void InitDockable(IDockable dockable, IDockable? owner)
+    {
+        ApplyToolSize(dockable);
+        base.InitDockable(dockable, owner);
     }
 
     public override void InitLayout(IDockable layout)
@@ -262,7 +295,7 @@ public class DockFactory : Factory
             {
                 foreach (var item in layout.HiddenDockables)
                 {
-                    if (item.Id == DockableRegistry.IapToolId)
+                    if (item.Id == id)
                     {
                         tool = item;
                         break;
@@ -291,6 +324,7 @@ public class DockFactory : Factory
         }
         else
         {
+            ApplyToolSize(tool);
             if (tool.Owner is IDock parentDock)
             {
                 var visibleList = parentDock.VisibleDockables;

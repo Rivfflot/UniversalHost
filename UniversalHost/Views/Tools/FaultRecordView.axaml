@@ -11,10 +11,13 @@
 
     <StackPanel Orientation="Vertical" Margin="5">
         <TextBlock
-        Text="{Binding Stage}"
         HorizontalAlignment="Left"
-        Height="22"
-        MaxWidth="200"/>
+        Margin="0,0,0,4"
+        TextWrapping="Wrap">
+            <Run Text="{Binding StageTimestamp}" />
+            <Run Text="  " />
+            <Run Text="{Binding Stage}" />
+        </TextBlock>
 
         <StackPanel Orientation="Horizontal">
             <Button

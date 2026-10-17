@@ -1,8 +1,8 @@
 ﻿using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 using UniversalHost.Services;
 using UniversalHost.Services.Communication;
 
@@ -13,6 +13,7 @@ public partial class FaultRecordViewModel : ReactiveObject
 
     [Reactive] private double _progressVal = 0;
     [Reactive] private string _stage = "准备就绪";
+    [Reactive] private string _stageTimestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
 
     public FaultRecordViewModel() { }
 
@@ -20,7 +21,7 @@ public partial class FaultRecordViewModel : ReactiveObject
     private async Task UploadFaultData()
     {
         var recordProgress = new Progress<double>(v => this.ProgressVal = v);
-        var recordStage = new Progress<string>(v => this.Stage = v);
+        var recordStage = new Progress<string>(UpdateStage);
         try
         {
             var recordStatus = ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Items.First(s => s.Name == "fault_recorder_state");
@@ -32,15 +33,21 @@ public partial class FaultRecordViewModel : ReactiveObject
         }
         catch (FaultRecordNotCompletedException ex)
         {
-            Stage = ex.Message;
+            UpdateStage(ex.Message);
             NotificationService.Show("故障数据上传失败", ex.Message, NotificationType.Warning);
             LogService.ForModule(LogModule.FaultRecord).Warning("故障数据上传失败：{Reason}", ex.Message);
         }
         catch (Exception ex)
         {
-            Stage = "上传失败";
+            UpdateStage("上传失败");
             NotificationService.Show("故障数据上传失败", ex.Message, NotificationType.Warning);
             LogService.ForModule(LogModule.FaultRecord).Warning(ex, "故障数据上传失败：{Reason}", ex.Message);
         }
+    }
+
+    private void UpdateStage(string stage)
+    {
+        StageTimestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+        Stage = stage;
     }
 }
