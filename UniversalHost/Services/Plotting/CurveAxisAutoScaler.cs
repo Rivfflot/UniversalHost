@@ -1,6 +1,5 @@
 using ScottPlot;
 using ScottPlot.AutoScalers;
-using System;
 
 namespace UniversalHost.Services.Plotting;
 

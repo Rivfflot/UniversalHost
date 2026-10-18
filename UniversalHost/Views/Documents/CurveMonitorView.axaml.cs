@@ -15,7 +15,6 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using UniversalHost.Models;
 using UniversalHost.Models.Plotting;
 using UniversalHost.Services;
 using UniversalHost.Services.Plotting;
