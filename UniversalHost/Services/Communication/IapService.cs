@@ -112,7 +112,10 @@ public class IapService
             await RunRequestAsync(comm, Stage.StartErase, _config.WaitForEraseTimeoutSeconds, ct);
         }
 
-        Report("发送数据 0%", 10);
+        // 逐帧模式发送时同时写入，占 40%；整体模式仅传输数据，占 30%。
+        double sendStart = _protocol.IsFlashPerFrame ? 41 : 6;
+        double sendEnd = _protocol.IsFlashPerFrame ? 81 : 36;
+        Report("发送数据 0%", sendStart);
         int sentPercent = 0;
         for (uint frameIndex = 0; frameIndex < _protocol.FrameNum; frameIndex++)
         {
@@ -121,25 +124,26 @@ public class IapService
             int percent = (int)(100L * (frameIndex + 1) / _protocol.FrameNum);
             if (percent != sentPercent)
             {
+                bool logProgress = percent / 10 > sentPercent / 10;
                 sentPercent = percent;
-                Report($"发送数据 {percent}%", 10 + 65.0 * (frameIndex + 1) / _protocol.FrameNum);
+                Report($"发送数据 {percent}%", sendStart + (sendEnd - sendStart) * (frameIndex + 1) / _protocol.FrameNum, logProgress);
             }
         }
 
-        Report("确认接收", 75);
+        Report("确认接收", sendEnd);
         await RunRequestAsync(comm, Stage.SendComplete, null, ct,
             _retryTimes, _receiveTimeout);
-        _progress.Report(78);
+        _progress.Report(sendEnd + 3);
 
         if (!_protocol.IsFlashPerFrame)
         {
-            Report("擦除目标", 78);
+            Report("擦除目标", 39);
             await RunRequestAsync(comm, Stage.StartErase, _config.WaitForEraseTimeoutSeconds, ct);
-            Report("写入目标", 82);
+            Report("写入目标", 64);
             await RunRequestAsync(comm, Stage.StartWrite, _config.WaitForWriteTimeoutSeconds, ct);
         }
 
-        Report("校验目标", 90);
+        Report("校验目标", 84);
         await RunRequestAsync(comm, Stage.StartCheck, _config.WaitForCheckTimeoutSeconds, ct);
         Report("等待重启", 95);
         await RunRequestAsync(comm, Stage.Reboot, _config.WaitForRebootTimeoutSeconds, ct);
@@ -158,25 +162,30 @@ public class IapService
             throw new InvalidOperationException("IAP 通信接收超时及各阶段超时必须大于 0");
     }
 
-    private void Report(string stage, double progress)
+    private void Report(string stage, double progress, bool logProgress = true)
     {
         _stage.Report(stage);
         _progress.Report(progress);
-        LogService.ForModule(LogModule.Iap).Verbose("IAP {Stage}", stage);
+        if (logProgress)
+            LogService.ForModule(LogModule.Iap).Verbose("IAP {Stage}", stage);
     }
 
-    private void ReportOperationProgress(Stage stage, byte percent)
+    private void ReportOperationProgress(Stage stage, byte percent, ref int loggedPercent, bool logProgress = true)
     {
         // 将当前操作的百分比映射到总进度；逐帧写入在发送数据前擦除。
         var (text, start, end) = stage switch
         {
-            Stage.StartErase when _protocol.IsFlashPerFrame => ("擦除目标", 6.0, 10.0),
-            Stage.StartErase => ("擦除目标", 78.0, 82.0),
-            Stage.StartWrite => ("写入目标", 82.0, 90.0),
-            Stage.StartCheck => ("校验目标", 90.0, 95.0),
+            Stage.StartErase when _protocol.IsFlashPerFrame => ("擦除目标", 6.0, 41.0),
+            Stage.StartErase => ("擦除目标", 39.0, 64.0),
+            Stage.StartWrite => ("写入目标", 64.0, 84.0),
+            Stage.StartCheck => ("校验目标", 84.0, 95.0),
             _ => throw new ArgumentOutOfRangeException(nameof(stage))
         };
-        Report($"{text} {percent}%", start + (end - start) * percent / 100.0);
+        // 界面仍按实际进度刷新；设备进度每个 10% 区间只记录一次，成功 ACK 补齐进度时不记录。
+        bool shouldLog = logProgress && percent / 10 > loggedPercent / 10;
+        if (shouldLog)
+            loggedPercent = percent;
+        Report($"{text} {percent}%", start + (end - start) * percent / 100.0, shouldLog);
     }
 
     // retryTimes 为 null 时按阶段期限等待；擦除、写入、校验仅在有效进度超过历史最大值时延长期限。
@@ -203,6 +212,7 @@ public class IapService
         TimeSpan? timeout = timeoutSeconds.HasValue ? TimeSpan.FromSeconds(timeoutSeconds.Value) : null;
         byte highestProgress = 0;
         bool hasReportedProgress = false;
+        int loggedPercent = 0;
         var sw = Stopwatch.StartNew();
         TimeSpan? deadline = timeout;
         int packetLength = _protocol.GetSendPacket(_sendBuffer, stage, frameIndex);
@@ -239,8 +249,6 @@ public class IapService
                 if (serialResponseWait.HasValue && sw.Elapsed + serialResponseWait.Value > nextSendTime)
                     nextSendTime = sw.Elapsed + serialResponseWait.Value;
                 attempts++;
-                if (attempts > 1)
-                    LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，第 {Attempt} 次发送", stage, frameIndex, attempts);
             }
 
             var receiveWait = nextSendTime - sw.Elapsed;
@@ -273,12 +281,12 @@ public class IapService
                 if (HasMatchingAcknowledgement(stage, frameIndex, receivedLength, out byte? progress))
                 {
                     if (stage is Stage.StartErase or Stage.StartWrite or Stage.StartCheck)
-                        ReportOperationProgress(stage, 100);
+                        ReportOperationProgress(stage, 100, ref loggedPercent, logProgress: false);
                     return;
                 }
                 if (progress.HasValue && (!hasReportedProgress || progress.Value > highestProgress))
                 {
-                    ReportOperationProgress(stage, Math.Max(highestProgress, progress.Value));
+                    ReportOperationProgress(stage, Math.Max(highestProgress, progress.Value), ref loggedPercent);
                     hasReportedProgress = true;
                 }
                 if (timeout.HasValue && progress.HasValue && progress.Value > highestProgress)
@@ -311,11 +319,9 @@ public class IapService
             var status = _protocol.ReceivePacketAnalysis(stage, remaining[..frameLength], out byte progress, frameIndex);
             if (status == Status.Progress)
             {
-                // 包括重复和倒退的有效百分比，逐条保留设备实际回报值，便于诊断停滞。
-                LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，进度 {Progress}%", stage, progress);
                 highestProgress = Math.Max(highestProgress ?? 0, progress);
             }
-            else if (stage != Stage.SendData || frameIndex % 10 == 0 || status != Status.Success)
+            else if (stage != Stage.SendData || status != Status.Success)
                 LogService.ForModule(LogModule.Iap).Verbose("IAP 阶段 {Stage}，帧号 {FrameIndex}，响应状态 {Status}", stage, frameIndex, status);
             if (status == Status.Success)
                 return true;
