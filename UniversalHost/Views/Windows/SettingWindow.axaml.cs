@@ -18,7 +18,7 @@ public partial class SettingWindow : ReactiveWindow<SettingWindowViewModel>
 
         this.WhenActivated((ContainerDisposable disposables) =>
         {
-            // 只需要这一行，服务会自动管理这个窗口的通知生命周期
+            // 鍙渶瑕佽繖涓�琛岋紝鏈嶅姟浼氳嚜鍔ㄧ鐞嗚繖涓獥鍙ｇ殑閫氱煡鐢熷懡鍛ㄦ湡
             NotificationService.Register(this);
         });
     }
@@ -27,7 +27,7 @@ public partial class SettingWindow : ReactiveWindow<SettingWindowViewModel>
         if (DataContext is SettingWindowViewModel vm)
         {
             var path = (sender as MenuItem)?.DataContext as string;
-            // 当前窗口
+            // 褰撳墠绐楀彛
             var window = this;
             if (path != null)
             {
