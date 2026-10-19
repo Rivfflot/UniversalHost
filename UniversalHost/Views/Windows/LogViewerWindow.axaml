@@ -1,0 +1,145 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:UniversalHost.ViewModels.Windows"
+        xmlns:models="using:UniversalHost.Models.Logging"
+        xmlns:controls="using:UniversalHost.Views.Controls"
+        x:Class="UniversalHost.Views.Windows.LogViewerWindow"
+        x:DataType="vm:LogViewerWindowViewModel"
+        Title="日志查看器" Width="1320" Height="720" MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="LogWarningBrush">#995200</SolidColorBrush>
+                    <SolidColorBrush x:Key="LogErrorBrush">#C62828</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="LogWarningBrush">#FFB74D</SolidColorBrush>
+                    <SolidColorBrush x:Key="LogErrorBrush">#FF7070</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Window.Styles>
+        <Style Selector="Button"><Setter Property="Padding" Value="12,5" /></Style>
+        <Style Selector="TextBlock.label"><Setter Property="Opacity" Value="0.7" /></Style>
+        <Style Selector="TextBlock.log-level.warning"><Setter Property="Foreground" Value="{DynamicResource LogWarningBrush}" /></Style>
+        <Style Selector="TextBlock.log-level.error"><Setter Property="Foreground" Value="{DynamicResource LogErrorBrush}" /></Style>
+        <Style Selector="ListBox#LogList ListBoxItem">
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </Window.Styles>
+    <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+        <StackPanel Spacing="6">
+            <WrapPanel Orientation="Horizontal">
+                <Button Content="打开目录" Command="{Binding OpenDirectoryCommand}" Margin="0,0,8,0" />
+                <Button Content="打开文件" Command="{Binding OpenFileCommand}" Margin="0,0,16,0" />
+                <CheckBox x:Name="AutoRefreshCheckBox" Content="自动刷新" IsChecked="{Binding AutoRefresh}" Margin="0,0,16,0"
+                          ToolTip.Tip="关闭时同时取消跟随最新；仍可手动刷新和筛选。" />
+                <CheckBox x:Name="FollowLatestCheckBox" Content="跟随最新" IsChecked="{Binding FollowLatest}" Margin="0,0,16,0"
+                          ToolTip.Tip="开启时同时开启自动刷新，并跟随目录最新分片。关闭自动刷新或浏览历史会取消勾选，再次勾选可恢复。" />
+                <Button x:Name="ManualRefreshButton" Content="手动刷新" Command="{Binding ManualRefreshCommand}" Margin="0,0,8,0" />
+            </WrapPanel>
+            <SelectableTextBlock Text="{Binding Location}" TextWrapping="NoWrap" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Spacing="4">
+            <WrapPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6" IsEnabled="{Binding HasLogTime}" Margin="0,0,12,4">
+                    <CheckBox Content="开始时间" IsChecked="{Binding UseStartTime}" />
+                    <controls:LogDatePicker x:Name="StartDatePicker" SelectedDate="{Binding StartDate}" IsEnabled="{Binding UseStartTime}"
+                                           Width="154" MinWidth="0" YearFormat="yyyy" MonthFormat="MM" DayFormat="dd" />
+                    <TimePicker x:Name="StartTimePicker" SelectedTime="{Binding StartClock}" IsEnabled="{Binding UseStartTime}"
+                                Width="160" MinWidth="0" ClockIdentifier="24HourClock" UseSeconds="True" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6" IsEnabled="{Binding HasLogTime}" Margin="0,0,12,4">
+                    <CheckBox Content="结束时间" IsChecked="{Binding UseEndTime}" />
+                    <controls:LogDatePicker x:Name="EndDatePicker" SelectedDate="{Binding EndDate}" IsEnabled="{Binding UseEndTime}"
+                                           Width="154" MinWidth="0" YearFormat="yyyy" MonthFormat="MM" DayFormat="dd" />
+                    <TimePicker x:Name="EndTimePicker" SelectedTime="{Binding EndClock}" IsEnabled="{Binding UseEndTime}"
+                                Width="160" MinWidth="0" ClockIdentifier="24HourClock" UseSeconds="True" />
+                </StackPanel>
+                <Button Content="清空筛选" Command="{Binding ClearFiltersCommand}" />
+            </WrapPanel>
+            <TextBlock Classes="label" Text="{Binding TimeZoneText}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding TimeError}" Foreground="{DynamicResource LogWarningBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Grid Grid.Row="2" ColumnDefinitions="230,6,*">
+            <Grid RowDefinitions="Auto,2*,Auto,Auto,Auto,3*" RowSpacing="6">
+                <TextBlock Text="日志文件（.jsonl，最新修改在前）" FontWeight="SemiBold" />
+                <ListBox Grid.Row="1" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:LogFileItem">
+                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding FullPath}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Grid.Row="2" Text="最低日志等级（含所选等级）" FontWeight="SemiBold" />
+                <ComboBox x:Name="LevelPicker" Grid.Row="3" ItemsSource="{Binding Levels}" SelectedItem="{Binding MinimumLevel}" HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:LogLevelOption">
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Grid.Row="4" Text="来源模块（当前保留日志及已选项）" FontWeight="SemiBold" />
+                <ListBox Grid.Row="5" ItemsSource="{Binding Modules}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LogFilterOption">
+                            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" HorizontalAlignment="Stretch" />
+            <Grid Grid.Column="2" RowDefinitions="Auto,3*,6,2*" Margin="8,0,0,0">
+                <!-- 毫秒时间固定 30 字符；12 DIP 字号约 171 DIP，列宽包含 8 DIP 右侧间距。 -->
+                <Grid ColumnDefinitions="184,100,90,*" Margin="6,0,6,5">
+                    <TextBlock Text="时间（原始偏移量）" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="1" Text="等级" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="2" Text="来源模块" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="3" Text="消息" FontWeight="SemiBold" />
+                </Grid>
+                <ListBox x:Name="LogList" Grid.Row="1" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
+                         AutoScrollToSelectedItem="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:LogEntry">
+                            <Grid ColumnDefinitions="184,100,90,*" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding TimeText}" FontSize="12" Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Text="{Binding Level}" TextTrimming="CharacterEllipsis"
+                                           Classes="log-level" Classes.warning="{Binding IsWarning}" Classes.error="{Binding IsError}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Module}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="3" Text="{Binding MessagePreview}" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <GridSplitter Grid.Row="2" ResizeDirection="Rows" HorizontalAlignment="Stretch" />
+                <Grid Grid.Row="3" RowDefinitions="Auto,*" RowSpacing="5">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
+                        <TextBlock Text="日志详情" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="复制完整内容" Command="{Binding CopyDetailsCommand}" />
+                        <Button Content="复制原始 JSON" Command="{Binding CopyJsonCommand}" />
+                    </StackPanel>
+                    <TextBox x:Name="DetailsBox" Grid.Row="1" Text="{Binding Details, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
+                             ContextFlyout="{x:Null}" ContextMenu="{x:Null}"
+                             TextWrapping="NoWrap" FontFamily="Consolas, Microsoft YaHei"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </Grid>
+            </Grid>
+        </Grid>
+        <StackPanel x:Name="StatusPanel" Grid.Row="3" Spacing="3">
+            <TextBlock Text="{Binding CountsText}" />
+            <TextBlock Text="{Binding RetentionText}" Classes="label" FontSize="12" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="18">
+                <TextBlock Text="{Binding ReadModeText}" />
+                <TextBlock Text="{Binding FollowText}" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</Window>

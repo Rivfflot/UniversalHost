@@ -9,6 +9,7 @@ using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -38,7 +39,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> ReloadSymbolsCommand { get; }
     //设置窗口
     public ReactiveCommand<int, Unit> OpenSettingWindowCommand { get; }
-    private SettingWindow? _SettingWindow;
+    private SettingWindow? _settingWindow;
+    private LogViewerWindow? _logViewerWindow;
     public ReactiveCommand<Unit, Unit> StartMonitorCommand { get; }
     public ReactiveCommand<Unit, Unit> StopMonitorCommand { get; }
     //-------------在线升级----------------
@@ -123,20 +125,20 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         //开启设置窗口
         OpenSettingWindowCommand = ReactiveCommand.Create<int>((Action<int>)(tabIndex =>
         {
-            if (_SettingWindow != null)
+            if (_settingWindow != null)
             {
                 SettingWindowViewModel.Instance.SelectedSettingTab = tabIndex;
-                _SettingWindow.Activate();
+                _settingWindow.Activate();
             }
             else
             {
                 SettingWindowViewModel.Instance.SelectedSettingTab = tabIndex;
-                _SettingWindow = new SettingWindow
+                _settingWindow = new SettingWindow
                 {
                     DataContext = SettingWindowViewModel.Instance
                 };
-                _SettingWindow.Closed += (_, _) => _SettingWindow = null;
-                _SettingWindow.Show();
+                _settingWindow.Closed += (_, _) => _settingWindow = null;
+                _settingWindow.Show();
             }
         }));
         #region 监控
@@ -202,6 +204,30 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }
     }
     #region 文件指令
+    [ReactiveCommand]
+    private void OpenLogViewer()
+    {
+        if (_logViewerWindow != null)
+        {
+            if (_logViewerWindow.WindowState == WindowState.Minimized)
+                _logViewerWindow.WindowState = WindowState.Normal;
+            _logViewerWindow.Show();
+            _logViewerWindow.Activate();
+            return;
+        }
+
+        string? folder = GlobalStatus.Instance.IsProjectOpened &&
+            !string.IsNullOrWhiteSpace(ProjectSaveService.Instance.ProjectFilePath)
+                ? Path.GetDirectoryName(Path.GetFullPath(ProjectSaveService.Instance.ProjectFilePath)) : null;
+        var viewModel = new LogViewerWindowViewModel();
+        var window = new LogViewerWindow(viewModel);
+        _logViewerWindow = window;
+        window.Closed += (_, _) => _logViewerWindow = null;
+        // 使用独立窗口，让主窗口和日志窗口随焦点正常切换前后层级。
+        window.Show();
+        viewModel.Initialize(folder);
+    }
+
     [ReactiveCommand]
     private async Task NewProjectFileAsync(Window window)
     {
