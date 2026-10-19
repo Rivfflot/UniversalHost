@@ -68,7 +68,10 @@
 					HotKey="Ctrl+R"
 					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
 				<Separator />
-				<MenuItem Header="日志查看器" Command="{Binding OpenLogViewerCommand}" />
+				<MenuItem
+					Header="日志查看器"
+					Command="{Binding OpenLogViewerCommand}"
+					InputGesture="Ctrl+L"/>
 			</MenuItem>
 			<MenuItem
 				Command="{Binding OpenSettingWindowCommand}"
@@ -429,6 +432,22 @@
 				ToolTip.ShowOnDisabled="True"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
 				/>
+
+			<Separator
+				Height="NaN"
+				Width="1"
+				Margin="2,5"/>
+
+			<MenuItem
+				Command="{Binding OpenLogViewerCommand}"
+				Header="📋"
+				Cursor="Hand"
+				FontFamily="Apple Color Emoji, Noto Color Emoji"
+				FontSize="18"
+				Padding="0"
+				HotKey="Ctrl+L"
+				ToolTip.Tip="打开日志窗口">
+			</MenuItem>
 
 			<!-- 主题项，在最右边 -->
 			<MenuItem
