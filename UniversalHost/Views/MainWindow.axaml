@@ -56,8 +56,6 @@
 					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"/>
 				<MenuItem
 					Header="另存为"
-					InputGesture="Ctrl+Shift+S"
-					HotKey="Ctrl+Shift+S"
 					Command="{Binding SaveAsProjectFileCommand}"
 					CommandParameter="{Binding $parent[Window]}"
 					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
