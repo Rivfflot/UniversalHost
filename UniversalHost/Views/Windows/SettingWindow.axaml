@@ -165,9 +165,10 @@
 		<!--  通信设置  -->
 		<TabItem Header="通信">
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<Grid ColumnDefinitions="*,Auto,*" IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
+				<Grid IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
 					<!--  串口  -->
-					<StackPanel Grid.Column="0" Grid.IsSharedSizeScope="True" >
+					<StackPanel Grid.IsSharedSizeScope="True"
+						IsVisible="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:CommunicationMode.Serial}}">
 						<TextBlock FontSize="18" Text="串口" VerticalAlignment="Center" FontWeight="Heavy"/>
 						<!--  选择串口  -->
 						<Grid>
@@ -324,10 +325,9 @@
 						<TextBlock Text="固定 8 数据位；串口 IAP 前须断开 XCP。" TextWrapping="Wrap" Margin="0,6,0,0" />
 					</StackPanel>
 
-					<Separator Grid.Column="1" HorizontalAlignment="Center" Height="NaN" Width="1"/>
-
 					<!--  UDP  -->
-					<StackPanel Grid.Column="2" Grid.IsSharedSizeScope="True">
+					<StackPanel Grid.IsSharedSizeScope="True"
+						IsVisible="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:CommunicationMode.UDP}}">
 						<TextBlock FontSize="18" Text="UDP" VerticalAlignment="Center" FontWeight="Heavy"/>
 						<!-- 本地IP  -->
 						<Grid>
