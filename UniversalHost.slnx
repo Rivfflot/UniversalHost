@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/IAP协议.md" />
+    <File Path="docs/传输层约定.md" />
+    <File Path="docs/使用说明.md" />
+    <File Path="docs/快捷键.md" />
+    <File Path="docs/故障录波结构体定义.md" />
+  </Folder>
   <Folder Name="/解决方案项/">
     <File Path="AGENTS.md" />
     <File Path="ChangeLog.md" />
