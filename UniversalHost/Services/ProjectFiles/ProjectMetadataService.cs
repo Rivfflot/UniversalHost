@@ -26,10 +26,8 @@ internal static class ProjectMetadataService
 
     public static ProjectMetadata Read(ZipArchive archive)
     {
-        var entry = archive.GetEntry(EntryName);
-        // 版本 0 与版本 1 的设置、布局及上下文格式相同，只缺少独立元信息。
-        if (entry == null)
-            return new ProjectMetadata { FormatVersion = 0, AppVersion = "未知" };
+        var entry = archive.GetEntry(EntryName)
+            ?? throw new InvalidDataException("工程缺少元信息。");
 
         ProjectMetadata metadata;
         try
@@ -43,7 +41,7 @@ internal static class ProjectMetadataService
             throw new InvalidDataException("工程元信息格式错误。", ex);
         }
 
-        if (metadata.FormatVersion < 0)
+        if (metadata.FormatVersion <= 0)
             throw new InvalidDataException("工程文件格式版本无效。");
         if (metadata.FormatVersion > ProjectMetadata.CurrentFormatVersion)
         {
