@@ -51,9 +51,7 @@ UniversalHost 是面向嵌入式设备开发与调试的通用桌面上位机，
 
 
    
-3. 保留发布目录中的 `symbol-tools/` 工具及许可证文件后运行。具体平台检查与归档命令见[固件变量解析](docs/固件变量解析.md)。
-
-解析职责集中在无界面依赖的 `UniversalHost.Symbols` 类库及其 Go 读取工具；`UniversalHost` 应用负责持久化、界面、运行时和设备操作，统一使用类库的 `ScalarType` 枚举。程序尚未正式发布，工程格式保持为 1，不维护开发期间的数据结构兼容；打开当前格式工程不会重新解析或改写变量，首次导入与“更新符号表”才应用检测结果。
+3. 保留发布目录中的 `symbol-tools/` 工具及许可证文件后运行。
 
 ## TODO
 
@@ -77,4 +75,4 @@ XCP（Universal Measurement and Calibration Protocol）是一种用于测量、�
 
 ## 许可证
 
-自有代码采用 MIT 许可证。随包 Go 组件适用各自的 BSD 风格许可，见[第三方组件说明](docs/第三方组件.md)。不分发 TI ofd2000 或编译器。
+自有代码采用 MIT 许可证。随包 Go 组件适用各自的 BSD 风格许可。

@@ -12,7 +12,7 @@
 - `UniversalHost/ViewModels/`：ReactiveUI 视图模型；优先沿用现有绑定和 ReactiveUI 源代码生成器的模式。
 - `UniversalHost/Services/`：通信、项目保存、符号运行时、日志和通知等服务。
 - `UniversalHost/Models/`：项目设置、协议数据结构、符号和运行时模型。
-- `UniversalHost.Symbols/`：独立 .NET 10 固件解析类库，不依赖界面或应用设置；`Native/` 为固定 Go 版本的独立读取工具。主机 RID 映射与随包许可见 `build/SymbolWorker.targets` 和 `docs/固件变量解析.md`。
+- `UniversalHost.Symbols/`：独立 .NET 10 固件解析类库，不依赖界面或应用设置；`Native/` 为固定 Go 版本的独立读取工具。主机 RID 映射见 `build/SymbolWorker.targets`。
 - `tests/UniversalHost.Symbols.Tests/`：解析、更新、持久化、运行时及标定预检查的可执行回归测试；固件样本和生成产物不得入库。
 - 新功能应放在职责对应的目录中；避免把协议、业务流程或持久化逻辑塞进视图代码。
 
