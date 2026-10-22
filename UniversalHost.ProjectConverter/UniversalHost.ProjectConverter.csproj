@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseAppHost>true</UseAppHost>
+  </PropertyGroup>
+  <Import Project="../build/Versions.props" />
+  <ItemGroup>
+    <Compile Include="../shared/ProjectMetadata.cs" Link="Contracts/ProjectMetadata.cs" />
+    <Compile Include="../shared/ProjectConversionResult.cs" Link="Contracts/ProjectConversionResult.cs" />
+    <Compile Include="../UniversalHost/Services/ProjectFiles/ProjectFilePathService.cs" Link="Contracts/ProjectFilePathService.cs" />
+    <ProjectReference Include="../UniversalHost.Symbols/UniversalHost.Symbols.csproj" />
+  </ItemGroup>
+  <Import Project="../build/SymbolWorker.targets" />
+  <Target Name="GetProjectConverterFiles" Returns="@(_ProjectConverterFiles)">
+    <ItemGroup>
+      <_ProjectConverterFiles Include="$(TargetDir)*" Exclude="$(TargetDir)*.pdb" />
+      <_ProjectConverterFiles Update="@(_ProjectConverterFiles)">
+        <TargetPath>$([MSBuild]::MakeRelative('$(TargetDir)', '%(_ProjectConverterFiles.FullPath)'))</TargetPath>
+      </_ProjectConverterFiles>
+    </ItemGroup>
+  </Target>
+</Project>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net10.0</TargetFramework>
@@ -11,8 +11,8 @@
 		<Platforms>AnyCPU</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<WarningLevel>8</WarningLevel>
-		<Version>0.0.2</Version>
 	</PropertyGroup>
+	<Import Project="../build/Versions.props" />
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<Optimize>true</Optimize>
@@ -63,6 +63,10 @@
 
 	<ItemGroup>
 		<ProjectReference Include="../UniversalHost.Symbols/UniversalHost.Symbols.csproj" />
+		<ProjectReference Include="../UniversalHost.ProjectConverter/UniversalHost.ProjectConverter.csproj" ReferenceOutputAssembly="false" Private="false"
+		                  AdditionalProperties="SelfContained=$(SelfContained);PublishSelfContained=$(SelfContained);PublishSingleFile=false" />
+		<Compile Include="../shared/ProjectMetadata.cs" Link="Models/ProjectMetadata.cs" />
+		<Compile Include="../shared/ProjectConversionResult.cs" Link="Models/ProjectConversionResult.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<DocumentationMarkdown Include="../docs/快捷键.md;../docs/使用说明.md" />
@@ -71,7 +75,11 @@
 	<Import Project="../build/Documentation.targets" />
 	<!-- Native tools follow the executable's RID. SDK project references strip
 	     RuntimeIdentifier from class libraries, so packaging belongs here. -->
+	<PropertyGroup>
+		<SymbolWorkerDestinationPrefix>dependencies/</SymbolWorkerDestinationPrefix>
+	</PropertyGroup>
 	<Import Project="../build/SymbolWorker.targets" />
+	<Import Project="../build/ProjectConverter.targets" />
 	
 	<!-- 发布后删除pdb文件 -->
 	<Target Name="RemoveNativePdbFiles" AfterTargets="Publish" Condition="'$(Configuration)'=='Release'">

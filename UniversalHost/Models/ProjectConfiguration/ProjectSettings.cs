@@ -1,6 +1,5 @@
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
-using System.Text.Json.Serialization;
 
 namespace UniversalHost.Models;
 
@@ -17,16 +16,6 @@ public partial class ProjectSettings : ReactiveObject
     [Reactive] private UserCommandConfig _userCommandConfig = new();
     [Reactive] private IapConfig _iapConfig = new();
     [Reactive] private LogConfig _logConfig = new();
-}
-
-public sealed class ProjectMetadata
-{
-    // 仅在工程文件结构或字段含义发生不兼容变化时递增。
-    public const int CurrentFormatVersion = 1;
-
-    [JsonRequired]
-    public int FormatVersion { get; init; } = CurrentFormatVersion;
-    public string AppVersion { get; init; } = "未知";
 }
 
 public partial class LogConfig : ReactiveObject

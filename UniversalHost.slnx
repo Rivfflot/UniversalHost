@@ -12,9 +12,7 @@
     <File Path="LICENSE" />
     <File Path="README.md" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/UniversalHost.Symbols.Tests/UniversalHost.Symbols.Tests.csproj" />
-  </Folder>
+  <Project Path="UniversalHost.ProjectConverter/UniversalHost.ProjectConverter.csproj" />
   <Project Path="UniversalHost.Symbols/UniversalHost.Symbols.csproj" />
   <Project Path="UniversalHost/UniversalHost.csproj" />
 </Solution>

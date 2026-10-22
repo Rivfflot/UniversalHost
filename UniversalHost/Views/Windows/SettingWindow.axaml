@@ -775,7 +775,7 @@
 											</DataGridTemplateColumn>
 											<DataGridTextColumn Header="别名" Binding="{Binding Alias}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
 											<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
-											<DataGridTemplateColumn Header="偏移量 / 数组下标" Width="180">
+											<DataGridTemplateColumn Header="偏移 / 下标" Width="180">
 												<DataGridTemplateColumn.CellTemplate>
 													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}" /></DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
@@ -963,7 +963,7 @@
 
 											<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
 
-											<DataGridTemplateColumn Header="偏移量 / 数组下标" Width="180">
+											<DataGridTemplateColumn Header="偏移 / 下标" Width="180">
 												<DataGridTemplateColumn.CellTemplate>
 													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" /></DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>

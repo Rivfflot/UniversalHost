@@ -7,7 +7,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $PublishDirectory).Path
-$toolRoot = Join-Path $root 'symbol-tools'
+$dependencyRoot = Join-Path $root 'dependencies'
+$toolRoot = Join-Path $dependencyRoot 'symbol-tools'
 $name = if ($Rid.StartsWith('win-')) { 'symbols-worker.exe' } else { 'symbols-worker' }
 $tool = Join-Path (Join-Path $toolRoot $Rid) $name
 if (!(Test-Path -LiteralPath $tool)) { throw "Missing worker for $Rid" }
@@ -122,11 +123,37 @@ $checksumFile = Join-Path $PSScriptRoot "../UniversalHost.Symbols/Native/dist/$R
 if (!(Test-Path -LiteralPath $checksumFile)) { throw 'Missing worker SHA256 checksum' }
 $expectedHash = (Get-Content -LiteralPath $checksumFile -Raw).Trim()
 if ($expectedHash -notmatch '^[a-fA-F0-9]{64}$' -or $hash -ne $expectedHash) { throw 'Worker SHA256 mismatch' }
-Write-Output "$Rid : $architecture; Go 1.26.8 CGO=0; SHA256=$hash; licenses OK"
+$converterName = if ($Rid.StartsWith('win-')) { 'UniversalHost.ProjectConverter.exe' } else { 'UniversalHost.ProjectConverter' }
+$converter = Join-Path $dependencyRoot $converterName
+if (!(Test-Path -LiteralPath $converter)) { throw 'Missing project converter executable' }
+foreach ($legacyDirectory in @('project-converter', 'project-tools', 'symbol-tools')) {
+    if (Test-Path -LiteralPath (Join-Path $root $legacyDirectory)) { throw "Obsolete dependency directory remains: $legacyDirectory" }
+}
+$toolDirectories = @(Get-ChildItem -LiteralPath $root -Directory -Recurse -Filter 'symbol-tools')
+if ($toolDirectories.Count -ne 1 -or $toolDirectories[0].FullName -ne $toolRoot) {
+    throw 'Package must contain exactly one shared symbol-tools directory under dependencies'
+}
+$dependencyFiles = @(Get-ChildItem -LiteralPath $dependencyRoot -File -Recurse)
+$expectedDependencyFiles = @($converterName, "symbol-tools/$Rid/$name", 'symbol-tools/licenses/Go-LICENSE',
+    'symbol-tools/licenses/Go-PATENTS', 'symbol-tools/licenses/ThirdPartyNotices.md')
+if ($dependencyFiles.Count -ne $expectedDependencyFiles.Count) { throw 'Unexpected or duplicated dependency files' }
+foreach ($file in $dependencyFiles) {
+    if ([IO.Path]::GetRelativePath($dependencyRoot, $file.FullName).Replace('\', '/') -notin $expectedDependencyFiles) {
+        throw "Unexpected dependency file: $($file.FullName)"
+    }
+}
+if (!$IsWindows -and !$Rid.StartsWith('win-')) {
+    foreach ($file in @($converter)) {
+        if (([IO.File]::GetUnixFileMode($file) -band [IO.UnixFileMode]::UserExecute) -eq 0) { throw "Converter file lost executable permission: $file" }
+    }
+}
+Write-Output "$Rid : $architecture; Go 1.26.8 CGO=0; SHA256=$hash; shared dependencies and licenses OK"
 if ($RunWorker) {
     $processArchitecture = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
     $osName = if ($IsWindows) { 'win' } elseif ($IsLinux) { 'linux' } elseif ($IsMacOS) { 'osx' } else { 'unknown' }
     if ("$osName-$processArchitecture" -ne $Rid) { throw 'Refusing to claim native validation on a different host RID' }
+    $converterVersion = & $converter --version
+    if ($LASTEXITCODE -ne 0 -or ($converterVersion | ConvertFrom-Json).FormatVersion -lt 1) { throw 'Converter startup/version contract failed' }
     & $tool 2> $null
     if ($LASTEXITCODE -ne 2) { throw 'Worker startup/usage contract failed' }
     if ($Sample) {

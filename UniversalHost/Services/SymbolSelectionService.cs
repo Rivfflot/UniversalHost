@@ -47,7 +47,7 @@ public static partial class SymbolSelectionService
                 {
                     if (current.Kind == LayoutKind.Array)
                     {
-                        string elementPath = DefaultElementPath(image, current, path);
+                        string elementPath = AccessPathResolver.GetDefaultElementPath(image, current, path);
                         var element = ElementType(image, current);
                         if (dimensions.All(d => d.Count is > 0) && element?.Kind is LayoutKind.Structure or LayoutKind.Union)
                             Members(elementPath, element, offset);
@@ -91,17 +91,6 @@ public static partial class SymbolSelectionService
         return type;
     }
 
-    private static string DefaultElementPath(FirmwareImage image, TypeLayout type, string path)
-    {
-        var seen = new HashSet<string>();
-        while (type.Kind == LayoutKind.Array && seen.Add(type.Id))
-        {
-            path += string.Concat(type.Dimensions.Select(d => $"[{d.LowerBound.ToString(CultureInfo.InvariantCulture)}]"));
-            if (!image.Types.TryGetValue(type.ElementTypeId, out type!)) break;
-        }
-        return path;
-    }
-
     public static UserSymbolInfo CreateAccess(DeviceConfig device, SymbolTableEntry row)
     {
         FirmwareSymbolService.EnsureLayoutEditable();
@@ -112,7 +101,7 @@ public static partial class SymbolSelectionService
         if (image != null && definition != null)
         {
             var objectAccess = AccessPathResolver.ResolveObject(image, definition, path);
-            if (image.Types.TryGetValue(objectAccess.TypeId, out var type)) path = DefaultElementPath(image, type, path);
+            if (image.Types.TryGetValue(objectAccess.TypeId, out var type)) path = AccessPathResolver.GetDefaultElementPath(image, type, path);
             var scalar = AccessPathResolver.Resolve(image, definition, path);
             if (scalar.Status == AccessStatus.Verified)
             {
@@ -205,7 +194,7 @@ public static partial class SymbolSelectionService
         var root = symbol.Definition ?? throw new InvalidOperationException("缺少根变量信息");
         string template = symbol.MemberPath;
         if (!Indices().IsMatch(template) && image.Types.TryGetValue(root.TypeId, out var type))
-            template = DefaultElementPath(image, type, template);
+            template = AccessPathResolver.GetDefaultElementPath(image, type, template);
         if (!Indices().IsMatch(template)) throw new InvalidOperationException("此变量没有可编辑的数组下标，请使用偏移量");
         return (image, root, template);
     }

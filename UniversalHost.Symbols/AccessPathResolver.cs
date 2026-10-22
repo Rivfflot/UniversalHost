@@ -14,6 +14,17 @@ public static partial class AccessPathResolver
     public static AccessResolution ResolveObject(FirmwareImage image, FirmwareSymbol root, string path)
         => ResolveCore(image, root, path, false);
 
+    public static string GetDefaultElementPath(FirmwareImage image, TypeLayout type, string path)
+    {
+        var seen = new HashSet<string>();
+        while (type.Kind == LayoutKind.Array && seen.Add(type.Id))
+        {
+            path += string.Concat(type.Dimensions.Select(d => $"[{d.LowerBound.ToString(CultureInfo.InvariantCulture)}]"));
+            if (!image.Types.TryGetValue(type.ElementTypeId, out type!)) break;
+        }
+        return path;
+    }
+
     public static IReadOnlyList<ArrayDimension> GetArrayDimensions(FirmwareImage image, FirmwareSymbol root, string path)
     {
         var dimensions = new List<ArrayDimension>();

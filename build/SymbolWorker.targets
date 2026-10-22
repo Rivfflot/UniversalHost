@@ -6,10 +6,10 @@
     <SymbolWorkerExtension Condition="$(SymbolWorkerRid.StartsWith('win-'))">.exe</SymbolWorkerExtension>
     <SymbolWorkerFile>$(SymbolWorkerRoot)dist/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension)</SymbolWorkerFile>
   </PropertyGroup>
-  <ItemGroup>
-    <Content Include="$(SymbolWorkerFile)" Link="symbol-tools/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension)"
+  <ItemGroup Condition="'$(IncludeSymbolWorkerContent)' != 'false'">
+    <Content Include="$(SymbolWorkerFile)" Link="$(SymbolWorkerDestinationPrefix)symbol-tools/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension)"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
-    <Content Include="$(SymbolWorkerRoot)licenses/Go-LICENSE;$(SymbolWorkerRoot)licenses/Go-PATENTS;$(SymbolWorkerRoot)licenses/ThirdPartyNotices.md" Link="symbol-tools/licenses/%(Filename)%(Extension)"
+    <Content Include="$(SymbolWorkerRoot)licenses/Go-LICENSE;$(SymbolWorkerRoot)licenses/Go-PATENTS;$(SymbolWorkerRoot)licenses/ThirdPartyNotices.md" Link="$(SymbolWorkerDestinationPrefix)symbol-tools/licenses/%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
   <Target Name="CheckSymbolWorkerRid" BeforeTargets="PrepareForBuild;ComputeFilesToPublish">
@@ -30,12 +30,12 @@
   </Target>
   <Target Name="RemoveSymbolWorkerAuditFiles" AfterTargets="Publish">
     <!-- Remove obsolete audit files when publishing into a reused directory. -->
-    <Delete Files="$(PublishDir)symbol-tools/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension).sha256;$(PublishDir)symbol-tools/licenses/upstream-sha256.json" />
+    <Delete Files="$(PublishDir)$(SymbolWorkerDestinationPrefix)symbol-tools/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension).sha256;$(PublishDir)$(SymbolWorkerDestinationPrefix)symbol-tools/licenses/upstream-sha256.json" />
   </Target>
-  <Target Name="SymbolWorkerBuildExecutablePermission" AfterTargets="CopyFilesToOutputDirectory" Condition="!$(SymbolWorkerRid.StartsWith('win-')) and !$([MSBuild]::IsOSPlatform('Windows'))">
-    <Exec Command="chmod 755 &quot;$(TargetDir)symbol-tools/$(SymbolWorkerRid)/symbols-worker&quot;" />
+  <Target Name="SymbolWorkerBuildExecutablePermission" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(IncludeSymbolWorkerContent)' != 'false' and !$(SymbolWorkerRid.StartsWith('win-')) and !$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="chmod 755 &quot;$(TargetDir)$(SymbolWorkerDestinationPrefix)symbol-tools/$(SymbolWorkerRid)/symbols-worker&quot;" />
   </Target>
-  <Target Name="SymbolWorkerExecutablePermission" AfterTargets="Publish" Condition="!$(SymbolWorkerRid.StartsWith('win-')) and !$([MSBuild]::IsOSPlatform('Windows'))">
-    <Exec Command="chmod 755 &quot;$(PublishDir)symbol-tools/$(SymbolWorkerRid)/symbols-worker&quot;" />
+  <Target Name="SymbolWorkerExecutablePermission" AfterTargets="Publish" Condition="'$(IncludeSymbolWorkerContent)' != 'false' and !$(SymbolWorkerRid.StartsWith('win-')) and !$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="chmod 755 &quot;$(PublishDir)$(SymbolWorkerDestinationPrefix)symbol-tools/$(SymbolWorkerRid)/symbols-worker&quot;" />
   </Target>
 </Project>

@@ -13,7 +13,7 @@ if ($archivePath.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringCo
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($archivePath)) | Out-Null
 $names = [Collections.Generic.HashSet[string]]::new()
 $workerName = if ($Rid.StartsWith('win-')) { 'symbols-worker.exe' } else { 'symbols-worker' }
-$workerEntry = "symbol-tools/$Rid/$workerName"
+$workerEntry = "dependencies/symbol-tools/$Rid/$workerName"
 $expectedHash = (Get-FileHash -LiteralPath (Join-Path $root $workerEntry) -Algorithm SHA256).Hash
 $archivedHash = ''
 if ($Rid.StartsWith('win-')) {
@@ -38,7 +38,8 @@ if ($Rid.StartsWith('win-')) {
         foreach ($item in Get-ChildItem -LiteralPath $root -File -Recurse) {
             $relative = [IO.Path]::GetRelativePath($root, $item.FullName).Replace('\','/')
             $entry = [System.Formats.Tar.PaxTarEntry]::new([System.Formats.Tar.TarEntryType]::RegularFile, $relative)
-            $executable = $relative -eq 'UniversalHost' -or $relative -eq "symbol-tools/$Rid/symbols-worker"
+            $executable = $relative -in @('UniversalHost', "dependencies/symbol-tools/$Rid/symbols-worker",
+                'dependencies/UniversalHost.ProjectConverter')
             $entry.Mode = [IO.UnixFileMode]$(if ($executable) { 493 } else { 420 }) # 0755 / 0644
             $entry.ModificationTime = $item.LastWriteTimeUtc
             $entry.DataStream = [IO.File]::OpenRead($item.FullName)
@@ -55,17 +56,20 @@ if ($Rid.StartsWith('win-')) {
             if ($entry.Name -eq $workerEntry) {
                 $archivedHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($entry.DataStream))
             }
-            if ($entry.Name -eq 'UniversalHost' -or $entry.Name -eq "symbol-tools/$Rid/symbols-worker") {
+            if ($entry.Name -in @('UniversalHost', "dependencies/symbol-tools/$Rid/symbols-worker",
+                'dependencies/UniversalHost.ProjectConverter')) {
                 if ([int]$entry.Mode -ne 493) { throw "Wrong executable archive permissions: $($entry.Name)" }
                 $executables++
             }
         }
     } finally { $reader.Dispose(); $gzip.Dispose(); $file.Dispose() }
-    if ($executables -ne 2) { throw 'Archive lacks the application or parser executable' }
+    if ($executables -ne 3) { throw 'Archive lacks the application, converter or shared parser executable' }
 }
 if ($archivedHash -ne $expectedHash) { throw 'Archived worker differs from the verified publish output' }
 foreach ($license in @('Go-LICENSE','Go-PATENTS','ThirdPartyNotices.md')) {
-    if (!$names.Contains("symbol-tools/licenses/$license")) { throw "Archive lacks license: $license" }
+    if (!$names.Contains("dependencies/symbol-tools/licenses/$license")) { throw "Archive lacks license: $license" }
 }
+$converterEntry = 'dependencies/UniversalHost.ProjectConverter' + $(if ($Rid.StartsWith('win-')) { '.exe' } else { '' })
+if (!$names.Contains($converterEntry)) { throw 'Archive lacks project converter' }
 Write-Output 'Archive worker hash, licenses and executable entries verified'
 Get-FileHash -LiteralPath $archivePath -Algorithm SHA256 | Format-List

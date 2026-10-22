@@ -1,0 +1,45 @@
+<Project>
+  <PropertyGroup>
+    <ProjectConverterProject>$(MSBuildThisFileDirectory)../UniversalHost.ProjectConverter/UniversalHost.ProjectConverter.csproj</ProjectConverterProject>
+  </PropertyGroup>
+  <Target Name="CopyProjectConverter" AfterTargets="Build">
+    <PropertyGroup>
+      <_DependencyBuildRoot>$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::GetFullPath('$(TargetDir)'))))</_DependencyBuildRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <_LegacyBuildDependencies Include="$(_DependencyBuildRoot)project-converter;$(_DependencyBuildRoot)project-tools;$(_DependencyBuildRoot)symbol-tools" />
+    </ItemGroup>
+    <Error Condition="!$([System.String]::Copy('%(_LegacyBuildDependencies.FullPath)').StartsWith('$(_DependencyBuildRoot)'))" Text="Legacy dependency cleanup escaped the build output directory." />
+    <RemoveDir Directories="@(_LegacyBuildDependencies)" />
+    <MSBuild Projects="$(ProjectConverterProject)" Targets="GetProjectConverterFiles" Properties="Configuration=$(Configuration);SelfContained=$(SelfContained);PublishSelfContained=$(SelfContained);PublishSingleFile=false" BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" ItemName="_ProjectConverterFiles" />
+    </MSBuild>
+    <Copy SourceFiles="@(_ProjectConverterFiles)" DestinationFiles="@(_ProjectConverterFiles->'$(TargetDir)dependencies/%(TargetPath)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="PublishProjectConverter" BeforeTargets="ComputeFilesToPublish">
+    <PropertyGroup>
+      <_ProjectConverterPublishDir>$(MSBuildProjectDirectory)/obj/project-converter-single-file/$(Configuration)/$(RuntimeIdentifier)/</_ProjectConverterPublishDir>
+    </PropertyGroup>
+    <MSBuild Projects="$(ProjectConverterProject)" Targets="Publish" BuildInParallel="false" RemoveProperties="PublishProfile;PublishProfileFullPath"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=$(SelfContained);PublishSelfContained=$(SelfContained);PublishSingleFile=true;IncludeSymbolWorkerContent=false;PublishDir=$(_ProjectConverterPublishDir)" />
+    <ItemGroup>
+      <_PublishedProjectConverter Include="$(_ProjectConverterPublishDir)UniversalHost.ProjectConverter$(_NativeExecutableExtension)" />
+      <ResolvedFileToPublish Include="@(_PublishedProjectConverter)">
+        <RelativePath>dependencies/%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+  <Target Name="CleanPublishedDependencies" BeforeTargets="_CopyResolvedFilesToPublishPreserveNewest;_CopyResolvedFilesToPublishAlways">
+    <PropertyGroup>
+      <_DependencyPublishRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(PublishDir)'))</_DependencyPublishRoot>
+    </PropertyGroup>
+    <!-- 只清理发布输出内的工具目录，防止复用发布目录时留下旧布局或旧运行库。 -->
+    <ItemGroup>
+      <_PublishedDependencyDirectories Include="$(_DependencyPublishRoot)dependencies;$(_DependencyPublishRoot)project-converter;$(_DependencyPublishRoot)project-tools;$(_DependencyPublishRoot)symbol-tools" />
+    </ItemGroup>
+    <Error Condition="!$([System.String]::Copy('%(_PublishedDependencyDirectories.FullPath)').StartsWith('$(_DependencyPublishRoot)'))" Text="Dependency cleanup escaped the publish output directory." />
+    <RemoveDir Directories="@(_PublishedDependencyDirectories)" />
+  </Target>
+</Project>

@@ -11,10 +11,12 @@ public sealed class FirmwareParser(ParseOptions? options = null)
     private readonly ParseOptions _options = options ?? new();
     public static string HostRid => $"{(OperatingSystem.IsWindows() ? "win" : OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsMacOS() ? "osx" : "unsupported")}-{RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant()}";
 
+    public static string GetWorkerPath(string dependencyDirectory) => Path.Combine(dependencyDirectory,
+        "symbol-tools", HostRid, OperatingSystem.IsWindows() ? "symbols-worker.exe" : "symbols-worker");
+
     public async Task<FirmwareImage> ParseAsync(string path, CancellationToken cancellationToken = default)
     {
-        var worker = _options.WorkerPath ?? Path.Combine(AppContext.BaseDirectory, "symbol-tools", HostRid,
-            OperatingSystem.IsWindows() ? "symbols-worker.exe" : "symbols-worker");
+        var worker = _options.WorkerPath ?? GetWorkerPath(Path.Combine(AppContext.BaseDirectory, "dependencies"));
         if (!Path.IsPathFullyQualified(worker)) throw new ArgumentException("解析工具路径必须为绝对路径");
         if (!File.Exists(worker)) throw new FileNotFoundException($"缺少 {HostRid} 固件解析工具，请检查发布包", worker);
         if (_options.Timeout <= TimeSpan.Zero || _options.MaxOutputBytes < 1024) throw new ArgumentOutOfRangeException(nameof(options));

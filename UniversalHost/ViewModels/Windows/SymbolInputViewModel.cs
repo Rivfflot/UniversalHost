@@ -44,10 +44,10 @@ public sealed class SymbolInputViewModel : ReactiveObject, IDisposable
 {
     private readonly UserSymbolInfo _symbol;
     private readonly ProjectSettings _settings;
-    private string _kind = "偏移量", _error = "";
+    private string _kind = "偏移", _error = "";
     private bool _applying;
     private IReadOnlyList<SymbolNumberInputViewModel> _inputs = [];
-    public static string[] Choices { get; } = ["偏移量", "数组下标"];
+    public static string[] Choices { get; } = ["偏移", "下标"];
     public IReadOnlyList<SymbolNumberInputViewModel> Inputs
     {
         get => _inputs;
@@ -65,13 +65,13 @@ public sealed class SymbolInputViewModel : ReactiveObject, IDisposable
         get => _kind;
         set
         {
-            if (!CanEditInput || value == _kind || value is not ("偏移量" or "数组下标")) return;
+            if (!CanEditInput || value == _kind || value is not ("偏移" or "下标")) return;
             this.RaiseAndSetIfChanged(ref _kind, value);
             RefreshInputs();
             TryApply();
         }
     }
-    private SymbolInputKind InputKind => Kind == "数组下标" ? SymbolInputKind.ArrayIndex : SymbolInputKind.Offset;
+    private SymbolInputKind InputKind => Kind == "下标" ? SymbolInputKind.ArrayIndex : SymbolInputKind.Offset;
     public SymbolInputViewModel(UserSymbolInfo symbol)
     {
         _symbol = symbol;
@@ -87,7 +87,7 @@ public sealed class SymbolInputViewModel : ReactiveObject, IDisposable
     }
     private void Refresh()
     {
-        _kind = _symbol.InputKind == SymbolInputKind.ArrayIndex ? "数组下标" : "偏移量";
+        _kind = _symbol.InputKind == SymbolInputKind.ArrayIndex ? "下标" : "偏移";
         this.RaisePropertyChanged(nameof(Kind));
         this.RaisePropertyChanged(nameof(CanEditInput));
         RefreshInputs();

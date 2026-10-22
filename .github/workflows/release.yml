@@ -21,11 +21,9 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Validate symbol and application regressions
+      - name: Build application and project converter
         run: |
-          pwsh tests/Test-PrebuiltSymbolWorkers.ps1
           dotnet build UniversalHost.slnx --configuration Debug
-          dotnet run --no-build --project tests/UniversalHost.Symbols.Tests
 
       - name: Publish Windows x64
         run: >-

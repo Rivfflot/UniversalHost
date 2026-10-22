@@ -259,6 +259,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             var path = files[0].Path.LocalPath;
             try
             {
+                var conversion = await ProjectConversionService.EnsureCurrentAsync(path);
+                if (conversion is { RemovedSymbols.Count: > 0 })
+                    NotificationService.Show($"工程转换完成：已删除 {conversion.RemovedSymbols.Count} 个无法匹配的变量",
+                        string.Join(Environment.NewLine, conversion.RemovedSymbols.Select(
+                            item => $"{item.Group}: {item.Name} ({item.Source})，{item.Reason}")), NotificationType.Warning);
                 var layout = ProjectSaveService.LoadProject(path);
                 _disposables.Clear();
                 if (layout == null)
@@ -273,7 +278,9 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
 
                 GlobalStatus.Instance.IsProjectOpened = true;
                 LogService.ForModule(LogModule.Project).Information("已加载文件: {ProjectPath}", path);
-                NotificationService.Show("读取成功", $"已加载文件: {path}", NotificationType.Success);
+                NotificationService.Show("读取成功", conversion?.BackupPath == null
+                    ? $"已加载文件: {path}"
+                    : $"已转换并加载文件: {path}\n原工程备份: {conversion.BackupPath}", NotificationType.Success);
             }
             catch (Exception ex)
             {

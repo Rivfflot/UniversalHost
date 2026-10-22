@@ -71,7 +71,7 @@
 					Width="Auto"
 					MaxWidth="70"/>
 					<DataGridTextColumn
-					Header="偏移量"
+					Header="偏移"
 					Binding="{Binding Offset}"
 					IsReadOnly="True"
 					Width="Auto"
@@ -161,7 +161,7 @@
 					Width="Auto"
 					MaxWidth="200"/>
 					<DataGridTextColumn
-					Header="偏移量"
+					Header="偏移"
 					Binding="{Binding Offset}"
 					IsReadOnly="True"
 					Width="Auto"

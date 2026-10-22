@@ -24,7 +24,7 @@ internal static class ProjectMetadataService
         await JsonSerializer.SerializeAsync(stream, new ProjectMetadata { AppVersion = AppInfo.Version }, _jsonOptions);
     }
 
-    public static ProjectMetadata Read(ZipArchive archive)
+    public static ProjectMetadata Read(ZipArchive archive, bool allowOlderVersion = false)
     {
         var entry = archive.GetEntry(EntryName)
             ?? throw new InvalidDataException("工程缺少元信息。");
@@ -41,7 +41,7 @@ internal static class ProjectMetadataService
             throw new InvalidDataException("工程元信息格式错误。", ex);
         }
 
-        if (metadata.FormatVersion <= 0)
+        if (metadata.FormatVersion < ProjectMetadata.MinimumFormatVersion)
             throw new InvalidDataException("工程文件格式版本无效。");
         if (metadata.FormatVersion > ProjectMetadata.CurrentFormatVersion)
         {
@@ -52,6 +52,9 @@ internal static class ProjectMetadataService
             throw new InvalidDataException(
                 $"当前程序无法打开此工程。此工程由程序版本 {savedAppVersion} 保存，当前程序版本为 {AppInfo.Version}，请更新程序后重试。");
         }
+
+        if (!allowOlderVersion && metadata.FormatVersion < ProjectMetadata.CurrentFormatVersion)
+            throw new InvalidDataException("工程需要先通过独立工程转换器升级，请重新打开工程。");
 
         return metadata;
     }

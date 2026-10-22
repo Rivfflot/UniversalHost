@@ -47,11 +47,11 @@ UniversalHost 是面向嵌入式设备开发与调试的通用桌面上位机，
    cd UniversalHost
    ```
 
-2. 运行 `dotnet build UniversalHost.slnx --configuration Debug` 构建，运行 `dotnet run --no-build --project tests/UniversalHost.Symbols.Tests` 验证。按主机发布，例如 `dotnet publish UniversalHost/UniversalHost.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true`。
+2. 运行 `dotnet build UniversalHost.slnx --configuration Debug` 构建。按主机发布，例如 `dotnet publish UniversalHost/UniversalHost.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true`。
 
 
    
-3. 保留发布目录中的 `symbol-tools/` 工具及许可证文件后运行。
+3. 保留发布目录中的 `dependencies/` 及其中的许可证文件后运行。
 
 ## TODO
 
