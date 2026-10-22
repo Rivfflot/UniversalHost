@@ -1,4 +1,4 @@
-﻿using DynamicData;
+using DynamicData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -73,6 +73,13 @@ public static class SymbolRuntimeService
         ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols
                     .Connect()
                     .AutoRefresh(x => x.DataType)
+                   .AutoRefresh(x => x.Address)
+                   .AutoRefresh(x => x.Offset)
+                   .AutoRefresh(x => x.Mode)
+                   .AutoRefresh(x => x.Access)
+                   .AutoRefresh(x => x.MemberPath)
+                   .AutoRefresh(x => x.Definition)
+                   .AutoRefresh(x => x.Target)
                     .WhereReasonsAre(ChangeReason.Refresh)
                     .Subscribe(changes =>
                     {
@@ -86,6 +93,13 @@ public static class SymbolRuntimeService
         ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols
                    .Connect()
                    .AutoRefresh(x => x.DataType)
+                   .AutoRefresh(x => x.Address)
+                   .AutoRefresh(x => x.Offset)
+                   .AutoRefresh(x => x.Mode)
+                   .AutoRefresh(x => x.Access)
+                   .AutoRefresh(x => x.MemberPath)
+                   .AutoRefresh(x => x.Definition)
+                   .AutoRefresh(x => x.Target)
                    .WhereReasonsAre(ChangeReason.Refresh)
                    .Subscribe(changes =>
                    {

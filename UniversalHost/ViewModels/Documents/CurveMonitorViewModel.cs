@@ -2,8 +2,8 @@
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using DynamicData;
-using ReactiveUI.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using ScottPlot;
 using System;

@@ -42,6 +42,8 @@ public partial class GlobalStatus : ReactiveObject
     public bool CanConnectDevice => _canConnectDevice.Value;
     private readonly ObservableAsPropertyHelper<bool> _canEditCommunicationSettings;
     public bool CanEditCommunicationSettings => _canEditCommunicationSettings.Value;
+    private readonly ObservableAsPropertyHelper<bool> _canEditSymbolLayout;
+    public bool CanEditSymbolLayout => _canEditSymbolLayout.Value;
     private GlobalStatus()
     {
         this.WhenAnyValue(
@@ -62,6 +64,14 @@ public partial class GlobalStatus : ReactiveObject
             .ToProperty(this,
                         x => x.CanEditCommunicationSettings,
                         out _canEditCommunicationSettings);
+
+        this.WhenAnyValue(
+                x => x.IsMonitoring,
+                x => x.CanEditCommunicationSettings,
+                (monitoring, canEdit) => !monitoring && canEdit)
+            .ToProperty(this,
+                        x => x.CanEditSymbolLayout,
+                        out _canEditSymbolLayout);
 
         this.WhenAnyValue(
                 x => x.IsProjectOpened,
@@ -226,6 +236,18 @@ public class ProjectSaveService : ReactiveObject
         foreach (var filePath in settings.DeviceConfig.SymbolFilePaths.Items)
             symbolPaths.Add(ProjectFilePathService.RebasePath(filePath, sourcePath, targetPath));
         snapshot[nameof(ProjectSettings.DeviceConfig)]!["SymbolFilePaths"] = symbolPaths;
+        // Snapshot identities must follow the same rebasing as their source list.
+        // This changes only the serialized copy, never the loaded access layout.
+        foreach (var row in snapshot[nameof(ProjectSettings.DeviceConfig)]!["FirmwareSnapshots"]!.AsArray())
+            row!["SourcePath"] = ProjectFilePathService.RebasePath(row["SourcePath"]!.GetValue<string>(), sourcePath, targetPath);
+        foreach (var rows in new[]
+        {
+            snapshot[nameof(ProjectSettings.MonitorConfig)]!["MonitoredSymbols"]!.AsArray(),
+            snapshot[nameof(ProjectSettings.CalibrateConfig)]!["CalibratedSymbols"]!.AsArray()
+        })
+            foreach (var row in rows)
+                if (row?[nameof(SymbolInfo.SourceKey)]?.GetValue<string>() is { Length: > 0 } key)
+                    row[nameof(SymbolInfo.SourceKey)] = ProjectFilePathService.RebasePath(key, sourcePath, targetPath);
         return snapshot;
     }
 
@@ -236,7 +258,7 @@ public class ProjectSaveService : ReactiveObject
 
         using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
 
-        // 先确定格式版本；后续格式迁移应在反序列化业务模型前完成。
+        // 在反序列化业务模型前拒绝不支持的工程格式。
         ProjectMetadataService.Read(archive);
 
         // 读取 settings.json

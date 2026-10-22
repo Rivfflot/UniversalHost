@@ -1,0 +1,41 @@
+<Project>
+  <PropertyGroup>
+    <SymbolWorkerRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</SymbolWorkerRid>
+    <SymbolWorkerRid Condition="'$(SymbolWorkerRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</SymbolWorkerRid>
+    <SymbolWorkerRoot>$(MSBuildThisFileDirectory)../UniversalHost.Symbols/Native/</SymbolWorkerRoot>
+    <SymbolWorkerExtension Condition="$(SymbolWorkerRid.StartsWith('win-'))">.exe</SymbolWorkerExtension>
+    <SymbolWorkerFile>$(SymbolWorkerRoot)dist/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension)</SymbolWorkerFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="$(SymbolWorkerFile)" Link="symbol-tools/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="$(SymbolWorkerRoot)licenses/Go-LICENSE;$(SymbolWorkerRoot)licenses/Go-PATENTS;$(SymbolWorkerRoot)licenses/ThirdPartyNotices.md" Link="symbol-tools/licenses/%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+  <Target Name="CheckSymbolWorkerRid" BeforeTargets="PrepareForBuild;ComputeFilesToPublish">
+    <Error Condition="'$(SymbolWorkerRid)' != 'win-x64' and '$(SymbolWorkerRid)' != 'win-arm64' and '$(SymbolWorkerRid)' != 'linux-x64' and '$(SymbolWorkerRid)' != 'linux-arm64' and '$(SymbolWorkerRid)' != 'osx-x64' and '$(SymbolWorkerRid)' != 'osx-arm64'"
+           Text="No verified symbols-worker build mapping for RID $(SymbolWorkerRid). Supported mappings: win/linux/osx x64/arm64." />
+  </Target>
+  <Target Name="ValidateSymbolWorker" BeforeTargets="PrepareForBuild;ComputeFilesToPublish" DependsOnTargets="CheckSymbolWorkerRid">
+    <Error Condition="!Exists('$(SymbolWorkerFile)') or !Exists('$(SymbolWorkerFile).sha256')"
+           Text="Missing prebuilt symbols-worker for $(SymbolWorkerRid). Restore Native/dist from the repository, or maintainers can run pwsh build/Build-SymbolWorkers.ps1 with Go 1.26.8." />
+    <ReadLinesFromFile File="$(SymbolWorkerFile).sha256">
+      <Output TaskParameter="Lines" PropertyName="SymbolWorkerExpectedHash" />
+    </ReadLinesFromFile>
+    <GetFileHash Files="$(SymbolWorkerFile)" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="SymbolWorkerActualHash" />
+    </GetFileHash>
+    <Error Condition="'$(SymbolWorkerActualHash)' != '$(SymbolWorkerExpectedHash)'"
+           Text="Prebuilt symbols-worker SHA256 mismatch for $(SymbolWorkerRid). Restore the binary and checksum together." />
+  </Target>
+  <Target Name="RemoveSymbolWorkerAuditFiles" AfterTargets="Publish">
+    <!-- Remove obsolete audit files when publishing into a reused directory. -->
+    <Delete Files="$(PublishDir)symbol-tools/$(SymbolWorkerRid)/symbols-worker$(SymbolWorkerExtension).sha256;$(PublishDir)symbol-tools/licenses/upstream-sha256.json" />
+  </Target>
+  <Target Name="SymbolWorkerBuildExecutablePermission" AfterTargets="CopyFilesToOutputDirectory" Condition="!$(SymbolWorkerRid.StartsWith('win-')) and !$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="chmod 755 &quot;$(TargetDir)symbol-tools/$(SymbolWorkerRid)/symbols-worker&quot;" />
+  </Target>
+  <Target Name="SymbolWorkerExecutablePermission" AfterTargets="Publish" Condition="!$(SymbolWorkerRid.StartsWith('win-')) and !$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="chmod 755 &quot;$(PublishDir)symbol-tools/$(SymbolWorkerRid)/symbols-worker&quot;" />
+  </Target>
+</Project>

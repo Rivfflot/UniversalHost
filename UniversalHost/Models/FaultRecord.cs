@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Text;
+using UniversalHost.Symbols;
 
 namespace UniversalHost.Models;
 
@@ -40,19 +41,19 @@ internal class FaultRecord
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     public void AddRecordSymbol(ReadOnlySpan<byte> name, ushort dataType)
     {
-        SymbolDataType symbolDataType = dataType switch
+        ScalarType symbolDataType = dataType switch
         {
-            0 => SymbolDataType.Boolean,
-            1 => SymbolDataType.Int8,
-            2 => SymbolDataType.Uint8,
-            3 => SymbolDataType.Int16,
-            4 => SymbolDataType.Uint16,
-            5 => SymbolDataType.Int32,
-            6 => SymbolDataType.Uint32,
-            7 => SymbolDataType.Float32,
-            8 => SymbolDataType.Int64,
-            9 => SymbolDataType.Uint64,
-            10 => SymbolDataType.Float64,
+            0 => ScalarType.Boolean,
+            1 => ScalarType.Int8,
+            2 => ScalarType.Uint8,
+            3 => ScalarType.Int16,
+            4 => ScalarType.Uint16,
+            5 => ScalarType.Int32,
+            6 => ScalarType.Uint32,
+            7 => ScalarType.Float32,
+            8 => ScalarType.Int64,
+            9 => ScalarType.Uint64,
+            10 => ScalarType.Float64,
             _ => throw new ArgumentOutOfRangeException(nameof(dataType)),
         };
 

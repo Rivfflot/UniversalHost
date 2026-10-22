@@ -1,8 +1,8 @@
 ﻿using Avalonia.Media;
 using DynamicData;
 using DynamicData.Kernel;
-using ReactiveUI.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -131,7 +131,10 @@ public partial class BitsMonitorViewModel : ReactiveObject, IDisposable
                             .FirstOrDefault(x => x.Id == removed.Symbol.Id);
 
                         if (toRemove != null)
+                        {
                             Layout.BitsMonitorSymbols.Remove(toRemove);
+                            if (SelectedBitsMonitorSymbol == toRemove) SelectedBitsMonitorSymbol = null;
+                        }
                     })
                     .Subscribe()
                     .DisposeWith(_disposables);

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
-using ReactiveUI.Reactive;
 using ReactiveUI.Avalonia.Reactive;
 using ReactiveUI.Primitives.Reactive.Disposables;
+using ReactiveUI.Reactive;
 using System;
 using UniversalHost.Services;
 using UniversalHost.ViewModels.Windows;

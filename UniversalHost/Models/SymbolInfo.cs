@@ -1,33 +1,24 @@
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
-using System;
+using UniversalHost.Symbols;
 
 namespace UniversalHost.Models;
 
-public enum SymbolDataType
-{
-    Int8,
-    Uint8,
-    Int16,
-    Uint16,
-    Int32,
-    Uint32,
-    Int64,
-    Uint64,
-    Float32,
-    Float64,
-    Boolean,
-    Unknown
-}
+public enum SymbolInputKind { Offset, ArrayIndex }
 
 /// <summary>
-/// 从elf文件中读取到的原始符号信息
+/// 从固件文件读取的根符号信息；具体成员访问由 UserSymbolInfo 保存。
 /// </summary>
 public partial class SymbolInfo : ReactiveObject
 {
+    // 保存的固件路径，关联类型快照并区分不同目录中的同名文件。
+    [Reactive] private string _sourceKey = string.Empty;
+    // 根定义保留链接名称和类型 ID；成员路径不替代根符号身份。
+    [Reactive] private FirmwareSymbol? _definition;
     [Reactive] private string _sourceFileName = string.Empty;
     [Reactive] private string _name = string.Empty;
 
@@ -64,16 +55,57 @@ public partial class SymbolInfo : ReactiveObject
 public partial class UserSymbolInfo : SymbolInfo
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    private uint? _offset = 0;
-    public uint? Offset
+    private uint _offset;
+    public uint Offset
     {
         get => _offset;
         set
         {
-            this.RaiseAndSetIfChanged(ref _offset, value ?? 0);
+            this.RaiseAndSetIfChanged(ref _offset, value);
+            this.RaisePropertyChanged(nameof(ActualAddressHex));
         }
     }
-    [JsonIgnore] public uint ActualAddress => Address + _offset ?? 0;
+    [JsonIgnore]
+    public uint ActualAddress => Mode == AccessMode.Automatic
+        ? checked((uint)(Access?.Address ?? throw new InvalidOperationException("自动变量没有保存的解析地址")))
+        : checked(Address + Offset);
+    [Reactive] private AccessMode _mode = AccessMode.Manual;
+    [Reactive] private string _memberPath = string.Empty;
+    [Reactive] private AccessStatus _verificationStatus = AccessStatus.Unverified;
+    [Reactive] private string _verificationReason = "手动配置，未经自动验证";
+    [Reactive] private TargetInfo _target = new();
+    [Reactive] private SymbolInputKind _inputKind;
+    // One snapshot holds resolved address, bounds, scalar type and storage width.
+    [Reactive] private AccessResolution? _access;
+    [JsonIgnore]
+    public int StorageBits => Access is { StorageBits: 8 or 16 or 32 or 64 } access && access.Scalar == DataType
+        ? access.StorageBits : DataType switch
+        {
+            ScalarType.Int16 or ScalarType.Uint16 => 16,
+            ScalarType.Int32 or ScalarType.Uint32 or ScalarType.Float32 => 32,
+            ScalarType.Int64 or ScalarType.Uint64 or ScalarType.Float64 => 64,
+            ScalarType.Boolean => Math.Max(8, Target.AddressUnitBits),
+            _ => 8
+        };
+    [JsonIgnore] public string RootName => Definition?.Name ?? Name;
+    [JsonIgnore] public bool CanEditType => Mode != AccessMode.Automatic || VerificationStatus != AccessStatus.Verified;
+    [JsonIgnore]
+    public string ActualAddressHex
+    {
+        get
+        {
+            try { return $"0x{ActualAddress:X8}"; }
+            catch (OverflowException) { return "地址溢出"; }
+            catch (InvalidOperationException) { return "地址未验证"; }
+        }
+    }
+
+    public void RefreshAccessDisplay()
+    {
+        this.RaisePropertyChanged(nameof(CanEditType));
+        this.RaisePropertyChanged(nameof(ActualAddressHex));
+        this.RaisePropertyChanged(nameof(StorageBits));
+    }
     //用于标定变量限制的最大值/最小值。监控变量不需要。
     [Reactive] private double? _maxValue;
     [Reactive] private double? _minValue;
@@ -82,7 +114,7 @@ public partial class UserSymbolInfo : SymbolInfo
     [Reactive] private string _alias = string.Empty;
     [Reactive] private string _unit = string.Empty;
     [Reactive] private string _description = string.Empty;
-    [Reactive] private SymbolDataType _dataType = SymbolDataType.Unknown;
+    [Reactive] private ScalarType _dataType = ScalarType.Unknown;
 
     private readonly Dictionary<int, SymbolBitAlias> _bitAliases = [];
 

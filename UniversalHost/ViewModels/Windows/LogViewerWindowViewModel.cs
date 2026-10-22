@@ -1,5 +1,6 @@
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
+using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,7 +11,6 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Serilog.Events;
 using UniversalHost.Models.Logging;
 using UniversalHost.Services;
 using UniversalHost.Services.Logging;

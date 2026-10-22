@@ -1,8 +1,8 @@
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
-using System.IO.Ports;
-using System.IO;
 using System;
+using System.IO;
+using System.IO.Ports;
 
 namespace UniversalHost.Models;
 

@@ -44,6 +44,10 @@
 *.png   binary
 *.gif   binary
 
+# Preserve precompiled workers byte-for-byte on every checkout.
+UniversalHost.Symbols/Native/dist/*/symbols-worker binary
+UniversalHost.Symbols/Native/dist/*/symbols-worker.exe binary
+
 ###############################################################################
 # diff behavior for common document formats
 # 

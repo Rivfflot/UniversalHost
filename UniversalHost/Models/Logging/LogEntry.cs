@@ -1,6 +1,6 @@
+using Serilog.Events;
 using System;
 using System.Globalization;
-using Serilog.Events;
 
 namespace UniversalHost.Models.Logging;
 

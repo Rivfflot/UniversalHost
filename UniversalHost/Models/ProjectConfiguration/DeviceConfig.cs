@@ -1,17 +1,15 @@
 using DynamicData;
-using ELFSharp.ELF;
-using ELFSharp.ELF.Sections;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.Json.Serialization;
 using UniversalHost.Services;
+using UniversalHost.Symbols;
 
 namespace UniversalHost.Models;
 
-public partial class DeviceConfig : ReactiveObject
+public partial class DeviceConfig : ReactiveObject, IJsonOnDeserialized
 {
     [Reactive] private CommunicationMode _mode = CommunicationMode.UDP;
     [Reactive] private byte _deviceID = 0x00;
@@ -30,96 +28,17 @@ public partial class DeviceConfig : ReactiveObject
         }
     }
     [JsonIgnore] public SourceList<SymbolInfo> Symbols { get; } = new();
-    [JsonPropertyName("Symbols")]
-    public List<SymbolInfo> SymbolsStorage
-    {
-        get => Symbols.Items.ToList(); // 保存时
-        set // 读取时
-        {
-            Symbols.Edit(list =>
-            {
-                list.Clear();
-                list.AddRange(value);
-            });
-        }
-    }
-    public uint ReadElfFile(string path)
-    {
-        var elf = ELFReader.Load(path);
-        var sourceFileName = System.IO.Path.GetFileName(path);
-        uint addSymbolCount = 0;
-        foreach (var section in elf.Sections)
-        {
-            if (section.Type != SectionType.SymbolTable)
-                continue;
-            // 针对 32 位 ELF
-            if (elf.Class == Class.Bit32)
-            {
-                var symbol_table = (SymbolTable<uint>)section;
-                foreach (var symbol in symbol_table.Entries)
-                {
-                    if (string.IsNullOrEmpty(symbol.Name) || symbol.Name.Contains('.') || symbol.Name.StartsWith("$"))
-                    {
-                        continue;
-                    }
-                    //仅加入全局变量
-                    //if (symbol.Binding != SymbolBinding.Global)
-                    //{
-                    //    continue;
-                    //}
+    [Reactive] private List<FirmwareImage> _firmwareSnapshots = [];
 
-                    if (symbol.Type == SymbolType.Object || symbol.Type == SymbolType.NotSpecified)
-                    {
-                        this.Symbols.Add(new SymbolInfo
-                        {
-                            SourceFileName = sourceFileName,
-                            Name = symbol.Name,
-                            Address = symbol.Value,
-                            Size = symbol.Size
-                        });
-                        addSymbolCount++;
-                    }
-                }
-            }
-            // 针对 64 位 ELF
-            else if (elf.Class == Class.Bit64)
-            {
-                //var symbol_table = (SymbolTable<ulong>)section;
-                //foreach (var symbol in symbol_table.Entries)
-                //{
-                //    if (symbol.Name.Contains('.'))
-                //    {
-                //        continue;
-                //    }
-                //    if (symbol.Type == SymbolType.Object || symbol.Type == SymbolType.NotSpecified)
-                //    {
-                //        if (symbol.Size == 0)
-                //        {
-                //            continue;
-                //        }
-                //        this.Symbols.Add(new SymbolInfo
-                //        {
-                //            Name = symbol.Name,
-                //            Address = symbol.ValueString,
-                //            Size = symbol.Size
-                //        });
-                //        addSymbolCount++;
-                //    }
-                //}
-            }
-            else
-            {
-                throw new InvalidDataException("ELF错误：类型未知");
-            }
-        }
-        return addSymbolCount;
-    }
-    public void ReloadSymbolTable(string projectFilePath)
+    void IJsonOnDeserialized.OnDeserialized()
     {
-        this.Symbols.Clear();
-        foreach (var path in this.SymbolFilePaths.Items)
+        // 根符号只在固件快照中持久化；恢复内存列表不读取或重新解析固件。
+        Symbols.Edit(list =>
         {
-            ReadElfFile(ProjectFilePathService.ResolvePath(path, projectFilePath));
-        }
+            list.Clear();
+            list.AddRange(FirmwareSnapshots.SelectMany(image => image.Symbols
+                .Where(symbol => symbol.Address <= uint.MaxValue)
+                .Select(symbol => FirmwareSymbolService.ToSymbolInfo(image, symbol))));
+        });
     }
 }

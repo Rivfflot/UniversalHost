@@ -2,15 +2,21 @@ using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using UniversalHost.Models.Plotting;
+using UniversalHost.Symbols;
 
 namespace UniversalHost.Models;
 
 public abstract partial class SymbolRuntime : ReactiveObject
 {
     public UserSymbolInfo Symbol { get; init; }
+    private readonly string _layoutKey;
+    public bool LayoutMatches => _layoutKey == GetLayoutKey(Symbol);
+    private static string GetLayoutKey(UserSymbolInfo s) =>
+        $"{s.DataType}|{s.StorageBits}|{s.Address}|{s.Offset}|{s.Mode}|{s.Access}|{s.MemberPath}|{s.Target.AddressUnitBits}|{s.Definition?.LinkageName}";
 
     // UI 绑定的属性保留在基类
     [Reactive] protected string _valueString = "";
@@ -21,10 +27,12 @@ public abstract partial class SymbolRuntime : ReactiveObject
     protected SymbolRuntime(UserSymbolInfo symbol)
     {
         Symbol = symbol;
+        _layoutKey = GetLayoutKey(symbol);
     }
     public abstract void ClearHistory();
     public abstract bool UpdateValueFromBytes(ReadOnlySpan<byte> data, bool isLittleEndian);
     public abstract byte[]? StringToValue();
+    public abstract byte[] EncodeValue(string text);
     public abstract string ValueToString();
     public abstract string ValueToStringWithoutUpdate();
     public abstract string? GetValueHistoryIndexString(int index);
@@ -37,17 +45,17 @@ public abstract partial class SymbolRuntime : ReactiveObject
     {
         return symbol.DataType switch
         {
-            SymbolDataType.Int8 => new SymbolRuntime<sbyte>(symbol, maxSaveLen),
-            SymbolDataType.Uint8 => new SymbolRuntime<byte>(symbol, maxSaveLen),
-            SymbolDataType.Int16 => new SymbolRuntime<short>(symbol, maxSaveLen),
-            SymbolDataType.Uint16 => new SymbolRuntime<ushort>(symbol, maxSaveLen),
-            SymbolDataType.Int32 => new SymbolRuntime<int>(symbol, maxSaveLen),
-            SymbolDataType.Uint32 => new SymbolRuntime<uint>(symbol, maxSaveLen),
-            SymbolDataType.Int64 => new SymbolRuntime<long>(symbol, maxSaveLen),
-            SymbolDataType.Uint64 => new SymbolRuntime<ulong>(symbol, maxSaveLen),
-            SymbolDataType.Float32 => new SymbolRuntime<float>(symbol, maxSaveLen),
-            SymbolDataType.Float64 => new SymbolRuntime<double>(symbol, maxSaveLen),
-            SymbolDataType.Boolean => new SymbolRuntime<bool>(symbol, maxSaveLen),
+            ScalarType.Int8 => new SymbolRuntime<sbyte>(symbol, maxSaveLen),
+            ScalarType.Uint8 => new SymbolRuntime<byte>(symbol, maxSaveLen),
+            ScalarType.Int16 => new SymbolRuntime<short>(symbol, maxSaveLen),
+            ScalarType.Uint16 => new SymbolRuntime<ushort>(symbol, maxSaveLen),
+            ScalarType.Int32 => new SymbolRuntime<int>(symbol, maxSaveLen),
+            ScalarType.Uint32 => new SymbolRuntime<uint>(symbol, maxSaveLen),
+            ScalarType.Int64 => new SymbolRuntime<long>(symbol, maxSaveLen),
+            ScalarType.Uint64 => new SymbolRuntime<ulong>(symbol, maxSaveLen),
+            ScalarType.Float32 => new SymbolRuntime<float>(symbol, maxSaveLen),
+            ScalarType.Float64 => new SymbolRuntime<double>(symbol, maxSaveLen),
+            ScalarType.Boolean => new SymbolRuntime<bool>(symbol, maxSaveLen),
             _ => new SymbolRuntime<byte>(symbol, maxSaveLen),//Unknown
         };
     }
@@ -59,7 +67,9 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     private readonly CircularBuffer.CircularBuffer<T> _valuesHistory;
     private readonly CurvePlotBuffer _plotHistory;
     public override CurvePlotBuffer PlotHistory => _plotHistory;
-    public override byte ValueSizeInBytes => (byte)Unsafe.SizeOf<T>();
+    public override byte ValueSizeInBytes => typeof(T) == typeof(bool)
+        ? (byte)(Symbol.StorageBits / 8)
+        : (byte)Unsafe.SizeOf<T>();
 
     public SymbolRuntime(UserSymbolInfo symbol, int maxSaveLen)
                                      : base(symbol)
@@ -114,7 +124,14 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     public override bool UpdateValueFromBytes(ReadOnlySpan<byte> data, bool isLittleEndian)
     {
         // 大多数设备是小端序，或大小为1字节，不需要翻转端序，直接快速读取
-        if (isLittleEndian || ValueSizeInBytes == 1)
+        if (data.Length < ValueSizeInBytes) throw new ArgumentException("变量数据长度不足");
+        if (typeof(T) == typeof(bool))
+        {
+            bool value = false;
+            foreach (byte b in data[..ValueSizeInBytes]) value |= b != 0;
+            Value = (T)(object)value;
+        }
+        else if (isLittleEndian || ValueSizeInBytes == 1)
         {
             Value = MemoryMarshal.Read<T>(data);
         }
@@ -190,26 +207,34 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     /// <returns>表示转换后值的字节数组</returns>
     public override byte[]? StringToValue()
     {
-        if (string.IsNullOrEmpty(ValueString)) throw new ArgumentNullException(nameof(ValueString), "输入数值为空");
+        var bytes = EncodeValue(ValueString);
+        UpdateValueFromBytes(bytes, true);
+        ValueToString();
+        return bytes;
+    }
 
-        double val = double.Parse(ValueString);
+    public override byte[] EncodeValue(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("输入数值为空");
+        object value = typeof(T) == typeof(bool)
+            ? text.Trim() switch { "0" => false, "1" => true, _ => bool.Parse(text) }
+            : Convert.ChangeType(text, typeof(T), CultureInfo.CurrentCulture);
+        T parsedValue = (T)value;
+        double val = ConvertToDouble(parsedValue);
+        if (!double.IsFinite(val)) throw new ArgumentOutOfRangeException(nameof(text), "不允许 NaN 或无穷大标定值");
         if (Symbol.MaxValue.HasValue && val > Symbol.MaxValue)
         {
-            throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {ValueString} 大于上限 {Symbol.MaxValue}");
+            throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {text} 大于上限 {Symbol.MaxValue}");
         }
         else if (Symbol.MinValue.HasValue && val < Symbol.MinValue)
         {
-            throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {ValueString} 小于上限 {Symbol.MaxValue}");
+            throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {text} 小于下限 {Symbol.MinValue}");
         }
 
-        T parsedValue = (T)Convert.ChangeType(ValueString, typeof(T));
-        Value = parsedValue;
-        ValueToString();
-        _valuesHistory.PushBack(Value);
         byte[] bytes = new byte[ValueSizeInBytes];
-
-        MemoryMarshal.Write(bytes, in parsedValue);
-
+        if (typeof(T) == typeof(bool)) bytes[0] = (bool)value ? (byte)1 : (byte)0;
+        else MemoryMarshal.Write(bytes, in parsedValue);
+        if (!BitConverter.IsLittleEndian) Array.Reverse(bytes);
         return bytes;
     }
 
@@ -286,6 +311,12 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     public override void GetBitsValue(Span<byte> data)
     {
         if (_valuesHistory.Size == 0) return;
+        if (typeof(T) == typeof(bool))
+        {
+            data.Clear();
+            if (data.Length > 0) data[0] = (bool)(object)Value ? (byte)1 : (byte)0;
+            return;
+        }
         T tempValue = this.Value;
         ReadOnlySpan<byte> valueBytes = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.As<T, byte>(ref tempValue), ValueSizeInBytes);
         for (int i = 0; i < data.Length; i++)

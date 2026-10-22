@@ -1,6 +1,6 @@
 ﻿using DynamicData;
-using ReactiveUI.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.ObjectModel;

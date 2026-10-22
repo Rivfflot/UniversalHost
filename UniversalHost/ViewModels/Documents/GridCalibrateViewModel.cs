@@ -1,7 +1,7 @@
-﻿using Avalonia.Input.Platform;
+using Avalonia.Input.Platform;
 using DynamicData;
-using ReactiveUI.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using UniversalHost.Models;
 using UniversalHost.Services;
 using UniversalHost.Services.Communication;
+using UniversalHost.Symbols;
 using UniversalHost.ViewModels.Windows;
 
 namespace UniversalHost.ViewModels.Documents;
@@ -66,6 +67,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
                 .OnItemRemoved(removedRuntime =>
                 {
                     _keysSourceList.Remove(removedRuntime.Symbol.Id);
+                    if (SelectedSymbolRuntime?.Symbol.Id == removedRuntime.Symbol.Id) SelectedSymbolRuntime = null;
                 })
                 .Subscribe()
                 .DisposeWith(_disposables);
@@ -100,6 +102,11 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
     /// </summary>
     public void RefreshDisplay()
     {
+        if (SelectedSymbolRuntime is { } selected)
+        {
+            var current = SymbolRuntimeService.CalibrateSymbolRuntimesSource.Lookup(selected.Symbol.Id);
+            SelectedSymbolRuntime = current.HasValue ? current.Value : null;
+        }
         _keysSourceList.Edit(list =>
         {
             var ids = list.ToArray();
@@ -151,7 +158,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private async Task DownloadValues()
     {
-        var unknownItems = DisplaySymbolRuntimes.Where(item => item.Symbol.DataType == SymbolDataType.Unknown).ToList();
+        var unknownItems = DisplaySymbolRuntimes.Where(item => item.Symbol.DataType == ScalarType.Unknown).ToList();
 
         if (unknownItems.Count > 0)
         {
@@ -161,14 +168,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         }
         try
         {
-            int cnt = 0;
-            foreach (var item in DisplaySymbolRuntimes)
-            {
-                if (await XcpService.Client!.DownloadSymbol(item))
-                {
-                    cnt++;
-                }
-            }
+            int cnt = await XcpService.Client!.DownloadSymbols(DisplaySymbolRuntimes);
             NotificationService.Show("标定成功", $"共下载 {cnt} 个变量\n{DisplaySymbolRuntimes.Count - cnt} 个变量值未改变", NotificationType.Success);
         }
         catch (Exception ex)
@@ -179,7 +179,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private async Task UploadValues()
     {
-        var unknownItems = DisplaySymbolRuntimes.Where(item => item.Symbol.DataType == SymbolDataType.Unknown).ToList();
+        var unknownItems = DisplaySymbolRuntimes.Where(item => item.Symbol.DataType == ScalarType.Unknown).ToList();
 
         if (unknownItems.Count > 0)
         {
@@ -207,7 +207,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         {
             return;
         }
-        if (SelectedSymbolRuntime.Symbol.DataType == SymbolDataType.Unknown)
+        if (SelectedSymbolRuntime.Symbol.DataType == ScalarType.Unknown)
         {
             NotificationService.Show("标定错误", $"{SelectedSymbolRuntime.Symbol.Name}({SelectedSymbolRuntime.Symbol.Alias}) 类型为 Unknown", NotificationType.Warning);
             return;
@@ -235,7 +235,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         {
             return;
         }
-        if (SelectedSymbolRuntime.Symbol.DataType == SymbolDataType.Unknown)
+        if (SelectedSymbolRuntime.Symbol.DataType == ScalarType.Unknown)
         {
             NotificationService.Show("上传标定变量错误", $"{SelectedSymbolRuntime.Symbol.Name}({SelectedSymbolRuntime.Symbol.Alias}) 类型为 Unknown", NotificationType.Warning);
             return;
@@ -256,4 +256,3 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         _disposables.Dispose();
     }
 }
-

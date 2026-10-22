@@ -38,7 +38,8 @@ public partial class LogViewerWindow : Window
         {
             var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = "打开日志目录", AllowMultiple = false
+                Title = "打开日志目录",
+                AllowMultiple = false
             });
             interaction.SetOutput(folders.Count == 0 ? null : folders[0].TryGetLocalPath());
         }));
@@ -46,7 +47,8 @@ public partial class LogViewerWindow : Window
         {
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "打开日志文件", AllowMultiple = false,
+                Title = "打开日志文件",
+                AllowMultiple = false,
                 FileTypeFilter = [new("JSONL 日志") { Patterns = ["*.jsonl"] }, new("所有文件") { Patterns = ["*"] }]
             });
             interaction.SetOutput(files.Count == 0 ? null : files[0].TryGetLocalPath());

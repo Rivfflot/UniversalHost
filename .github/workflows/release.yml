@@ -21,6 +21,12 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Validate symbol and application regressions
+        run: |
+          pwsh tests/Test-PrebuiltSymbolWorkers.ps1
+          dotnet build UniversalHost.slnx --configuration Debug
+          dotnet run --no-build --project tests/UniversalHost.Symbols.Tests
+
       - name: Publish Windows x64
         run: >-
           dotnet publish UniversalHost/UniversalHost.csproj
@@ -29,8 +35,19 @@ jobs:
           --self-contained false
           -p:PublishSingleFile=true
 
+      - name: Check parser architecture and licenses
+        run: >-
+          pwsh build/Verify-SymbolPackage.ps1
+          -PublishDirectory UniversalHost/bin/Release/net10.0/win-x64/publish
+          -Rid win-x64
+          -RunWorker
+
       - name: Package release
-        run: Compress-Archive -Path UniversalHost/bin/Release/net10.0/win-x64/publish/* -DestinationPath UniversalHost-win-x64.zip
+        run: >-
+          pwsh build/Package-Release.ps1
+          -PublishDirectory UniversalHost/bin/Release/net10.0/win-x64/publish
+          -Rid win-x64
+          -OutputFile UniversalHost-win-x64.zip
 
       - name: Create draft pre-release
         env:

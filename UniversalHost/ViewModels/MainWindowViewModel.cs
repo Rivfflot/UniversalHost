@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using UniversalHost.Models;
 using UniversalHost.Services;
 using UniversalHost.Services.Communication;
+using UniversalHost.Symbols;
 using UniversalHost.ViewModels.Windows;
 using UniversalHost.Views.Windows;
 
@@ -96,31 +97,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 NotificationService.Show("保存错误", $"{ex.Message}", NotificationType.Error);
             }
         }));
-        ReloadSymbolsCommand = ReactiveCommand.Create((Action)(() =>
-        {
-            try
-            {
-                var removedSymbols = ProjectSaveService.Instance.Settings.ReloadAllSymbols(ProjectSaveService.Instance.ProjectFilePath);
-                LogService.ForModule(LogModule.Symbols).Information("符号表重新加载，从{FileCount}个文件中加载了{SymbolCount}个变量",
-                    ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count, ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count);
-                NotificationService.Show("符号表重新加载成功", $"从{ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count}个文件中加载了{ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count}个变量", NotificationType.Success);
-                if (removedSymbols.Count > 0)
-                {
-                    List<string> removedSymbolsMessage = [];
-                    foreach (var symbol in removedSymbols)
-                    {
-                        removedSymbolsMessage.Add($"{symbol.SourceFileName} : {symbol.Name}");
-                    }
-                    LogService.ForModule(LogModule.Symbols).Information("删除{SymbolCount}个不存在于新文件中的监控/标定变量", removedSymbols.Count);
-                    NotificationService.Show($"删除{removedSymbols.Count}个不存在于新文件中的监控/标定变量", string.Join(Environment.NewLine, removedSymbolsMessage), NotificationType.Warning);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogService.ForModule(LogModule.Symbols).Error(ex, "重新加载错误，{Reason}", ex.Message);
-                NotificationService.Show("重新加载错误", $"{ex.Message}", NotificationType.Error);
-            }
-        }));
+        ReloadSymbolsCommand = ReactiveCommand.CreateFromTask(FirmwareImportCoordinator.Instance.ReloadAsync);
         #endregion
         //开启设置窗口
         OpenSettingWindowCommand = ReactiveCommand.Create<int>((Action<int>)(tabIndex =>
@@ -145,7 +122,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         StartMonitorCommand = ReactiveCommand.CreateFromTask((Func<Task>)(async () =>
         {
             var unknownSymbols = SymbolRuntimeService.MonitorSymbolRuntimesSource.Items
-                                                     .Where(x => (x.Symbol.DataType == SymbolDataType.Unknown));
+                                                     .Where(x => (x.Symbol.DataType == ScalarType.Unknown));
 
             if (unknownSymbols.Any())
             {
@@ -523,7 +500,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     private async Task DownloadValuesAsync()
     {
         var items = SymbolRuntimeService.CalibrateSymbolRuntimesSource.Items
-                      .Where(item => !string.IsNullOrEmpty(item.ValueString) && item.Symbol.DataType != SymbolDataType.Unknown);
+                      .Where(item => !string.IsNullOrEmpty(item.ValueString));
         if (!items.Any())
         {
             NotificationService.Show("下载标定变量错误", "可下载变量数量为 0", NotificationType.Warning);
@@ -531,10 +508,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }
         try
         {
-            foreach (var item in items)
-            {
-                await XcpService.Client!.DownloadSymbol(item);
-            }
+            await XcpService.Client!.DownloadSymbols(items);
             NotificationService.Show("标定成功", $"共下载 {items.Count()} 个变量", NotificationType.Success);
         }
         catch (Exception ex)
@@ -547,7 +521,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     private async Task UploadValuesAsync()
     {
         var unknownItems = SymbolRuntimeService.CalibrateSymbolRuntimesSource.Items.Where(item =>
-                                                item.Symbol.DataType == SymbolDataType.Unknown).ToList();
+                                                item.Symbol.DataType == ScalarType.Unknown).ToList();
 
         if (unknownItems.Count > 0)
         {

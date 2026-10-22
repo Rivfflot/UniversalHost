@@ -16,8 +16,10 @@
 # Mono auto generated files
 mono_crash.*
 
-# Tests
+# Local toolchains and validation artifacts
+.tools/
 tests/
+# Prebuilt symbol workers are versioned so application builds need only .NET SDK.
 
 # Build results
 [Dd]ebug/

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
@@ -31,6 +32,7 @@ public static class XcpService
 
     public static async Task ConnectAsync()
     {
+        if (FirmwareImportCoordinator.Instance.IsBusy) throw new InvalidOperationException("请等待固件解析完成或取消解析后连接设备");
         // 重复入口立即拒绝，不能排队后清理另一个入口刚建立的连接。
         if (!await ClientGate.WaitAsync(0))
             throw new InvalidOperationException("设备连接正在建立或清理，请稍后再试");
@@ -400,6 +402,8 @@ public class XcpClient : IAsyncDisposable
     /// <returns></returns>
     public async Task UploadSymbol(SymbolRuntime symbolRuntime)
     {
+        CalibrationPreflight.ValidateAccess(ProjectSaveService.Instance.Settings.DeviceConfig, symbolRuntime,
+            CalculateByteLen(1), DeviceStatus.ConnectRes.IsLittleEndian);
         Span<byte> buffer = stackalloc byte[8];
 
         byte agLen = CalculateAgLenOfValue(DeviceStatus.ConnectRes.Granularity, symbolRuntime.ValueSizeInBytes);
@@ -429,26 +433,56 @@ public class XcpClient : IAsyncDisposable
     /// <returns></returns>
     public async Task<bool> DownloadSymbol(SymbolRuntime symbolRuntime)
     {
-        string NewValue = symbolRuntime.ValueString;
-        string OldValue = symbolRuntime.ValueToStringWithoutUpdate();
-        //相同时不处理
-        if (OldValue == NewValue)
+        return await DownloadSymbols([symbolRuntime]) > 0;
+    }
+
+    private readonly SemaphoreSlim _calibrationGate = new(1, 1);
+    public async Task<int> DownloadSymbols(IEnumerable<SymbolRuntime> symbols)
+    {
+        if (!await _calibrationGate.WaitAsync(0)) throw new InvalidOperationException("已有标定批次正在执行");
+        try
         {
-            return false;
+            // Materialize and validate the WHOLE batch before the first request.
+            var batch = CalibrationPreflight.Prepare(ProjectSaveService.Instance.Settings.DeviceConfig,
+                symbols.ToArray(), CalculateByteLen(1), DeviceStatus.ConnectRes.IsLittleEndian);
+            byte[] frame = new byte[16];
+            foreach (var item in batch)
+            {
+                int length = XcpProtocol.Cal.ShortDownloadCommand.Encode(frame, new XcpProtocol.Cal.ShortDownloadParams
+                {
+                    Address = item.Address,
+                    Ag = DeviceStatus.ConnectRes.Granularity,
+                    IsLittleEndian = DeviceStatus.ConnectRes.IsLittleEndian,
+                    Data = item.Bytes
+                });
+                if (length > DeviceStatus.ConnectRes.MaxCtoLen)
+                    throw new InvalidOperationException($"{item.Runtime.Symbol.Name}: 标定帧超过设备 MAX_CTO");
+            }
+            int written = 0;
+            foreach (var item in batch)
+            {
+                if (item.OldValue == item.NewValue) continue;
+                await Cal.ShortDownloadAsync(item.Address, item.Bytes);
+                item.Runtime.UpdateValueFromBytes(item.Bytes, true);
+                item.Runtime.ValueToString();
+                written++;
+                LogService.ForModule(LogModule.Calibration)
+                    .ForContext("EventType", "CalibrationChanged")
+                    .ForContext("SymbolId", item.Runtime.Symbol.Id)
+                    .ForContext("SymbolAddress", item.Address)
+                    .ForContext("SymbolSourceFile", item.Runtime.Symbol.SourceFileName)
+                    .Information("CAL {SymbolName:l}: {OldValue:l} -> {NewValue:l}", item.Runtime.Symbol.Name, item.OldValue, item.NewValue);
+            }
+            return written;
         }
-        await Cal.ShortDownloadAsync(symbolRuntime.Symbol.ActualAddress, symbolRuntime.StringToValue());
-        LogService.ForModule(LogModule.Calibration)
-            .ForContext("EventType", "CalibrationChanged")
-            .ForContext("SymbolId", symbolRuntime.Symbol.Id)
-            .ForContext("SymbolAddress", symbolRuntime.Symbol.ActualAddress)
-            .ForContext("SymbolSourceFile", symbolRuntime.Symbol.SourceFileName)
-            .Information("CAL {SymbolName:l}({SymbolAlias:l}) : {OldValue:l} -> {NewValue:l}",
-                symbolRuntime.Symbol.Name, symbolRuntime.Symbol.Alias, OldValue, NewValue);
-        return true;
+        finally { _calibrationGate.Release(); }
     }
 
     public async Task StartDaq(IReadOnlyList<SymbolRuntime> symbolRuntimes)
     {
+        foreach (var runtime in symbolRuntimes)
+            CalibrationPreflight.ValidateAccess(ProjectSaveService.Instance.Settings.DeviceConfig, runtime,
+                CalculateByteLen(1), DeviceStatus.ConnectRes.IsLittleEndian);
         if (_serialOptions != null)
         {
             // 当前布局每次事件仅有一个 ODT；LEN 含 PID 及现有的 7 字节时间戳/对齐头。
@@ -811,6 +845,9 @@ public class XcpClient : IAsyncDisposable
             while (_daqChannel.Reader.TryRead(out var frame))
                 frame.Dispose();
             // 等待正在返回的业务命令释放信号量，再结束串口占用。
+            await _calibrationGate.WaitAsync();
+            _calibrationGate.Release();
+            _calibrationGate.Dispose();
             await _ctoSemaphore.WaitAsync();
             _ctoSemaphore.Release();
             _ctoSemaphore.Dispose();

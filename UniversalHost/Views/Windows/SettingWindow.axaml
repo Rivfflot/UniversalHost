@@ -1,4 +1,4 @@
-﻿<Window
+<Window
 	x:Class="UniversalHost.Views.Windows.SettingWindow"
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,6 +6,7 @@
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	xmlns:models="using:UniversalHost.Models"
 	xmlns:vm="using:UniversalHost.ViewModels.Windows"
+	xmlns:controls="using:UniversalHost.Views.Controls"
 	Title="设置"
 	Width="900"
 	Height="750"
@@ -21,1101 +22,1163 @@
 		</Style>
 	</Window.Styles>
 
-	<TabControl SelectedIndex="{Binding SelectedSettingTab}">
-		<!--  通用设置  -->
-		<TabItem Header="设备">
-			<ScrollViewer
-				HorizontalScrollBarVisibility="Auto"
-				VerticalScrollBarVisibility="Auto">
-				<Grid
-					Margin="0,5"
-					ColumnDefinitions="Auto,*"
-					RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-					<!--  第 1 行 通信模式  -->
-					<TextBlock
-						Grid.Row="0"
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="通信模式" />
-					<ComboBox
-						Grid.Row="0"
-						Grid.Column="1"
-						ItemsSource="{Binding AvailableCommunicationModes}"
-						IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
-						SelectedItem="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode}" />
-					<!--  第 2 行 设备ID  -->
-					<TextBlock
-						Grid.Row="1"
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						ToolTip.Tip="范围为 0–255"
-						Text="设备IDℹ" />
-					<NumericUpDown
-						Grid.Row="1"
-						Grid.Column="1"
-						Width="80"
-						HorizontalAlignment="Left"
-						Maximum="255"
-						Minimum="0"
-						ParsingNumberStyle="Integer"
-						ShowButtonSpinner="False"
-						IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
-						Value="{Binding DeviceIDTemp}" />
-					<!--  第 3 行 -->
-					<TextBlock
-						Grid.Row="2"
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="符号表"/>
-					<StackPanel
-						Grid.Row="2"
-						Grid.Column="1"
-						Orientation="Horizontal" >
-						<Button
-							Content="重载ELF"
-							Command="{Binding ReloadSymbolFileCommand}"
-							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
-						<Button
-							Content="添加ELF"
-							Command="{Binding SelectSymbolFileCommand}"
-							CommandParameter="{Binding $parent[Window]}"
-							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
-						<Button
-							Content="清空ELF"
-							Command="{Binding ClearSymbolFilePathsCommand}"
-							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
-						<Button
-							Content="清空符号表"
-							Command="{Binding ClearSymbolsCommand}"
-							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
-					</StackPanel>
-					<!--  第 7 行 -->
-					<TabControl Grid.Row="6"
-								Padding="0,12,12,12"
-								Grid.ColumnSpan="2">
-						<TabItem Header="ELF" FontSize="15" Margin="-4">
-							<ListBox
-								ItemsSource="{Binding SymbolFilePaths}"
-								ToolTip.Tip="以 .uhprj 所在目录为基准。&#10;工程目录内的文件自动使用相对路径。"
-								MaxHeight="200"
-								Margin="0,1,0,0">
-								<ListBox.ItemTemplate>
-									<DataTemplate x:DataType="x:String">
-										<ContentPresenter Content="{Binding}">
-											<ContentPresenter.ContextMenu>
-												<ContextMenu>
-													<MenuItem Header="添加"
-															  Command="{Binding $parent[Window].DataContext.SelectSymbolFileCommand}"
-															  CommandParameter="{Binding $parent[Window]}" />
-													<MenuItem Header="删除"
-															  Command="{Binding $parent[Window].DataContext.RemoveSymbolFileCommand}"
-															  CommandParameter="{Binding}" />
-													<MenuItem Header="信息"
-															  Command="{Binding $parent[Window].DataContext.ShowSymbolFileInformationCommand}"
-															  CommandParameter="{Binding}"/>
-													<MenuItem Header="复制路径"
-															  Click="ElfTableMenuItemCopyPathClick"/>
-													<MenuItem Header="打开所在文件夹"
-															  Command="{Binding $parent[Window].DataContext.OpenSymbolFileFolderCommand}"
-															  CommandParameter="{Binding}"/>
-													<MenuItem Header="删除全部"
-															  Command="{Binding $parent[Window].DataContext.ClearSymbolFilePathsCommand}" />
-												</ContextMenu>
-											</ContentPresenter.ContextMenu>
-										</ContentPresenter>
-									</DataTemplate>
-								</ListBox.ItemTemplate>
-							</ListBox>
-
-						</TabItem>
-						<TabItem Header="符号表" FontSize="15" Margin="-4">
-							<StackPanel Margin="0,1,4,0">
-								<TextBox PlaceholderText="搜索 符号名称/地址/来源文件"
-										 MaxWidth="650"
-										 HorizontalAlignment="Left"
-										 Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
-								<DataGrid ItemsSource="{Binding FilteredSymbols}"
-										  CanUserResizeColumns="True"
-										  AutoGenerateColumns="False"
-										  CanUserSortColumns="True"
-										  IsReadOnly="True"
-										  GridLinesVisibility="All"
-										  Margin="0,5,0,0"
-										  VerticalScrollBarVisibility="Auto"
-										  Height="500"
-										  x:CompileBindings="True">
-									<DataGrid.Columns>
-										<DataGridTextColumn Header="符号名称" Binding="{Binding Name}" Width="Auto"/>
-										<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
-										<DataGridTextColumn Header="大小" Binding="{Binding Size}" Width="Auto"/>
-										<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
-									</DataGrid.Columns>
-								</DataGrid>
-							</StackPanel>
-						</TabItem>
-
-					</TabControl>
-				</Grid>
-			</ScrollViewer>
-		</TabItem>
-
-		<!--  通信设置  -->
-		<TabItem Header="通信">
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<Grid IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
-					<!--  串口  -->
-					<StackPanel Grid.IsSharedSizeScope="True"
-						IsVisible="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:CommunicationMode.Serial}}">
-						<TextBlock FontSize="18" Text="串口" VerticalAlignment="Center" FontWeight="Heavy"/>
-						<!--  选择串口  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="串口选择" />
-							<StackPanel
-								Grid.Column="1"
-								Orientation="Horizontal">
-								<Button
-									Command="{Binding RefreshPortsCommand}"
-									Content="刷新" />
-								<ComboBox
-									Margin="8,0,0,0"
-									ItemsSource="{Binding AvailableSerialPorts}"
-									SelectedValueBinding="{Binding}"
-									SelectedValue="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort, Mode=TwoWay}" />
-							</StackPanel>
-
-						</Grid>
-						<!--  波特率  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="波特率" />
-							<NumericUpDown
-								Grid.Column="1"
-								Width="120"
-								HorizontalAlignment="Left"
-								Maximum="10000000"
-								Minimum="1"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding BaudRateTemp}" />
-
-						</Grid>
-						<!--   校验位  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="校验位" />
-							<ComboBox
-								Grid.Column="1"
-								ItemsSource="{Binding AvailableParities}"
-								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.ParitySetting}" />
-
-						</Grid>
-						<!--  数据位  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="停止位" />
-							<ComboBox
-								Grid.Column="1"
-								ItemsSource="{Binding AvailableStopBits}"
-								SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.StopBitsSetting}" />
-
-						</Grid>
-						<!--  超时时间  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="超时时间ℹ"
-								ToolTip.Tip="单位 ms；设备处理及调度裕量。&#10;发送完成后计时，另计应答传输时间。"/>
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="1"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding SerialTimeoutTemp}" />
-
-						</Grid>
-						<!-- 重试次数 -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="重试次数" />
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding SerialRetryTimesTemp}" />
-
-						</Grid>
-						<Grid ColumnDefinitions="Auto,*">
-							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="物理双工ℹ"
-									   ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP。&#10;HalfDuplex：半双工，仅支持 IAP。" />
-							<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDuplexModes}"
-									  SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DuplexMode}" />
-						</Grid>
-						<Grid ColumnDefinitions="Auto,*">
-							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="方向控制ℹ"
-									   ToolTip.Tip="Automatic：自动换向，全双工选此项。&#10;RtsHighWhileSending：发送时 RTS 为高。&#10;RtsLowWhileSending：发送时 RTS 为低。" />
-							<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSerialDirectionControls}"
-									  SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DirectionControl}" />
-						</Grid>
-						<Grid ColumnDefinitions="Auto,*">
-							<TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Text="换向延时ℹ"
-									   ToolTip.Tip="单位 ms；半双工换向裕量，按硬件要求设置。" />
-							<NumericUpDown Grid.Column="1" Width="80" HorizontalAlignment="Left" Minimum="0" Maximum="65535"
-										   ShowButtonSpinner="False" ParsingNumberStyle="Integer" Value="{Binding SerialTurnaroundDelayTemp}" />
-						</Grid>
-						<CheckBox Content="适配器有本机回显" IsChecked="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.HasLocalEcho}"
-								  ToolTip.Tip="适配器返回完整发送帧时开启。&#10;过滤本机回显后接收设备应答。" />
-						<TextBlock Text="固定 8 数据位；串口 IAP 前须断开 XCP。" TextWrapping="Wrap" Margin="0,6,0,0" />
-					</StackPanel>
-
-					<!--  UDP  -->
-					<StackPanel Grid.IsSharedSizeScope="True"
-						IsVisible="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:CommunicationMode.UDP}}">
-						<TextBlock FontSize="18" Text="UDP" VerticalAlignment="Center" FontWeight="Heavy"/>
-						<!-- 本地IP  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="本地IP" />
-							<StackPanel
-								Grid.Column="1"
-								Orientation="Horizontal">
-								<Button
-									Command="{Binding RefreshIPCommand}"
-									Content="刷新" />
-								<ComboBox
-									Margin="8,0,0,0"
-									ItemsSource="{Binding AvailableIPv4Addresses}"
-									SelectedValueBinding="{Binding}"
-									SelectedValue="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress, Mode=TwoWay}" />
-							</StackPanel>
-
-						</Grid>
-						<!--  远程IP  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="远程IP" />
-							<TextBox
-								Grid.Column="1"
-								MinWidth="130"
-								HorizontalAlignment="Left"
-								VerticalContentAlignment="Center"
-								InnerRightContent="{Binding RemoteAddressError}"
-								Text="{Binding RemoteAddressTemp, Mode=TwoWay}" />
-
-						</Grid>
-						<!--  IAP本地端口  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="IAP本地端口" />
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding IapLocalPortTemp}" />
-
-						</Grid>
-						<!--  IAP远程端口  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="IAP远程端口" />
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding IapRemotePortTemp}" />
-
-						</Grid>
-						<!--  XCP本地端口  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="XCP本地端口" />
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding XcpLocalPortTemp}" />
-
-						</Grid>
-						<!--  XCP远程端口  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="XCP远程端口" />
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding XcpRemotePortTemp}" />
-
-						</Grid>
-						<!--  超时时间  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="超时时间ℹ"
-								ToolTip.Tip="单位 ms"/>
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding UdpTimeoutTemp}" />
-
-						</Grid>
-						<!--  重试次数  -->
-						<Grid>
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
-								<ColumnDefinition Width="Auto"/>
-							</Grid.ColumnDefinitions>
-
-							<TextBlock
-								Grid.Column="0"
-								Margin="0,0,10,0"
-								VerticalAlignment="Center"
-								Text="重试次数"/>
-							<NumericUpDown
-								Grid.Column="1"
-								Width="80"
-								HorizontalAlignment="Left"
-								Maximum="65535"
-								Minimum="0"
-								ParsingNumberStyle="Integer"
-								ShowButtonSpinner="False"
-								Value="{Binding UdpRetryTimesTemp}" />
-
-						</Grid>
-					</StackPanel>
-				</Grid>
-			</ScrollViewer>
-		</TabItem>
-		<!--  监控设置  -->
-		<TabItem Header="监控">
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<Grid
-					ColumnDefinitions="Auto,*"
-					RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-					<!--  第 1 行  -->
-					<TextBlock
-						Grid.Row="0"
-						Grid.Column="0"
-						Text="记录数据长度ℹ"
-						VerticalAlignment="Center"
-						ToolTip.ShowOnDisabled="True"
-						ToolTip.Tip="上位机保存的数据长度"
-						/>
-					<StackPanel
-						Grid.Row="0"
-						Grid.Column="1"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
-						Orientation="Horizontal">
+	<DockPanel>
+		<TabControl SelectedIndex="{Binding SelectedSettingTab}">
+			<!--  通用设置  -->
+			<TabItem Header="设备">
+				<ScrollViewer
+					HorizontalScrollBarVisibility="Auto"
+					VerticalScrollBarVisibility="Auto">
+					<Grid
+						Margin="0,5"
+						ColumnDefinitions="Auto,*"
+						RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+						<!--  第 1 行 通信模式  -->
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="通信模式" />
+						<ComboBox
+							Grid.Row="0"
+							Grid.Column="1"
+							ItemsSource="{Binding AvailableCommunicationModes}"
+							IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode}" />
+						<!--  第 2 行 设备ID  -->
+						<TextBlock
+							Grid.Row="1"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							ToolTip.Tip="范围为 0–255"
+							Text="设备IDℹ" />
 						<NumericUpDown
-							Width="100"
+							Grid.Row="1"
+							Grid.Column="1"
+							Width="80"
 							HorizontalAlignment="Left"
-							Maximum="1000000"
+							Maximum="255"
 							Minimum="0"
 							ParsingNumberStyle="Integer"
 							ShowButtonSpinner="False"
-							Value="{Binding MaxSaveLenTemp}"/>
-						<Button
-							Content="应用ℹ"
+							IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+							Value="{Binding DeviceIDTemp}" />
+						<!--  第 3 行 -->
+						<TextBlock
+							Grid.Row="2"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="符号表"/>
+						<StackPanel
+							Grid.Row="2"
+							Grid.Column="1"
+							Orientation="Horizontal" >
+							<Button
+								Content="更新符号表"
+								Command="{Binding ReloadSymbolFileCommand}"
+								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							<Button
+								Content="添加固件"
+								Command="{Binding SelectSymbolFileCommand}"
+								CommandParameter="{Binding $parent[Window]}"
+								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							<Button
+								Content="清空ELF"
+								Command="{Binding ClearSymbolFilePathsCommand}"
+								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+							<Button
+								Content="清空符号表"
+								Command="{Binding ClearSymbolsCommand}"
+								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+						</StackPanel>
+						<!--  第 7 行 -->
+						<TabControl Grid.Row="6"
+									Padding="0,12,12,12"
+									Grid.ColumnSpan="2">
+							<TabItem Header="ELF" FontSize="15" Margin="-4">
+								<ListBox
+									ItemsSource="{Binding SymbolFilePaths}"
+									ToolTip.Tip="以 .uhprj 所在目录为基准。&#10;工程目录内的文件自动使用相对路径。"
+									MaxHeight="200"
+									Margin="0,1,0,0">
+									<ListBox.ItemTemplate>
+										<DataTemplate x:DataType="x:String">
+											<ContentPresenter Content="{Binding}">
+												<ContentPresenter.ContextMenu>
+													<ContextMenu>
+														<MenuItem Header="添加"
+																  Command="{Binding $parent[Window].DataContext.SelectSymbolFileCommand}"
+																  CommandParameter="{Binding $parent[Window]}" />
+														<MenuItem Header="删除"
+																  Command="{Binding $parent[Window].DataContext.RemoveSymbolFileCommand}"
+																  CommandParameter="{Binding}" />
+														<MenuItem Header="信息"
+																  Command="{Binding $parent[Window].DataContext.ShowSymbolFileInformationCommand}"
+																  CommandParameter="{Binding}"/>
+														<MenuItem Header="复制路径"
+																  Click="ElfTableMenuItemCopyPathClick"/>
+														<MenuItem Header="打开所在文件夹"
+																  Command="{Binding $parent[Window].DataContext.OpenSymbolFileFolderCommand}"
+																  CommandParameter="{Binding}"/>
+														<MenuItem Header="删除全部"
+																  Command="{Binding $parent[Window].DataContext.ClearSymbolFilePathsCommand}" />
+													</ContextMenu>
+												</ContentPresenter.ContextMenu>
+											</ContentPresenter>
+										</DataTemplate>
+									</ListBox.ItemTemplate>
+								</ListBox>
+
+							</TabItem>
+							<TabItem Header="符号表" FontSize="15" Margin="-4">
+								<StackPanel Margin="0,1,4,0">
+									<TextBox PlaceholderText="搜索 符号名称/地址/来源文件"
+											 MaxWidth="650"
+											 HorizontalAlignment="Left"
+											 Text="{Binding SymbolSearchText,UpdateSourceTrigger=PropertyChanged}" />
+									<DataGrid
+										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+										ItemsSource="{Binding FilteredSymbols}"
+										CanUserResizeColumns="True"
+										AutoGenerateColumns="False"
+										CanUserSortColumns="True"
+										IsReadOnly="True"
+										GridLinesVisibility="All"
+										Margin="0,5,0,0"
+										VerticalScrollBarVisibility="Auto"
+										Height="500"
+										x:CompileBindings="True">
+										<DataGrid.Columns>
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}" Width="Auto"/>
+											<DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="Auto" />
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
+											<DataGridTextColumn Header="大小（目标地址单位）" Binding="{Binding Size}" Width="Auto"/>
+											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
+										</DataGrid.Columns>
+									</DataGrid>
+								</StackPanel>
+							</TabItem>
+
+						</TabControl>
+					</Grid>
+				</ScrollViewer>
+			</TabItem>
+
+			<!--  通信设置  -->
+			<TabItem Header="通信">
+				<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+					<Grid IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}">
+						<!--  串口  -->
+						<StackPanel
+							Grid.IsSharedSizeScope="True"
+							IsVisible="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:CommunicationMode.Serial}}">
+							<TextBlock FontSize="18" Text="串口" VerticalAlignment="Center" FontWeight="Heavy"/>
+							<!--  选择串口  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="串口选择" />
+								<StackPanel
+									Grid.Column="1"
+									Orientation="Horizontal">
+									<Button
+										Command="{Binding RefreshPortsCommand}"
+										Content="刷新" />
+									<ComboBox
+										Margin="8,0,0,0"
+										ItemsSource="{Binding AvailableSerialPorts}"
+										SelectedValueBinding="{Binding}"
+										SelectedValue="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.SelectedSerialPort, Mode=TwoWay}" />
+								</StackPanel>
+
+							</Grid>
+							<!--  波特率  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="波特率" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="120"
+									HorizontalAlignment="Left"
+									Maximum="10000000"
+									Minimum="1"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding BaudRateTemp}" />
+
+							</Grid>
+							<!--   校验位  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="校验位" />
+								<ComboBox
+									Grid.Column="1"
+									ItemsSource="{Binding AvailableParities}"
+									SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.ParitySetting}" />
+
+							</Grid>
+							<!--  数据位  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="停止位" />
+								<ComboBox
+									Grid.Column="1"
+									ItemsSource="{Binding AvailableStopBits}"
+									SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.StopBitsSetting}" />
+
+							</Grid>
+							<!--  超时时间  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="超时时间ℹ"
+									ToolTip.Tip="单位 ms；设备处理及调度裕量。&#10;发送完成后计时，另计应答传输时间。"/>
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="1"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding SerialTimeoutTemp}" />
+
+							</Grid>
+							<!-- 重试次数 -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="SerialLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="重试次数" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding SerialRetryTimesTemp}" />
+
+							</Grid>
+							<Grid ColumnDefinitions="Auto,*">
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="物理双工ℹ"
+									ToolTip.Tip="FullDuplex：全双工，支持 XCP/IAP。&#10;HalfDuplex：半双工，仅支持 IAP。" />
+								<ComboBox
+									Grid.Column="1"
+									ItemsSource="{Binding AvailableSerialDuplexModes}"
+									SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DuplexMode}" />
+							</Grid>
+							<Grid ColumnDefinitions="Auto,*">
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center" Text="方向控制ℹ"
+									ToolTip.Tip="Automatic：自动换向，全双工选此项。&#10;RtsHighWhileSending：发送时 RTS 为高。&#10;RtsLowWhileSending：发送时 RTS 为低。" />
+								<ComboBox
+									Grid.Column="1"
+									ItemsSource="{Binding AvailableSerialDirectionControls}"
+									SelectedItem="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.DirectionControl}" />
+							</Grid>
+							<Grid ColumnDefinitions="Auto,*">
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="换向延时ℹ"
+									ToolTip.Tip="单位 ms；半双工换向裕量，按硬件要求设置。" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Minimum="0"
+									Maximum="65535"
+									ShowButtonSpinner="False"
+									ParsingNumberStyle="Integer"
+									Value="{Binding SerialTurnaroundDelayTemp}" />
+							</Grid>
+							<CheckBox
+								Content="适配器有本机回显"
+								IsChecked="{Binding ProjectSaveServiceInstance.Settings.SerialConfig.HasLocalEcho}"
+								ToolTip.Tip="适配器返回完整发送帧时开启。&#10;过滤本机回显后接收设备应答。" />
+							<TextBlock
+								Text="固定 8 数据位；串口 IAP 前须断开 XCP。"
+								TextWrapping="Wrap"
+								Margin="0,6,0,0" />
+						</StackPanel>
+
+						<!--  UDP  -->
+						<StackPanel
+							Grid.IsSharedSizeScope="True"
+							IsVisible="{Binding ProjectSaveServiceInstance.Settings.DeviceConfig.Mode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:CommunicationMode.UDP}}">
+							<TextBlock
+								FontSize="18"
+								Text="UDP"
+								VerticalAlignment="Center"
+								FontWeight="Heavy"/>
+							<!-- 本地IP  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="本地IP" />
+								<StackPanel
+									Grid.Column="1"
+									Orientation="Horizontal">
+									<Button
+										Command="{Binding RefreshIPCommand}"
+										Content="刷新" />
+									<ComboBox
+										Margin="8,0,0,0"
+										ItemsSource="{Binding AvailableIPv4Addresses}"
+										SelectedValueBinding="{Binding}"
+										SelectedValue="{Binding ProjectSaveServiceInstance.Settings.UdpConfig.LocalAddress, Mode=TwoWay}" />
+								</StackPanel>
+
+							</Grid>
+							<!--  远程IP  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="远程IP" />
+								<TextBox
+									Grid.Column="1"
+									MinWidth="130"
+									HorizontalAlignment="Left"
+									VerticalContentAlignment="Center"
+									InnerRightContent="{Binding RemoteAddressError}"
+									Text="{Binding RemoteAddressTemp, Mode=TwoWay}" />
+
+							</Grid>
+							<!--  IAP本地端口  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="IAP本地端口" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding IapLocalPortTemp}" />
+
+							</Grid>
+							<!--  IAP远程端口  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="IAP远程端口" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding IapRemotePortTemp}" />
+
+							</Grid>
+							<!--  XCP本地端口  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="XCP本地端口" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding XcpLocalPortTemp}" />
+
+							</Grid>
+							<!--  XCP远程端口  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="XCP远程端口" />
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding XcpRemotePortTemp}" />
+
+							</Grid>
+							<!--  超时时间  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="超时时间ℹ"
+									ToolTip.Tip="单位 ms"/>
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding UdpTimeoutTemp}" />
+
+							</Grid>
+							<!--  重试次数  -->
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="UdpLabelGroup"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<TextBlock
+									Grid.Column="0"
+									Margin="0,0,10,0"
+									VerticalAlignment="Center"
+									Text="重试次数"/>
+								<NumericUpDown
+									Grid.Column="1"
+									Width="80"
+									HorizontalAlignment="Left"
+									Maximum="65535"
+									Minimum="0"
+									ParsingNumberStyle="Integer"
+									ShowButtonSpinner="False"
+									Value="{Binding UdpRetryTimesTemp}" />
+
+							</Grid>
+						</StackPanel>
+					</Grid>
+				</ScrollViewer>
+			</TabItem>
+			<!--  监控设置  -->
+			<TabItem Header="监控">
+				<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+					<Grid
+						ColumnDefinitions="Auto,*"
+						RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+						<!--  第 1 行  -->
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="0"
+							Text="记录数据长度ℹ"
+							VerticalAlignment="Center"
 							ToolTip.ShowOnDisabled="True"
-							ToolTip.Tip="会删除之前的数据"
-							Command="{Binding ApplyChangeSaveLengthCommand}"
+							ToolTip.Tip="上位机保存的数据长度"
 							/>
-					</StackPanel>
-					<!--  第 2 行  -->
-					<TextBlock
-						Grid.Row="1"
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="符号表"/>
-					<StackPanel
-						Grid.Row="1"
-						Grid.Column="1"
-						IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
-						Orientation="Horizontal" >
-						<Button
-							Content="重载ELF"
-							Command="{Binding ReloadSymbolFileCommand}"
-							ToolTip.ShowOnDisabled="True"
-							ToolTip.Tip="不存在于新ELF中的变量将被移除"/>
-						<Button
-							Content="清空监控变量"
-							Command="{Binding ClearMonitorSymbolsCommand}"/>
-						<Button
-							Content="删除重复监控变量"
-							ToolTip.Tip="名称、地址、偏移量均相同的变量仅保留一个。"
-							Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
-							ToolTip.ShowOnDisabled="True"/>
-						<Button
-							Content="清空所有位别名"
-							ToolTip.Tip="清空所有监控和标定变量的位别名"
-							Command="{Binding ClearAllBitAliasesCommand}"
-							ToolTip.ShowOnDisabled="True"/>
-					</StackPanel>
-					<!--  第 3 行：已勾选的监控变量统计  -->
-					<StackPanel
-						Grid.Row="2"
-						Grid.ColumnSpan="2"
-						Margin="0,5,0,5"
-						Orientation="Horizontal"
-						Spacing="20"
-						ToolTip.ShowOnDisabled="True"
-						ToolTip.Tip="统计已勾选的监控变量，不受搜索筛选影响">
-						<TextBlock Text="{Binding MonitoredSymbolCount, StringFormat='当前监控变量数：{0}'}"/>
-						<TextBlock Text="{Binding MonitoredSymbolsTotalSize, StringFormat='监控变量总大小：{0} 字节'}"/>
-					</StackPanel>
-					<!--  第 4 行  -->
-					<TabControl Grid.Row="3"
-								Padding="0,12,12,12"
-								Grid.ColumnSpan="2"
-								Margin="0,0,4,0" >
-						<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
-							<StackPanel Orientation="Vertical" Margin="0,1,0,0">
-								<TextBox PlaceholderText="搜索 符号名称/地址/来源文件"
-										 MaxWidth="650"
-										 HorizontalAlignment="Left"
-										 Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-								<DataGrid ItemsSource="{Binding FilteredSymbols}"
-										  AutoGenerateColumns="False"
-										  CanUserResizeColumns="True"
-										  CanUserSortColumns="True"
-										  IsReadOnly="True"
-										  GridLinesVisibility="All"
-										  VerticalScrollBarVisibility="Auto"
-										  Height="500"
-										  Margin="0,5,0,0"
-										  x:CompileBindings="True">
-									<DataGrid.Columns>
-										<DataGridTemplateColumn Width="28">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<Button
-														Background="Transparent"
-														Padding="1"
-														Content="➕"
-														ToolTip.Tip="添加至监控变量"
-														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
-														Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}"
-														CommandParameter="{Binding}">
-													</Button>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-										<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
-										<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
-										<DataGridTextColumn Header="大小" Binding="{Binding Size}" Width="Auto"/>
-										<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
-									</DataGrid.Columns>
-								</DataGrid>
-							</StackPanel>
-						</TabItem>
-						<TabItem Header="监控变量" FontSize="15" Margin="-4">
-							<StackPanel Orientation="Vertical" Margin="0,1,0,0">
-								<TextBox PlaceholderText="搜索 符号名称/地址/来源文件/别名/描述"
-										 MaxWidth="650"
-										 HorizontalAlignment="Left"
-										 Text="{Binding MonitorSymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
-								<DataGrid ItemsSource="{Binding FilteredMonitorSymbols}"
-										  AutoGenerateColumns="False"
-										  CanUserSortColumns="True"
-										  CanUserResizeColumns="True"
-										  GridLinesVisibility="All"
-										  VerticalScrollBarVisibility="Auto"
-										  Height="500"
-										  Margin="0,5,0,0"
-										  x:CompileBindings="True">
-
-									<DataGrid.Columns>
-										<DataGridTemplateColumn Width="28">
-											<DataGridTemplateColumn.HeaderTemplate>
-												<DataTemplate>
-													<Button
-														Background="Transparent"
-														Padding="0"
-														Margin="-10.5,0,-14,0"
-														FontSize="15"
-														Content="❌"
-														ToolTip.Tip="移除所有监控变量"
-														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
-														Command="{Binding $parent[Window].DataContext.ClearMonitorSymbolsCommand}">
-													</Button>
-												</DataTemplate>
-											</DataGridTemplateColumn.HeaderTemplate>
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<Button
-														Background="Transparent"
-														Padding="1"
-														Content="❌"
-														ToolTip.Tip="移除出监控变量"
-														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
-														Command="{Binding $parent[Window].DataContext.RemoveMonitorSymbolCommand}"
-														CommandParameter="{Binding}">
-													</Button>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-										<DataGridTemplateColumn Width="28">
-											<DataGridTemplateColumn.HeaderTemplate>
-												<DataTemplate>
-													<CheckBox Margin="-8.5,0,-14,0" Command="{Binding  $parent[Window].DataContext.HeaderOfIsMonitoredChangedCommand}" IsChecked="{Binding $parent[Window].DataContext.SelectAllMonitorSymbolsBox}" IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}" IsThreeState="True" Padding="0" ToolTip.Tip="全选" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-												</DataTemplate>
-											</DataGridTemplateColumn.HeaderTemplate>
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<CheckBox ToolTip.Tip="是否监控" Padding="0" VerticalAlignment="Center" HorizontalAlignment="Center" IsChecked="{Binding IsMonitored}" IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"/>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-										<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
-										<DataGridTemplateColumn Header="类型">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<ComboBox
-														ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
-														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
-														SelectedItem="{Binding DataType, Mode=TwoWay}"
-														/>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-										<DataGridTextColumn Header="别名" Binding="{Binding Alias}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
-										<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
-										<DataGridTemplateColumn MaxWidth="70" Header="偏移量" Width="Auto">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<NumericUpDown
-														HorizontalAlignment="Stretch"
-														Maximum="4294967295"
-														Minimum="0"
-														PlaceholderText="0"
-														ParsingNumberStyle="Integer"
-														ShowButtonSpinner="False"
-														IsEnabled="{Binding !$parent[Window].DataContext.GlobalStatusInstance.IsMonitoring}"
-														Value="{Binding Offset,Mode = TwoWay}" >
-													</NumericUpDown>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-										<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
-										<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
-										<DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="Auto" MaxWidth="500" IsReadOnly="False"/>
-									</DataGrid.Columns>
-								</DataGrid>
-							</StackPanel>
-						</TabItem>
-					</TabControl>
-				</Grid>
-
-			</ScrollViewer>
-		</TabItem>
-		<!--  标定设置  -->
-		<TabItem Header="标定">
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<Grid
-					ColumnDefinitions="Auto,*"
-					RowDefinitions="Auto,Auto">
-					<!--  第 1 行  -->
-					<TextBlock
-						Grid.Row="0"
-						Grid.Column="0"
-						Margin="0,0,10,0"
-						VerticalAlignment="Center"
-						Text="符号表"/>
-					<StackPanel
-						Grid.Row="0"
-						Grid.Column="1"
-						Orientation="Horizontal" >
-						<Button
-							Content="重载ELF"
-							Command="{Binding ReloadSymbolFileCommand}"
-							ToolTip.ShowOnDisabled="True"
-							ToolTip.Tip="不存在于新ELF中的变量将被移除"
+						<StackPanel
+							Grid.Row="0"
+							Grid.Column="1"
 							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
-							/>
+							Orientation="Horizontal">
+							<NumericUpDown
+								Width="100"
+								HorizontalAlignment="Left"
+								Maximum="1000000"
+								Minimum="0"
+								ParsingNumberStyle="Integer"
+								ShowButtonSpinner="False"
+								Value="{Binding MaxSaveLenTemp}"/>
+							<Button
+								Content="应用ℹ"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="会删除之前的数据"
+								Command="{Binding ApplyChangeSaveLengthCommand}"
+								/>
+						</StackPanel>
+						<!--  第 2 行  -->
+						<TextBlock
+							Grid.Row="1"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="符号表"/>
+						<StackPanel
+							Grid.Row="1"
+							Grid.Column="1"
+							IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
+							Orientation="Horizontal" >
+							<Button
+								Content="更新符号表"
+								Command="{Binding ReloadSymbolFileCommand}"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="只删除已确认失效的根变量、成员和数组访问项；解析失败时保留配置"/>
+							<Button
+								Content="清空监控变量"
+								Command="{Binding ClearMonitorSymbolsCommand}"/>
+							<Button
+								Content="删除重复监控变量"
+								ToolTip.Tip="名称、地址、偏移量均相同的变量仅保留一个。"
+								Command="{Binding RemoveDuplicateMonitorSymbolsCommand}"
+								ToolTip.ShowOnDisabled="True"/>
+							<Button
+								Content="清空所有位别名"
+								ToolTip.Tip="清空所有监控和标定变量的位别名"
+								Command="{Binding ClearAllBitAliasesCommand}"
+								ToolTip.ShowOnDisabled="True"/>
+						</StackPanel>
+						<!--  第 3 行：已勾选的监控变量统计  -->
+						<StackPanel
+							Grid.Row="2"
+							Grid.ColumnSpan="2"
+							Margin="0,5,0,5"
+							Orientation="Horizontal"
+							Spacing="20"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="统计已勾选的监控变量，不受搜索筛选影响">
+							<TextBlock Text="{Binding MonitoredSymbolCount, StringFormat='当前监控变量数：{0}'}"/>
+							<TextBlock Text="{Binding MonitoredSymbolsTotalSize, StringFormat='监控变量总大小：{0} 字节'}"/>
+						</StackPanel>
+						<!--  第 4 行  -->
+						<TabControl Grid.Row="3"
+									Padding="0,12,12,12"
+									Grid.ColumnSpan="2"
+									Margin="0,0,4,0" >
+							<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
+								<StackPanel Orientation="Vertical" Margin="0,1,0,0">
+									<TextBox
+										PlaceholderText="搜索 符号名称/地址/来源文件"
+										MaxWidth="650"
+										HorizontalAlignment="Left"
+										Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+									<DataGrid
+										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}" ItemsSource="{Binding FilteredSymbols}"
+										AutoGenerateColumns="False"
+										CanUserResizeColumns="True"
+										CanUserSortColumns="True"
+										IsReadOnly="True"
+										GridLinesVisibility="All"
+										VerticalScrollBarVisibility="Auto"
+										Height="500"
+										Margin="0,5,0,0"
+										x:CompileBindings="True">
+										<DataGrid.Columns>
+											<DataGridTemplateColumn Width="28">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<Button
+															Background="Transparent"
+															Padding="1"
+															Content="➕"
+															ToolTip.Tip="添加至监控变量"
+															Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}" IsEnabled="{Binding CanAdd}"
+															CommandParameter="{Binding}">
+														</Button>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
+											<DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="Auto" />
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
+											<DataGridTextColumn Header="大小（目标地址单位）" Binding="{Binding Size}" Width="Auto"/>
+											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
+										</DataGrid.Columns>
+									</DataGrid>
+								</StackPanel>
+							</TabItem>
+							<TabItem Header="监控变量" FontSize="15" Margin="-4">
+								<StackPanel Orientation="Vertical" Margin="0,1,0,0">
+									<TextBox
+										PlaceholderText="搜索 符号名称/地址/来源文件/别名/描述"
+										MaxWidth="650"
+										HorizontalAlignment="Left"
+										Text="{Binding MonitorSymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
+									<DataGrid
+										ItemsSource="{Binding FilteredMonitorSymbols}"
+										AutoGenerateColumns="False"
+										CanUserSortColumns="True"
+										CanUserResizeColumns="True"
+										GridLinesVisibility="All"
+										VerticalScrollBarVisibility="Auto"
+										Height="500"
+										Margin="0,5,0,0"
+										x:CompileBindings="True">
+
+										<DataGrid.Columns>
+											<DataGridTemplateColumn Width="28">
+												<DataGridTemplateColumn.HeaderTemplate>
+													<DataTemplate>
+														<Button
+															Background="Transparent"
+															Padding="0"
+															Margin="-10.5,0,-14,0"
+															FontSize="15"
+															Content="❌"
+															ToolTip.Tip="移除所有监控变量"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}"
+															Command="{Binding $parent[Window].DataContext.ClearMonitorSymbolsCommand}">
+														</Button>
+													</DataTemplate>
+												</DataGridTemplateColumn.HeaderTemplate>
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<Button
+															Background="Transparent"
+															Padding="1"
+															Content="❌"
+															ToolTip.Tip="移除出监控变量"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}"
+															Command="{Binding $parent[Window].DataContext.RemoveMonitorSymbolCommand}"
+															CommandParameter="{Binding}">
+														</Button>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTemplateColumn Width="28">
+												<DataGridTemplateColumn.HeaderTemplate>
+													<DataTemplate>
+														<CheckBox
+															Margin="-8.5,0,-14,0"
+															Command="{Binding $parent[Window].DataContext.HeaderOfIsMonitoredChangedCommand}"
+															IsChecked="{Binding $parent[Window].DataContext.SelectAllMonitorSymbolsBox, Mode=TwoWay}"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}"
+															IsThreeState="True"
+															Padding="0"
+															ToolTip.Tip="全选"
+															ToolTip.ShowOnDisabled="True"
+															VerticalAlignment="Center"
+															HorizontalAlignment="Center"/>
+													</DataTemplate>
+												</DataGridTemplateColumn.HeaderTemplate>
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<CheckBox
+															ToolTip.Tip="是否监控"
+															Padding="0"
+															VerticalAlignment="Center"
+															HorizontalAlignment="Center"
+															IsChecked="{Binding IsMonitored}"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}" />
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}" IsReadOnly="True" Width="Auto"/>
+											<DataGridTextColumn Header="实际地址" Binding="{Binding ActualAddressHex}" IsReadOnly="True" />
+											<DataGridTemplateColumn Header="类型">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<Panel IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}">
+															<ComboBox
+																ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
+
+																SelectedItem="{Binding DataType, Mode=TwoWay}" IsEnabled="{Binding CanEditType}"
+																/>
+														</Panel>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTextColumn Header="别名" Binding="{Binding Alias}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
+											<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
+											<DataGridTemplateColumn Header="偏移量 / 数组下标" Width="180">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}" /></DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" IsReadOnly="True" Width="Auto"/>
+											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" IsReadOnly="True" Width="Auto"/>
+											<DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="Auto" MaxWidth="500" IsReadOnly="False"/>
+										</DataGrid.Columns>
+									</DataGrid>
+								</StackPanel>
+							</TabItem>
+						</TabControl>
+					</Grid>
+
+				</ScrollViewer>
+			</TabItem>
+			<!--  标定设置  -->
+			<TabItem Header="标定">
+				<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+					<Grid
+						ColumnDefinitions="Auto,*"
+						RowDefinitions="Auto,Auto">
+						<!--  第 1 行  -->
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="符号表"/>
+						<StackPanel
+							Grid.Row="0"
+							Grid.Column="1"
+							Orientation="Horizontal" >
+							<Button
+								Content="更新符号表"
+								Command="{Binding ReloadSymbolFileCommand}"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="只删除已确认失效的根变量、成员和数组访问项；解析失败时保留配置"
+								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
+								/>
+							<Button
+								Content="清空标定变量"
+								Command="{Binding ClearCalibrateSymbolsCommand}"/>
+							<Button
+								Content="删除重复标定变量"
+								ToolTip.Tip="名称、地址、偏移量均相同的变量仅保留一个。"
+								Command="{Binding RemoveDuplicateCalibrateSymbolsCommand}"
+								ToolTip.ShowOnDisabled="True"/>
+						</StackPanel>
+						<!--  第 2 行  -->
+						<TabControl Grid.Row="1"
+									Padding="0,12,12,12"
+									Grid.ColumnSpan="2"
+									Margin="0,0,4,0" >
+							<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
+								<StackPanel Orientation="Vertical" Margin="0,1,0,0">
+									<TextBox
+										PlaceholderText="搜索 符号名称/地址/来源文件"
+										MaxWidth="650"
+										HorizontalAlignment="Left"
+										Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+									<DataGrid
+										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+										ItemsSource="{Binding FilteredSymbols}"
+										AutoGenerateColumns="False"
+										CanUserSortColumns="True"
+										IsReadOnly="True"
+										CanUserResizeColumns="True"
+										GridLinesVisibility="All"
+										VerticalScrollBarVisibility="Auto"
+										Height="500"
+										Margin="0,5,0,0"
+										x:CompileBindings="True">
+										<DataGrid.Columns>
+											<DataGridTemplateColumn Width="28">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<Button
+															Background="Transparent"
+															Padding="1"
+															Content="➕"
+															Command="{Binding $parent[Window].DataContext.AddCalibrateSymbolCommand}"
+															IsEnabled="{Binding CanAdd}"
+															CommandParameter="{Binding}">
+														</Button>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
+											<DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="Auto" />
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
+											<DataGridTextColumn Header="大小（目标地址单位）" Binding="{Binding Size}" Width="Auto"/>
+											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
+										</DataGrid.Columns>
+									</DataGrid>
+								</StackPanel>
+							</TabItem>
+							<TabItem Header="标定变量" FontSize="15" Margin="-4">
+								<StackPanel Orientation="Vertical" Margin="0,1,0,0">
+									<TextBox PlaceholderText="搜索 符号名称/地址/来源文件/别名/描述"
+											 MaxWidth="650"
+											 HorizontalAlignment="Left"
+											 Text="{Binding CalibrateSymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
+									<DataGrid
+										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+										ItemsSource="{Binding FilteredCalibrateSymbols}"
+										AutoGenerateColumns="False"
+										CanUserSortColumns="True"
+										CanUserResizeColumns="True"
+										GridLinesVisibility="All"
+										VerticalScrollBarVisibility="Auto"
+										Height="500"
+										Margin="0,5,0,0"
+										x:CompileBindings="True">
+										<DataGrid.Columns>
+											<DataGridTemplateColumn Width="28">
+												<DataGridTemplateColumn.HeaderTemplate>
+													<DataTemplate>
+														<Button
+															Background="Transparent"
+															Padding="0"
+															Margin="-10.5,0,-14,0"
+															FontSize="15"
+															Content="❌"
+															ToolTip.Tip="移除所有标定变量"
+															Command="{Binding $parent[Window].DataContext.ClearCalibrateSymbolsCommand}">
+														</Button>
+													</DataTemplate>
+												</DataGridTemplateColumn.HeaderTemplate>
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<Button
+															Background="Transparent"
+															Padding="1"
+															Content="❌"
+															Command="{Binding $parent[Window].DataContext.RemoveCalibrateSymbolCommand}"
+															CommandParameter="{Binding}">
+														</Button>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
+											<DataGridTextColumn Header="实际地址" Binding="{Binding ActualAddressHex}" IsReadOnly="True" />
+											<DataGridTemplateColumn Header="类型">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<ComboBox
+															ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
+															SelectedItem="{Binding DataType, Mode=TwoWay}" IsEnabled="{Binding CanEditType}"
+															/>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+
+											<DataGridTextColumn Header="别名" Binding="{Binding Alias}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
+
+											<DataGridTemplateColumn  Header="最小值" Width ="82">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<NumericUpDown
+															HorizontalAlignment="Stretch"
+															PlaceholderText="-inf"
+															ParsingNumberStyle="Number"
+															ShowButtonSpinner="False"
+															Value="{Binding MinValue,Mode = TwoWay}" >
+														</NumericUpDown>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+
+											<DataGridTemplateColumn  Header="最大值" Width ="82">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<NumericUpDown
+															HorizontalAlignment="Stretch"
+															PlaceholderText="inf"
+															ParsingNumberStyle="Number"
+															ShowButtonSpinner="False"
+															Value="{Binding MaxValue,Mode = TwoWay}" >
+														</NumericUpDown>
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+
+											<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
+
+											<DataGridTemplateColumn Header="偏移量 / 数组下标" Width="180">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" /></DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
+											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
+											<DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="Auto" MaxWidth="500" IsReadOnly="False"/>
+										</DataGrid.Columns>
+									</DataGrid>
+								</StackPanel>
+							</TabItem>
+						</TabControl>
+					</Grid>
+				</ScrollViewer>
+			</TabItem>
+
+			<TabItem Header="指令">
+				<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+					<StackPanel Orientation="Vertical">
 						<Button
-							Content="清空标定变量"
-							Command="{Binding ClearCalibrateSymbolsCommand}"/>
-						<Button
-							Content="删除重复标定变量"
-							ToolTip.Tip="名称、地址、偏移量均相同的变量仅保留一个。"
-							Command="{Binding RemoveDuplicateCalibrateSymbolsCommand}"
-							ToolTip.ShowOnDisabled="True"/>
+							Content="清空指令"
+							ToolTip.Tip="清空指令名称及描述"
+							Command="{Binding $parent[Window].DataContext.ClearUserCommandsCommand}"/>
+
+						<TextBox
+							PlaceholderText="搜索 指令码/名称/描述"
+							MaxWidth="650"
+							HorizontalAlignment="Left"
+							Text="{Binding UserCommandSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+
+						<DataGrid
+							ItemsSource="{Binding FilteredUserCommands}"
+							AutoGenerateColumns="False"
+							CanUserSortColumns="True"
+							GridLinesVisibility="All"
+							CanUserResizeColumns="True"
+							VerticalScrollBarVisibility="Auto"
+							Height="500"
+							Margin="0,5,0,0"
+							x:CompileBindings="True">
+							<DataGrid.Columns>
+								<DataGridTextColumn Header="指令码" Binding="{Binding IdHex}" SortMemberPath="Id" CanUserSort="True" IsReadOnly="True" Width="Auto"/>
+								<DataGridTextColumn Header="名称" Binding="{Binding Name}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
+								<DataGridTextColumn Header="描述" Binding="{Binding Description}" IsReadOnly="False" Width="Auto" MaxWidth="400"/>
+							</DataGrid.Columns>
+						</DataGrid>
 					</StackPanel>
-					<!--  第 2 行  -->
-					<TabControl Grid.Row="1"
-								Padding="0,12,12,12"
-								Grid.ColumnSpan="2"
-								Margin="0,0,4,0" >
-						<TabItem Header="符号表" FontSize="15" Margin="-4,-4,0,-4">
-							<StackPanel Orientation="Vertical" Margin="0,1,0,0">
-								<TextBox PlaceholderText="搜索 符号名称/地址/来源文件"
-										 MaxWidth="650"
-										 HorizontalAlignment="Left"
-										 Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-								<DataGrid ItemsSource="{Binding FilteredSymbols}"
-										  AutoGenerateColumns="False"
-										  CanUserSortColumns="True"
-										  IsReadOnly="True"
-										  CanUserResizeColumns="True"
-										  GridLinesVisibility="All"
-										  VerticalScrollBarVisibility="Auto"
-										  Height="500"
-										  Margin="0,5,0,0"
-										  x:CompileBindings="True">
-									<DataGrid.Columns>
-										<DataGridTemplateColumn Width="28">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<Button
-														Background="Transparent"
-														Padding="1"
-														Content="➕"
-														Command="{Binding $parent[Window].DataContext.AddCalibrateSymbolCommand}"
-														CommandParameter="{Binding}">
-													</Button>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-										<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
-										<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
-										<DataGridTextColumn Header="大小" Binding="{Binding Size}" Width="Auto"/>
-										<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
-									</DataGrid.Columns>
-								</DataGrid>
-							</StackPanel>
-						</TabItem>
-						<TabItem Header="标定变量" FontSize="15" Margin="-4">
-							<StackPanel Orientation="Vertical" Margin="0,1,0,0">
-								<TextBox PlaceholderText="搜索 符号名称/地址/来源文件/别名/描述"
-										 MaxWidth="650"
-										 HorizontalAlignment="Left"
-										 Text="{Binding CalibrateSymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
-								<DataGrid ItemsSource="{Binding FilteredCalibrateSymbols}"
-										  AutoGenerateColumns="False"
-										  CanUserSortColumns="True"
-										  CanUserResizeColumns="True"
-										  GridLinesVisibility="All"
-										  VerticalScrollBarVisibility="Auto"
-										  Height="500"
-										  Margin="0,5,0,0"
-										  x:CompileBindings="True">
-									<DataGrid.Columns>
-										<DataGridTemplateColumn Width="28">
-											<DataGridTemplateColumn.HeaderTemplate>
-												<DataTemplate>
-													<Button
-														Background="Transparent"
-														Padding="0"
-														Margin="-10.5,0,-14,0"
-														FontSize="15"
-														Content="❌"
-														ToolTip.Tip="移除所有标定变量"
-														Command="{Binding $parent[Window].DataContext.ClearCalibrateSymbolsCommand}">
-													</Button>
-												</DataTemplate>
-											</DataGridTemplateColumn.HeaderTemplate>
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<Button
-														Background="Transparent"
-														Padding="1"
-														Content="❌"
-														Command="{Binding $parent[Window].DataContext.RemoveCalibrateSymbolCommand}"
-														CommandParameter="{Binding}">
-													</Button>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
+				</ScrollViewer>
+			</TabItem>
 
-										<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
-										<DataGridTemplateColumn Header="类型">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<ComboBox
-														ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
-														SelectedItem="{Binding DataType, Mode=TwoWay}"
-														/>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
+			<!--  IAP设置  -->
+			<TabItem Header="IAP">
+				<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+					<Grid ColumnDefinitions="Auto,*"
+						  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="文件路径" />
+						<TextBox
+							Grid.Row="0"
+							Grid.Column="1"
+							MinWidth="130"
+							HorizontalAlignment="Left"
+							VerticalContentAlignment="Center"
+							InnerRightContent="{Binding IapFilePathError}"
+							ToolTip.Tip="支持绝对路径或相对工程目录的路径。&#10;示例：.\BOOT.bin"
+							Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
+						<TextBlock
+							Grid.Row="1"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="握手总超时ℹ"
+							ToolTip.Tip="单位 s；须覆盖复位、IAP 启动及通信初始化。" />
+						<NumericUpDown
+							Grid.Row="1"
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="1"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
+						<TextBlock
+							Grid.Row="2"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="擦除超时ℹ"
+							ToolTip.Tip="单位 s。无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
+						<NumericUpDown
+							Grid.Row="2"
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="1"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding WaitForEraseTimeoutSecondsTemp}" />
+						<TextBlock
+							Grid.Row="3"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="写入超时ℹ"
+							ToolTip.Tip="仅用于整体写入，单位 s。&#10;无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
+						<NumericUpDown
+							Grid.Row="3"
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="1"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
+						<TextBlock
+							Grid.Row="4"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="校验超时ℹ"
+							ToolTip.Tip="单位 s。无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
+						<NumericUpDown
+							Grid.Row="4"
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="1"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
+						<TextBlock
+							Grid.Row="5"
+							Grid.Column="0"
+							Margin="0,0,10,0"
+							VerticalAlignment="Center"
+							Text="重启总超时ℹ"
+							ToolTip.Tip="单位 s；须覆盖复位、APP 启动及通信初始化。" />
+						<NumericUpDown
+							Grid.Row="5"
+							Grid.Column="1"
+							Width="80"
+							HorizontalAlignment="Left"
+							Maximum="65535"
+							Minimum="1"
+							ParsingNumberStyle="Integer"
+							ShowButtonSpinner="False"
+							Value="{Binding WaitForRebootTimeoutSecondsTemp}" />
+					</Grid>
+				</ScrollViewer>
+			</TabItem>
 
-										<DataGridTextColumn Header="别名" Binding="{Binding Alias}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
+			<!--  日志设置  -->
+			<TabItem Header="日志">
+				<Grid
+					Margin="0,5"
+					ColumnDefinitions="Auto,*"
+					RowDefinitions="Auto,Auto,Auto,Auto">
+					<!--  第 1 行 记录开关  -->
+					<TextBlock
+						Grid.Row="0"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="日志开关" />
 
-										<DataGridTemplateColumn  Header="最小值" Width ="82">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<NumericUpDown
-														HorizontalAlignment="Stretch"
-														PlaceholderText="-inf"
-														ParsingNumberStyle="Number"
-														ShowButtonSpinner="False"
-														Value="{Binding MinValue,Mode = TwoWay}" >
-													</NumericUpDown>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-
-										<DataGridTemplateColumn  Header="最大值" Width ="82">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<NumericUpDown
-														HorizontalAlignment="Stretch"
-														PlaceholderText="inf"
-														ParsingNumberStyle="Number"
-														ShowButtonSpinner="False"
-														Value="{Binding MaxValue,Mode = TwoWay}" >
-													</NumericUpDown>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-
-										<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
-
-										<DataGridTemplateColumn MaxWidth="70" Header="偏移量" Width="Auto">
-											<DataGridTemplateColumn.CellTemplate>
-												<DataTemplate>
-													<NumericUpDown
-														HorizontalAlignment="Stretch"
-														Maximum="4294967295"
-														Minimum="0"
-														PlaceholderText="0"
-														ParsingNumberStyle="Integer"
-														ShowButtonSpinner="False"
-														Value="{Binding Offset,Mode = TwoWay}" >
-													</NumericUpDown>
-												</DataTemplate>
-											</DataGridTemplateColumn.CellTemplate>
-										</DataGridTemplateColumn>
-
-										<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
-										<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
-										<DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="Auto" MaxWidth="500" IsReadOnly="False"/>
-									</DataGrid.Columns>
-								</DataGrid>
-							</StackPanel>
-						</TabItem>
-					</TabControl>
+					<ToggleSwitch
+						Grid.Row="0"
+						Grid.Column="1"
+						VerticalAlignment="Center"
+						Margin="0"
+						OnContent=""
+						OffContent=""
+						IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEnabled}"
+						/>
+					<!--  第 2 行 保存至文件  -->
+					<TextBlock
+						Grid.Row="1"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="保存至文件ℹ"
+						ToolTip.Tip="文件路径为工程路径"/>
+					<ToggleSwitch
+						Grid.Row="1"
+						Grid.Column="1"
+						VerticalAlignment="Center"
+						Margin="0,0,10,0"
+						OnContent=""
+						OffContent=""
+						IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogWriteToFileEnabled}"
+						/>
+					<!--  第 3 行 记录等级  -->
+					<TextBlock
+						Grid.Row="2"
+						Grid.Column="0"
+						Margin="0,0,10,0"
+						VerticalAlignment="Center"
+						Text="记录等级" />
+					<ComboBox
+						Grid.Row="2"
+						Grid.Column="1"
+						ItemsSource="{Binding AvaliableLogEventLevel}"
+						SelectedItem="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEventLevelSetting}" />
 				</Grid>
-			</ScrollViewer>
-		</TabItem>
+			</TabItem>
 
-		<TabItem Header="指令">
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<StackPanel Orientation="Vertical">
-					<Button
-						Content="清空指令"
-						ToolTip.Tip="清空指令名称及描述"
-						Command="{Binding $parent[Window].DataContext.ClearUserCommandsCommand}"/>
-
-					<TextBox PlaceholderText="搜索 指令码/名称/描述"
-							 MaxWidth="650"
-							 HorizontalAlignment="Left"
-							 Text="{Binding UserCommandSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-
-					<DataGrid ItemsSource="{Binding FilteredUserCommands}"
-							  AutoGenerateColumns="False"
-							  CanUserSortColumns="True"
-							  GridLinesVisibility="All"
-							  CanUserResizeColumns="True"
-							  VerticalScrollBarVisibility="Auto"
-							  Height="500"
-							  Margin="0,5,0,0"
-							  x:CompileBindings="True">
-						<DataGrid.Columns>
-							<DataGridTextColumn Header="指令码" Binding="{Binding IdHex}" SortMemberPath="Id" CanUserSort="True" IsReadOnly="True" Width="Auto"/>
-							<DataGridTextColumn Header="名称" Binding="{Binding Name}" IsReadOnly="False" Width="Auto" MaxWidth="200"/>
-							<DataGridTextColumn Header="描述" Binding="{Binding Description}" IsReadOnly="False" Width="Auto" MaxWidth="400"/>
-						</DataGrid.Columns>
-					</DataGrid>
-				</StackPanel>
-			</ScrollViewer>
-		</TabItem>
-
-		<!--  IAP设置  -->
-		<TabItem Header="IAP">
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<Grid ColumnDefinitions="Auto,*"
-					  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
-					<TextBlock Grid.Row="0"
-							   Grid.Column="0"
-							   Margin="0,0,10,0"
-							   VerticalAlignment="Center"
-							   Text="文件路径" />
-					<TextBox Grid.Row="0"
-							 Grid.Column="1"
-							 MinWidth="130"
-							 HorizontalAlignment="Left"
-							 VerticalContentAlignment="Center"
-							 InnerRightContent="{Binding IapFilePathError}"
-							 ToolTip.Tip="支持绝对路径或相对工程目录的路径。&#10;示例：.\BOOT.bin"
-							 Text="{Binding IapFilePathTemp, Mode=TwoWay}" />
-					<TextBlock Grid.Row="1"
-							   Grid.Column="0"
-							   Margin="0,0,10,0"
-							   VerticalAlignment="Center"
-							   Text="握手总超时ℹ"
-							   ToolTip.Tip="单位 s；须覆盖复位、IAP 启动及通信初始化。" />
-					<NumericUpDown Grid.Row="1"
-								   Grid.Column="1"
-								   Width="80"
-								   HorizontalAlignment="Left"
-								   Maximum="65535"
-								   Minimum="1"
-								   ParsingNumberStyle="Integer"
-								   ShowButtonSpinner="False"
-								   Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
-					<TextBlock Grid.Row="2"
-							   Grid.Column="0"
-							   Margin="0,0,10,0"
-							   VerticalAlignment="Center"
-							   Text="擦除超时ℹ"
-							   ToolTip.Tip="单位 s。无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
-					<NumericUpDown Grid.Row="2"
-								   Grid.Column="1"
-								   Width="80"
-								   HorizontalAlignment="Left"
-								   Maximum="65535"
-								   Minimum="1"
-								   ParsingNumberStyle="Integer"
-								   ShowButtonSpinner="False"
-								   Value="{Binding WaitForEraseTimeoutSecondsTemp}" />
-					<TextBlock Grid.Row="3"
-							   Grid.Column="0"
-							   Margin="0,0,10,0"
-							   VerticalAlignment="Center"
-							   Text="写入超时ℹ"
-							   ToolTip.Tip="仅用于整体写入，单位 s。&#10;无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
-					<NumericUpDown Grid.Row="3"
-								   Grid.Column="1"
-								   Width="80"
-								   HorizontalAlignment="Left"
-								   Maximum="65535"
-								   Minimum="1"
-								   ParsingNumberStyle="Integer"
-								   ShowButtonSpinner="False"
-								   Value="{Binding WaitForWriteTimeoutSecondsTemp}" />
-					<TextBlock Grid.Row="4"
-							   Grid.Column="0"
-							   Margin="0,0,10,0"
-							   VerticalAlignment="Center"
-							   Text="校验超时ℹ"
-							   ToolTip.Tip="单位 s。无进度回报：总超时。&#10;有进度回报：进度超过历史最大值时重置计时。" />
-					<NumericUpDown Grid.Row="4"
-								   Grid.Column="1"
-								   Width="80"
-								   HorizontalAlignment="Left"
-								   Maximum="65535"
-								   Minimum="1"
-								   ParsingNumberStyle="Integer"
-								   ShowButtonSpinner="False"
-								   Value="{Binding WaitForCheckTimeoutSecondsTemp}" />
-					<TextBlock Grid.Row="5"
-							   Grid.Column="0"
-							   Margin="0,0,10,0"
-							   VerticalAlignment="Center"
-							   Text="重启总超时ℹ"
-							   ToolTip.Tip="单位 s；须覆盖复位、APP 启动及通信初始化。" />
-					<NumericUpDown Grid.Row="5"
-								   Grid.Column="1"
-								   Width="80"
-								   HorizontalAlignment="Left"
-								   Maximum="65535"
-								   Minimum="1"
-								   ParsingNumberStyle="Integer"
-								   ShowButtonSpinner="False"
-								   Value="{Binding WaitForRebootTimeoutSecondsTemp}" />
-				</Grid>
-			</ScrollViewer>
-		</TabItem>
-
-		<!--  日志设置  -->
-		<TabItem Header="日志">
-			<Grid
-				Margin="0,5"
-				ColumnDefinitions="Auto,*"
-				RowDefinitions="Auto,Auto,Auto,Auto">
-				<!--  第 1 行 记录开关  -->
-				<TextBlock
-					Grid.Row="0"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="日志开关" />
-
-				<ToggleSwitch
-					Grid.Row="0"
-					Grid.Column="1"
-					VerticalAlignment="Center"
-					Margin="0"
-					OnContent=""
-					OffContent=""
-					IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEnabled}"
-					/>
-				<!--  第 2 行 保存至文件  -->
-				<TextBlock
-					Grid.Row="1"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="保存至文件ℹ"
-					ToolTip.Tip="文件路径为工程路径"/>
-				<ToggleSwitch
-					Grid.Row="1"
-					Grid.Column="1"
-					VerticalAlignment="Center"
-					Margin="0,0,10,0"
-					OnContent=""
-					OffContent=""
-					IsChecked="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogWriteToFileEnabled}"
-					/>
-				<!--  第 3 行 记录等级  -->
-				<TextBlock
-					Grid.Row="2"
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					VerticalAlignment="Center"
-					Text="记录等级" />
-				<ComboBox
-					Grid.Row="2"
-					Grid.Column="1"
-					ItemsSource="{Binding AvaliableLogEventLevel}"
-					SelectedItem="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEventLevelSetting}" />
-			</Grid>
-		</TabItem>
-
-	</TabControl>
+		</TabControl>
+	</DockPanel>
 </Window>

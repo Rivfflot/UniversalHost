@@ -1,0 +1,131 @@
+{
+  "goVersion": "1.26.8",
+  "cgoEnabled": false,
+  "schema": 1,
+  "sources": [
+    {
+      "file": "dwarf_validation_test.go",
+      "sha256": "9BD4F9141A1A1E8D1542B5AF57A6ECD472D6A8EE11D0D1CF3756CB7A8A004273"
+    },
+    {
+      "file": "go.mod",
+      "sha256": "0A99401B8F838FAD67C11A0F1A28D0CEB31CAD1840C4440D4EEA91B443D4A202"
+    },
+    {
+      "file": "internal/dwarf/attr_string.go",
+      "sha256": "096869810EDE7BC173FE5EDD48BE5BF0F76C986D79F350BD99A0003E3F1AEB86"
+    },
+    {
+      "file": "internal/dwarf/buf.go",
+      "sha256": "452FBA7DD649F09718615D504F64F8DA26D57205560B79D19F411E9CAD1EAE47"
+    },
+    {
+      "file": "internal/dwarf/class_string.go",
+      "sha256": "1968A14617F5B6A80604F4B0E2ED4F536DBE837322CB527F1390118055398021"
+    },
+    {
+      "file": "internal/dwarf/const.go",
+      "sha256": "403DCF3AF49A3B1E1B71892F626AD3CC2FE318A142DAC6D98799BCE16154AA06"
+    },
+    {
+      "file": "internal/dwarf/entry.go",
+      "sha256": "73B11737A8193FBC034476C623B2ACE98D176A00886E34899859403F1F8428EC"
+    },
+    {
+      "file": "internal/dwarf/line.go",
+      "sha256": "38986412B6493C530C5DA25CC648642BBEF99C60A0966FE2F1BE22F21A897697"
+    },
+    {
+      "file": "internal/dwarf/open.go",
+      "sha256": "BE1C3933750E41EBE71D83C7146D053AB3285845107155AE4B3EF2A47813B5E4"
+    },
+    {
+      "file": "internal/dwarf/tag_string.go",
+      "sha256": "F0463241C9058DDAFF67DE75A32957244393F5039851F3C88E79F0D3BDB43D6A"
+    },
+    {
+      "file": "internal/dwarf/type.go",
+      "sha256": "D9F8A50BCD840AB8BB996A8A0F020F34AD56394CE698180094D268A6019B0CA2"
+    },
+    {
+      "file": "internal/dwarf/typeunit.go",
+      "sha256": "FD17A8EB01CA6F3CA9A3C33F2A2A43DBFAA0F9ABAE73DD9A505A2501E2E3DCD3"
+    },
+    {
+      "file": "internal/dwarf/unit.go",
+      "sha256": "F6A37BE26BFA260910C31211FD4548A363373B6CA3559231E6FF62FA82B4E305"
+    },
+    {
+      "file": "internal/dwarf/universalhost.go",
+      "sha256": "8C0F6BB5F1D9566D683A34BE9169F9C9B3D0F38FF1B5A500192B9DBB560E3652"
+    },
+    {
+      "file": "main_test.go",
+      "sha256": "2A2EA4406CDFBCD430BA3CDA8679A359DD601969A9EF12F94DA810A04F17100D"
+    },
+    {
+      "file": "main.go",
+      "sha256": "132A5769FDEBFC4C8A69B06FB86AD61E4302B7DB6A0689B2AA8A6CF32376D846"
+    },
+    {
+      "file": "parallel_nodes_test.go",
+      "sha256": "A1DB76D277529530B81B6A6FCE8603F05334F57F052918208320EE814F9CC5DF"
+    },
+    {
+      "file": "parallel_nodes.go",
+      "sha256": "80D9924E08804BA550781FB4B42B9BF134410CF686F91920630AD2768446BDA3"
+    },
+    {
+      "file": "pruning_equivalence_test.go",
+      "sha256": "750C1E2B11935BF3191EA3FB934A213607E24970BE03BAE13E1B4EE4FFFCCCC0"
+    },
+    {
+      "file": "pruning_reference_test.go",
+      "sha256": "49DD79C0469178AC0E559B9717093F434D94BCAF8E47297301D6DB117D82BDBD"
+    },
+    {
+      "file": "variable_pruning_fixtures_test.go",
+      "sha256": "DFB3300A10C90D884FBCE6BC296AD227D2A511E37976D202B3434C2DCFF44151"
+    },
+    {
+      "file": "variable_pruning_test.go",
+      "sha256": "091B8F4E83F83F91A685E35CB000FA2EE6854448A564EE34041419B5F4438250"
+    },
+    {
+      "file": "variable_pruning.go",
+      "sha256": "D1EE942C04FBA529EF3E8499B80CEFEE5989946F936B233950E1619C8DEB4079"
+    }
+  ],
+  "artifacts": [
+    {
+      "rid": "win-x64",
+      "file": "win-x64/symbols-worker.exe",
+      "sha256": "E9D5D6F95D3A8272D6788BEB18AE0221F8A7C97580220D2FBB8B713623A8D63E"
+    },
+    {
+      "rid": "win-arm64",
+      "file": "win-arm64/symbols-worker.exe",
+      "sha256": "432E9BB77509DE05ED9E89F3B60F7B79C6C7F3E528EE264A9BF6F62A26B749BC"
+    },
+    {
+      "rid": "linux-x64",
+      "file": "linux-x64/symbols-worker",
+      "sha256": "758E1F9770D620882839F1B84E21705634A1B9069AED2F5398418D800A5103FB"
+    },
+    {
+      "rid": "linux-arm64",
+      "file": "linux-arm64/symbols-worker",
+      "sha256": "B740A8ED485AD72106EACF8B84EFC577E82D5333A70BAA6F3224CAFFA38D8248"
+    },
+    {
+      "rid": "osx-x64",
+      "file": "osx-x64/symbols-worker",
+      "sha256": "2BCD2E238841FA44C5F43367F95A546150E011BE046F45B113B7AA7C61247399"
+    },
+    {
+      "rid": "osx-arm64",
+      "file": "osx-arm64/symbols-worker",
+      "sha256": "F38CC48C5BC3E0F09FCBF5FE8742526ACCC06D659F679F89B28CF135B27A795F"
+    }
+  ]
+}

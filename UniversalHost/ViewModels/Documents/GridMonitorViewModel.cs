@@ -1,7 +1,7 @@
 ﻿using Avalonia.Input.Platform;
 using DynamicData;
-using ReactiveUI.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
+using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -70,6 +70,7 @@ public partial class GridMonitorViewModel : ReactiveObject, IDisposable
                 .OnItemRemoved(removedRuntime =>
                 {
                     _keysSourceList.Remove(removedRuntime.Symbol.Id);
+                    if (SelectedSymbolRuntime?.Symbol.Id == removedRuntime.Symbol.Id) SelectedSymbolRuntime = null;
                 })
                 .Subscribe()
                 .DisposeWith(_disposables);
@@ -106,6 +107,11 @@ public partial class GridMonitorViewModel : ReactiveObject, IDisposable
     /// </summary>
     public void RefreshDisplay()
     {
+        if (SelectedSymbolRuntime is { } selected)
+        {
+            var current = SymbolRuntimeService.MonitorSymbolRuntimesSource.Lookup(selected.Symbol.Id);
+            SelectedSymbolRuntime = current.HasValue ? current.Value : null;
+        }
         _keysSourceList.Edit(list =>
         {
             var ids = list.ToArray();
