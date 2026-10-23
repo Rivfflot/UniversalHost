@@ -22,7 +22,7 @@ public partial class SettingWindow : ReactiveWindow<SettingWindowViewModel>
             NotificationService.Register(this);
         });
     }
-    private void ElfTableMenuItemCopyPathClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void SymbolFileMenuItemCopyPathClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (DataContext is SettingWindowViewModel vm)
         {

@@ -86,7 +86,7 @@
 								CommandParameter="{Binding $parent[Window]}"
 								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
 							<Button
-								Content="清空ELF"
+								Content="清空固件"
 								Command="{Binding ClearSymbolFilePathsCommand}"
 								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
 							<Button
@@ -98,7 +98,7 @@
 						<TabControl Grid.Row="6"
 									Padding="0,12,12,12"
 									Grid.ColumnSpan="2">
-							<TabItem Header="ELF" FontSize="15" Margin="-4">
+							<TabItem Header="固件符号文件" FontSize="15" Margin="-4">
 								<ListBox
 									ItemsSource="{Binding SymbolFilePaths}"
 									ToolTip.Tip="以 .uhprj 所在目录为基准。&#10;工程目录内的文件自动使用相对路径。"
@@ -119,7 +119,7 @@
 																  Command="{Binding $parent[Window].DataContext.ShowSymbolFileInformationCommand}"
 																  CommandParameter="{Binding}"/>
 														<MenuItem Header="复制路径"
-																  Click="ElfTableMenuItemCopyPathClick"/>
+																  Click="SymbolFileMenuItemCopyPathClick"/>
 														<MenuItem Header="打开所在文件夹"
 																  Command="{Binding $parent[Window].DataContext.OpenSymbolFileFolderCommand}"
 																  CommandParameter="{Binding}"/>
