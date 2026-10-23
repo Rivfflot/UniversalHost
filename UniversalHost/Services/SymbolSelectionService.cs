@@ -93,7 +93,7 @@ public static partial class SymbolSelectionService
 
     public static UserSymbolInfo CreateAccess(DeviceConfig device, SymbolTableEntry row)
     {
-        FirmwareSymbolService.EnsureLayoutEditable();
+        // 只创建独立访问项，不修改已有变量或设备采集布局；调用方负责列表修改限制。
         if (!row.CanAdd) throw new InvalidOperationException("此成员的位置不确定或为位域，不能直接添加");
         var image = FirmwareSymbolService.FindImage(device, row.Root);
         var definition = row.Root.Definition;
@@ -152,7 +152,7 @@ public static partial class SymbolSelectionService
 
     public static void ApplyInput(DeviceConfig device, UserSymbolInfo symbol, SymbolInputKind kind, IReadOnlyList<long> values)
     {
-        FirmwareSymbolService.EnsureLayoutEditable();
+        FirmwareSymbolService.EnsureSymbolEditable();
         if (!CanEditInput(device, symbol)) throw new InvalidOperationException("基本类型变量的偏移量/下标不可编辑");
         if (kind == SymbolInputKind.Offset)
         {

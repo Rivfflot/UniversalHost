@@ -648,7 +648,7 @@
 										HorizontalAlignment="Left"
 										Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
 									<DataGrid
-										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}" ItemsSource="{Binding FilteredSymbols}"
+										IsEnabled="{Binding GlobalStatusInstance.CanEditMonitorSymbol}" ItemsSource="{Binding FilteredSymbols}"
 										AutoGenerateColumns="False"
 										CanUserResizeColumns="True"
 										CanUserSortColumns="True"
@@ -711,7 +711,7 @@
 															FontSize="15"
 															Content="❌"
 															ToolTip.Tip="移除所有监控变量"
-															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}"
 															Command="{Binding $parent[Window].DataContext.ClearMonitorSymbolsCommand}">
 														</Button>
 													</DataTemplate>
@@ -723,7 +723,7 @@
 															Padding="1"
 															Content="❌"
 															ToolTip.Tip="移除出监控变量"
-															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}"
 															Command="{Binding $parent[Window].DataContext.RemoveMonitorSymbolCommand}"
 															CommandParameter="{Binding}">
 														</Button>
@@ -737,7 +737,7 @@
 															Margin="-8.5,0,-14,0"
 															Command="{Binding $parent[Window].DataContext.HeaderOfIsMonitoredChangedCommand}"
 															IsChecked="{Binding $parent[Window].DataContext.SelectAllMonitorSymbolsBox, Mode=TwoWay}"
-															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}"
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}"
 															IsThreeState="True"
 															Padding="0"
 															ToolTip.Tip="全选"
@@ -754,7 +754,7 @@
 															VerticalAlignment="Center"
 															HorizontalAlignment="Center"
 															IsChecked="{Binding IsMonitored}"
-															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}" />
+															IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}" />
 													</DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
 											</DataGridTemplateColumn>
@@ -763,7 +763,7 @@
 											<DataGridTemplateColumn Header="类型">
 												<DataGridTemplateColumn.CellTemplate>
 													<DataTemplate>
-														<Panel IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}">
+														<Panel IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}">
 															<ComboBox
 																ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
 
@@ -777,7 +777,7 @@
 											<DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="False" Width="Auto" MaxWidth="70"/>
 											<DataGridTemplateColumn Header="偏移 / 下标" Width="180">
 												<DataGridTemplateColumn.CellTemplate>
-													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditSymbolLayout}" /></DataTemplate>
+													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}" /></DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
 											</DataGridTemplateColumn>
 											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" IsReadOnly="True" Width="Auto"/>
@@ -838,7 +838,7 @@
 										HorizontalAlignment="Left"
 										Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
 									<DataGrid
-										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+										IsEnabled="{Binding !ImportCoordinator.IsBusy}"
 										ItemsSource="{Binding FilteredSymbols}"
 										AutoGenerateColumns="False"
 										CanUserSortColumns="True"
@@ -864,9 +864,9 @@
 													</DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
 											</DataGridTemplateColumn>
-											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}" IsReadOnly="True" Width="Auto"/>
 											<DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="Auto" />
-											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" IsReadOnly="True" Width="Auto"/>
 											<DataGridTextColumn Header="大小（目标地址单位）" Binding="{Binding Size}" Width="Auto"/>
 											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
 										</DataGrid.Columns>
@@ -880,7 +880,7 @@
 											 HorizontalAlignment="Left"
 											 Text="{Binding CalibrateSymbolSearchText, UpdateSourceTrigger=PropertyChanged}" />
 									<DataGrid
-										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
+										IsEnabled="{Binding !ImportCoordinator.IsBusy}"
 										ItemsSource="{Binding FilteredCalibrateSymbols}"
 										AutoGenerateColumns="False"
 										CanUserSortColumns="True"
@@ -918,15 +918,17 @@
 												</DataGridTemplateColumn.CellTemplate>
 											</DataGridTemplateColumn>
 
-											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}"  Width="Auto"/>
+											<DataGridTextColumn Header="符号名称" Binding="{Binding Name}" IsReadOnly="True" Width="Auto"/>
 											<DataGridTextColumn Header="实际地址" Binding="{Binding ActualAddressHex}" IsReadOnly="True" />
 											<DataGridTemplateColumn Header="类型">
 												<DataGridTemplateColumn.CellTemplate>
 													<DataTemplate>
-														<ComboBox
-															ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
-															SelectedItem="{Binding DataType, Mode=TwoWay}" IsEnabled="{Binding CanEditType}"
-															/>
+														<Panel IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}">
+															<ComboBox
+																ItemsSource="{Binding $parent[Window].DataContext.AvailableDataTypes}"
+																SelectedItem="{Binding DataType, Mode=TwoWay}" IsEnabled="{Binding CanEditType}"
+																/>
+														</Panel>
 													</DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
 											</DataGridTemplateColumn>
@@ -965,11 +967,11 @@
 
 											<DataGridTemplateColumn Header="偏移 / 下标" Width="180">
 												<DataGridTemplateColumn.CellTemplate>
-													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" /></DataTemplate>
+													<DataTemplate><controls:SymbolInputCell Symbol="{Binding}" IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}" /></DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
 											</DataGridTemplateColumn>
 
-											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" Width="Auto"/>
+											<DataGridTextColumn Header="地址" Binding="{Binding AddressHex}" IsReadOnly="True" Width="Auto"/>
 											<DataGridTextColumn Header="来源文件" Binding="{Binding SourceFileName}" Width="Auto"/>
 											<DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="Auto" MaxWidth="500" IsReadOnly="False"/>
 										</DataGrid.Columns>

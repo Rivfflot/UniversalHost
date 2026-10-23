@@ -111,7 +111,7 @@
 				<MenuItem
 					Header="开始监控"
 					Command="{Binding StartMonitorCommand}"
-					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"
+					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanStartMonitor}"
 					/>
 				<MenuItem
 					Header="停止监控"

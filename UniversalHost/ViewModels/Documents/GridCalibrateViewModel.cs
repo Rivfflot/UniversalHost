@@ -179,7 +179,9 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private async Task UploadValues()
     {
-        var unknownItems = DisplaySymbolRuntimes.Where(item => item.Symbol.DataType == ScalarType.Unknown).ToList();
+        // 固定本次上传批次，等待设备响应期间允许增删标定列表。
+        var symbols = DisplaySymbolRuntimes.ToArray();
+        var unknownItems = symbols.Where(item => item.Symbol.DataType == ScalarType.Unknown).ToList();
 
         if (unknownItems.Count > 0)
         {
@@ -189,11 +191,11 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         }
         try
         {
-            foreach (var item in DisplaySymbolRuntimes)
+            foreach (var item in symbols)
             {
                 await XcpService.Client!.UploadSymbol(item);
             }
-            NotificationService.Show("此窗口变量已上传", $"共上传 {DisplaySymbolRuntimes.Count} 个变量", NotificationType.Success);
+            NotificationService.Show("此窗口变量已上传", $"共上传 {symbols.Length} 个变量", NotificationType.Success);
         }
         catch (Exception ex)
         {

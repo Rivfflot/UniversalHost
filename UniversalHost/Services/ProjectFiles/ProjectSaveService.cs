@@ -42,8 +42,6 @@ public partial class GlobalStatus : ReactiveObject
     public bool CanConnectDevice => _canConnectDevice.Value;
     private readonly ObservableAsPropertyHelper<bool> _canEditCommunicationSettings;
     public bool CanEditCommunicationSettings => _canEditCommunicationSettings.Value;
-    private readonly ObservableAsPropertyHelper<bool> _canEditSymbolLayout;
-    public bool CanEditSymbolLayout => _canEditSymbolLayout.Value;
     private GlobalStatus()
     {
         this.WhenAnyValue(
@@ -64,14 +62,6 @@ public partial class GlobalStatus : ReactiveObject
             .ToProperty(this,
                         x => x.CanEditCommunicationSettings,
                         out _canEditCommunicationSettings);
-
-        this.WhenAnyValue(
-                x => x.IsMonitoring,
-                x => x.CanEditCommunicationSettings,
-                (monitoring, canEdit) => !monitoring && canEdit)
-            .ToProperty(this,
-                        x => x.CanEditSymbolLayout,
-                        out _canEditSymbolLayout);
 
         this.WhenAnyValue(
                 x => x.IsProjectOpened,

@@ -31,7 +31,7 @@ public static class FirmwareSymbolService
 
     public static UserSymbolInfo CreateAccess(DeviceConfig device, SymbolInfo root, string path, bool manual)
     {
-        EnsureLayoutEditable();
+        // 新建访问项不影响已有变量，允许在监控期间创建标定变量。
         var user = new UserSymbolInfo
         {
             Name = root.Name,
@@ -56,7 +56,7 @@ public static class FirmwareSymbolService
 
     public static void ChangePath(DeviceConfig device, UserSymbolInfo item, string path)
     {
-        EnsureLayoutEditable();
+        EnsureSymbolEditable();
         var image = FindImage(device, item) ?? throw new InvalidOperationException("缺少类型快照，请主动更新固件");
         var root = item.Definition ?? throw new InvalidOperationException("缺少根变量身份");
         var access = AccessPathResolver.Resolve(image, root, path);
@@ -66,13 +66,19 @@ public static class FirmwareSymbolService
 
     public static void MakeManual(UserSymbolInfo item)
     {
-        EnsureLayoutEditable();
+        EnsureSymbolEditable();
         if (item.Mode == AccessMode.Automatic && item.Access != null)
             item.Offset = checked((uint)item.Access.OffsetUnits);
         item.Mode = AccessMode.Manual;
         item.VerificationStatus = AccessStatus.Unverified;
         item.VerificationReason = "手动类型和目标地址单位偏移，未经自动验证";
         item.RefreshAccessDisplay();
+    }
+
+    public static void EnsureSymbolEditable()
+    {
+        if (!GlobalStatus.Instance.CanEditMonitorSymbol)
+            throw new InvalidOperationException("请先打开工程并停止监控，再修改变量");
     }
 
     public static void EnsureLayoutEditable()

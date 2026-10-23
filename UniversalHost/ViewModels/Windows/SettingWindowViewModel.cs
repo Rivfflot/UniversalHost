@@ -45,13 +45,28 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             return false;
         }
     }
+
+    private bool CanChangeSymbolList(bool calibrate = false)
+    {
+        try
+        {
+            if (!calibrate) FirmwareSymbolService.EnsureSymbolEditable();
+            if (ImportCoordinator.IsBusy) throw new InvalidOperationException("请等待固件解析完成或取消解析");
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            NotificationService.Show("变量访问设置", ex.Message, NotificationType.Warning);
+            return false;
+        }
+    }
     [ReactiveCommand] private void CancelFirmwareParsing() => ImportCoordinator.Cancel();
 
     private void AddSymbol(SymbolTableEntry row, bool calibrate)
     {
         try
         {
-            if (!CanChangeLayout()) return;
+            if (!CanChangeSymbolList(calibrate)) return;
             var settings = ProjectSaveService.Instance.Settings;
             if (!settings.DeviceConfig.Symbols.Items.Contains(row.Root)) throw new InvalidOperationException("符号快照已变化，请重新选择变量");
             var access = SymbolSelectionService.CreateAccess(settings.DeviceConfig, row);
@@ -372,20 +387,20 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
 
         ClearMonitorSymbolsCommand = ReactiveCommand.Create(() =>
         {
-            if (!CanChangeLayout()) return;
+            if (!CanChangeSymbolList()) return;
             var count = ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Count;
             ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Clear();
             NotificationService.Show("监控符号列表已清空", $"移除了{count}个变量", NotificationType.Success);
         });
         RemoveDuplicateMonitorSymbolsCommand = ReactiveCommand.Create(() =>
         {
-            if (!CanChangeLayout()) return;
+            if (!CanChangeSymbolList()) return;
             var cnt = ProjectSaveService.Instance.Settings.MonitorConfig.RemoveDuplicateSymbols();
             NotificationService.Show("移除成功", $"已移除 {cnt} 个重复变量", NotificationType.Success);
         });
         RemoveMonitorSymbolCommand = ReactiveCommand.Create<UserSymbolInfo>(symbol =>
         {
-            if (!CanChangeLayout()) return;
+            if (!CanChangeSymbolList()) return;
             ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Remove(symbol);
             NotificationService.Show("符号已移除出监控列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
         });
@@ -540,6 +555,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private void HeaderOfIsMonitoredChanged()
     {
+        if (!CanChangeSymbolList()) return;
         // CheckBox 会先切换自身状态再执行命令，因此以各行状态决定操作。
         var symbols = ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Items.ToArray();
         var selectAll = symbols.Any(symbol => !symbol.IsMonitored);
@@ -554,15 +570,15 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private void ClearCalibrateSymbols()
     {
-        if (!CanChangeLayout()) return;
+        if (!CanChangeSymbolList(calibrate: true)) return;
         var count = ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.Count;
         ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.Clear();
-        NotificationService.Show("监控符号列表已清空", $"移除了{count}个变量", NotificationType.Success);
+        NotificationService.Show("标定符号列表已清空", $"移除了{count}个变量", NotificationType.Success);
     }
     [ReactiveCommand]
     private void RemoveDuplicateCalibrateSymbols()
     {
-        if (!CanChangeLayout()) return;
+        if (!CanChangeSymbolList(calibrate: true)) return;
         var cnt = ProjectSaveService.Instance.Settings.CalibrateConfig.RemoveDuplicateSymbols();
         NotificationService.Show("移除成功", $"已移除 {cnt} 个重复变量", NotificationType.Success);
     }
@@ -571,7 +587,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private void RemoveCalibrateSymbol(UserSymbolInfo symbol)
     {
-        if (!CanChangeLayout()) return;
+        if (!CanChangeSymbolList(calibrate: true)) return;
         ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols.Remove(symbol);
         NotificationService.Show("符号已移除出标定列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
     }
