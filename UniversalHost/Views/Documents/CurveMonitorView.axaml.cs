@@ -49,8 +49,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     {
         InitializeComponent();
         _yAxisDrag = new(CurvePlot.Plot);
-        var defaultYAxis = CurvePlot.Plot.Axes.Left;
-        defaultYAxis.TickGenerator = new CurveAxisTicks(defaultYAxis, defaultYAxis.TickGenerator);
+        // 默认 Y 轴隐藏时仍生成刻度，供横向网格线使用。
         // Y 是按住生效的窗口级手势，需同时监听按下和松开，不能使用切换式 KeyBinding。
         AddHandler(KeyDownEvent, CurveMonitorView_KeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(KeyUpEvent, CurveMonitorView_KeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
