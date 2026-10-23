@@ -67,7 +67,7 @@ public static class ProjectConversion
             if (!originalHash.AsSpan().SequenceEqual(currentHash))
                 throw new IOException("转换期间工程被其他程序修改，请关闭其他程序后重试。");
             token.ThrowIfCancellationRequested();
-            var backupPath = path + $".v{originalVersion}.{DateTime.UtcNow:yyyyMMddHHmmssfff}.{Guid.NewGuid():N}.bak";
+            var backupPath = path + $"_v{originalVersion}_{DateTime.UtcNow:yyyyMMdd_HHmmss}_backup";
             // 同卷原子替换并备份；不使用先删除原文件再移动的降级路径。
             File.Replace(temporaryPath, path, backupPath);
             return new(originalVersion, ProjectMetadata.CurrentFormatVersion, backupPath) { RemovedSymbols = removedSymbols };
