@@ -55,6 +55,24 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             var settings = ProjectSaveService.Instance.Settings;
             if (!settings.DeviceConfig.Symbols.Items.Contains(row.Root)) throw new InvalidOperationException("符号快照已变化，请重新选择变量");
             var access = SymbolSelectionService.CreateAccess(settings.DeviceConfig, row);
+            var otherSymbols = calibrate
+                ? settings.MonitorConfig.MonitoredSymbols.Items
+                : settings.CalibrateConfig.CalibratedSymbols.Items;
+            // 按来源、根符号和访问位置判断同一变量，不受别名、数据类型或监控勾选状态影响。
+            if (otherSymbols.Any(symbol => symbol.SourceKey == access.SourceKey
+                && (symbol.Definition?.LinkageName ?? symbol.RootName) == (access.Definition?.LinkageName ?? access.RootName)
+                && symbol.Address == access.Address
+                && symbol.MemberPath == access.MemberPath
+                && (symbol.Mode == AccessMode.Automatic ? symbol.Access?.OffsetUnits : symbol.Offset)
+                    == (access.Mode == AccessMode.Automatic ? access.Access?.OffsetUnits : access.Offset)))
+            {
+                string existingList = calibrate ? "监控" : "标定";
+                string targetList = calibrate ? "标定" : "监控";
+                NotificationService.Show("添加变量",
+                    $"{access.SourceFileName} : {access.Name} 已存在于{existingList}列表，无法添加至{targetList}列表，请先从{existingList}列表移除。",
+                    NotificationType.Warning);
+                return;
+            }
             if (calibrate) settings.CalibrateConfig.CalibratedSymbols.AddOrUpdate(access);
             else settings.MonitorConfig.MonitoredSymbols.AddOrUpdate(access);
             NotificationService.Show(calibrate ? "符号已添加至标定列表" : "符号已添加至监控列表",
