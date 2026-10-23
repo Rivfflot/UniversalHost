@@ -32,12 +32,15 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     private IPointer? _yAxisDragPointer;
     private bool _isYAxisKeyPressed;
     private bool _plotInputWasEnabled;
+    private bool _sharedYAxisDirty;
     private sealed class CurveRenderState(ScottPlot.Plottables.Signal signal, ScottPlot.AxisPanels.LeftAxis yAxis)
     {
         public ScottPlot.Plottables.Signal Signal { get; } = signal;
         public ScottPlot.AxisPanels.LeftAxis YAxis { get; } = yAxis;
         public long LastVersion { get; set; } = -1;
         public long LastAutoScaleVersion { get; set; } = -1;
+        public bool LastAutoScaleVisible { get; set; }
+        public bool LastVisible { get; set; }
     }
     private readonly Dictionary<CurveMonitorLayout.CurveItem, CurveRenderState> _curves = [];
     private static readonly DataFormat<CurveMonitorLayout.CurveItem> RowFormat =
@@ -46,6 +49,8 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
     {
         InitializeComponent();
         _yAxisDrag = new(CurvePlot.Plot);
+        var defaultYAxis = CurvePlot.Plot.Axes.Left;
+        defaultYAxis.TickGenerator = new CurveAxisTicks(defaultYAxis, defaultYAxis.TickGenerator);
         // Y 是按住生效的窗口级手势，需同时监听按下和松开，不能使用切换式 KeyBinding。
         AddHandler(KeyDownEvent, CurveMonitorView_KeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(KeyUpEvent, CurveMonitorView_KeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
@@ -117,6 +122,10 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 CurvePlot.Plot.Axes.SetLimitsX(0, monitorConfig.MaxSaveLen * (1 + XAxisRightMargin));
             }
             CurvePlot.Plot.Axes.Margins(0, XAxisRightMargin, 0.05, 0.05);
+            var sharedYAxis = CurvePlot.Plot.Axes.Left;
+            bool sharedYAxisInitialized = viewModel.CurvesLayout.SharedYAxisRange is { IsValid: true };
+            if (viewModel.CurvesLayout.SharedYAxisRange is { IsValid: true } sharedRange)
+                sharedYAxis.Range.Set(sharedRange.Min, sharedRange.Max);
             if (viewModel.CurvesLayout.XAxisRange is { IsValid: true } xRange)
                 CurvePlot.Plot.Axes.SetLimitsX(xRange.Min, xRange.Max);
             else
@@ -125,7 +134,8 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             scanLine.IsVisible = false;
             void RefreshPlot(bool force = true, bool resetAutoScale = false)
             {
-                bool changed = UpdateCurveRenderRanges();
+                UpdateYAxisAssignments();
+                bool changed = UpdateCurveRenderRanges() || _sharedYAxisDirty;
                 if (!force && !changed)
                 {
                     if (measurements.Update()) CurvePlot.Refresh();
@@ -149,7 +159,23 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 if (viewModel.CurvesLayout.IsYAxisAutoScaleEnabled)
                 {
                     bool autoScaled = resetAutoScale;
-                    foreach (var curveState in _curves.Values)
+                    if (viewModel.CurvesLayout.IsSharedYAxisEnabled)
+                    {
+                        if (resetAutoScale || _sharedYAxisDirty || _curves.Values.Any(state =>
+                            state.LastAutoScaleVisible != state.Signal.IsVisible ||
+                            (state.Signal.IsVisible && state.LastAutoScaleVersion != state.LastVersion)))
+                        {
+                            AutoScaleSharedYAxis();
+                            foreach (var state in _curves.Values)
+                            {
+                                state.LastAutoScaleVersion = state.LastVersion;
+                                state.LastAutoScaleVisible = state.Signal.IsVisible;
+                            }
+                            autoScaled = true;
+                            _sharedYAxisDirty = false;
+                        }
+                    }
+                    else foreach (var curveState in _curves.Values)
                     {
                         // 切换标签、选择曲线等无数据变化的重绘不能覆盖暂存的范围。
                         if (curveState.Signal.IsVisible &&
@@ -165,6 +191,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 }
                 measurements.Update();
                 measurements.BringToFront();
+                _sharedYAxisDirty = false;
                 CurvePlot.Refresh();
             }
             Action<CurveMonitorLayout.CurveItem> removeCurveHandler = RemoveCurve;
@@ -174,6 +201,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             {
                 var xAxis = CurvePlot.Plot.Axes.Bottom;
                 viewModel.CurvesLayout.XAxisRange = CurveAxisRange.Create(xAxis.Min, xAxis.Max);
+                viewModel.CurvesLayout.SharedYAxisRange = CurveAxisRange.Create(sharedYAxis.Min, sharedYAxis.Max);
                 foreach (var (item, curve) in _curves)
                     item.YAxisRange = CurveAxisRange.Create(curve.YAxis.Min, curve.YAxis.Max);
             };
@@ -212,12 +240,33 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             {
                 AddCurve(item);
             }
-            CurvePlot.Plot.Axes.Left.IsVisible = false;
-            var selectedCurve = viewModel.SelectedCurveItem ?? viewModel.DisplayCurves.FirstOrDefault();
-            foreach (var item in viewModel.DisplayCurves)
+            UpdateYAxisAssignments();
+            if (viewModel.CurvesLayout.IsSharedYAxisEnabled)
             {
-                item.YAxis?.IsVisible = item == selectedCurve;
+                if (!sharedYAxisInitialized) AutoScaleSharedYAxis();
+                foreach (var state in _curves.Values)
+                {
+                    state.LastAutoScaleVersion = state.LastVersion;
+                    state.LastAutoScaleVisible = state.Signal.IsVisible;
+                }
+                sharedYAxisInitialized = true;
+                _sharedYAxisDirty = false;
             }
+            viewModel.CurvesLayout.WhenAnyValue(x => x.IsSharedYAxisEnabled)
+                .Skip(1)
+                .ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ =>
+                {
+                    EndYAxisDrag();
+                    EndMeasurementDrag();
+                    if (viewModel.CurvesLayout.IsSharedYAxisEnabled && !sharedYAxisInitialized)
+                    {
+                        UpdateYAxisAssignments();
+                        AutoScaleSharedYAxis();
+                        sharedYAxisInitialized = true;
+                    }
+                    RefreshPlot(resetAutoScale: true);
+                }).DisposeWith(subscriptions);
             viewModel.CurvesLayout.WhenAnyValue(x => x.IsYAxisAutoScaleEnabled)
                 .Skip(1)
                 .ObserveOn(AvaloniaScheduler.Instance)
@@ -264,7 +313,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         if (item == null || !_curves.TryGetValue(item, out var curve)) return null;
         string label = item.Runtime.Symbol.Name;
         if (!string.IsNullOrWhiteSpace(item.Runtime.Symbol.Unit)) label += $" [{item.Runtime.Symbol.Unit}]";
-        return new(item.Runtime.PlotHistory, curve.YAxis, label, item.IsVisible);
+        return new(item.Runtime.PlotHistory, curve.Signal.Axes.YAxis, label, item.IsVisible);
     }
 
     private void CurvePlot_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -279,7 +328,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 return;
 
             var mouse = e.GetPosition(CurvePlot);
-            if (!_yAxisDrag.TryBeginDrag(curve.YAxis, new((float)mouse.X, (float)mouse.Y))) return;
+            if (!_yAxisDrag.TryBeginDrag(curve.Signal.Axes.YAxis, new((float)mouse.X, (float)mouse.Y))) return;
 
             _plotInputWasEnabled = CurvePlot.UserInputProcessor.IsEnabled;
             CurvePlot.UserInputProcessor.Disable();
@@ -353,7 +402,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             return;
 
         var point = e.GetPosition(CurvePlot);
-        if (!_yAxisDrag.ZoomWheel(curve.YAxis, new((float)point.X, (float)point.Y), e.Delta.Y)) return;
+        if (!_yAxisDrag.ZoomWheel(curve.Signal.Axes.YAxis, new((float)point.X, (float)point.Y), e.Delta.Y)) return;
         _measurements?.Update();
         CurvePlot.Refresh();
     }
@@ -401,6 +450,38 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         CurvePlot.SetCursor(_measurements?.MouseCursor ?? ScottPlot.Cursor.Arrow);
     }
 
+    private void UpdateYAxisAssignments()
+    {
+        if (ViewModel is not { } viewModel) return;
+        bool shared = viewModel.CurvesLayout.IsSharedYAxisEnabled;
+        CurvePlot.Plot.Axes.Left.IsVisible = shared;
+        var selected = viewModel.SelectedCurveItem ?? viewModel.DisplayCurves.FirstOrDefault();
+        foreach (var (item, state) in _curves)
+        {
+            state.Signal.Axes.YAxis = shared ? CurvePlot.Plot.Axes.Left : state.YAxis;
+            state.YAxis.IsVisible = !shared && ReferenceEquals(item, selected);
+        }
+    }
+
+    private void AutoScaleSharedYAxis()
+    {
+        double min = double.PositiveInfinity;
+        double max = double.NegativeInfinity;
+        foreach (var state in _curves.Values)
+        {
+            if (!state.Signal.IsVisible) continue;
+            var range = state.Signal.GetAxisLimits().YRange;
+            if (!double.IsFinite(range.Min) || !double.IsFinite(range.Max)) continue;
+            min = Math.Min(min, range.Min);
+            max = Math.Max(max, range.Max);
+        }
+        // 空窗口保留当前范围；测量辅助图元不参与曲线极值计算。
+        if (min > max) return;
+        if (!CurveAxisAutoScaler.TryAutoScaleY(CurvePlot.Plot.Axes.Left,
+            new CoordinateRange(min, max), CurvePlot.Plot.Axes.AutoScaler))
+            CurvePlot.Plot.Axes.AutoScaleY(CurvePlot.Plot.Axes.Left);
+    }
+
     private bool UpdateCurveRenderRanges()
     {
         bool changed = false;
@@ -408,7 +489,8 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         {
             var state = item.Runtime.PlotHistory.GetState();
             bool visible = item.IsVisible && state.Count > 0;
-            changed |= curve.Signal.IsVisible != visible || (visible && curve.LastVersion != state.Version);
+            changed |= curve.LastVisible != visible || (visible && curve.LastVersion != state.Version);
+            curve.LastVisible = visible;
             curve.LastVersion = state.Version;
             curve.Signal.MaxRenderIndex = Math.Max(0, state.Count - 1);
             curve.Signal.IsVisible = visible;
@@ -471,12 +553,15 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             renderState.LastAutoScaleVersion = item.Runtime.PlotHistory.Version;
         }
         _curves.Add(item, renderState);
+        _sharedYAxisDirty = true;
+        UpdateYAxisAssignments();
         UpdateCurveRenderRanges();
         ApplyPlotTheme();
     }
     private void RemoveCurve(CurveMonitorLayout.CurveItem item)
     {
         if (!_curves.Remove(item, out var curve)) return;
+        _sharedYAxisDirty = true;
 
         item.YAxisRange = CurveAxisRange.Create(curve.YAxis.Min, curve.YAxis.Max);
         if (ReferenceEquals(_yAxisDrag.Axis, curve.YAxis)) EndYAxisDrag();

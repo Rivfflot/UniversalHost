@@ -120,6 +120,7 @@ public partial class CurveMonitorLayout : ReactiveObject
     }
     //页面布局保存项
     public CurveAxisRange? XAxisRange { get; set; }
+    public CurveAxisRange? SharedYAxisRange { get; set; }
     public Guid? SelectedCurveId { get; set; }
     [JsonIgnore][Reactive] private GridLength _leftPanelLength = new(150);
     [JsonPropertyName("LeftPanelLength")]
@@ -136,6 +137,7 @@ public partial class CurveMonitorLayout : ReactiveObject
     [Reactive] private bool _isValueVisible = true;
     [Reactive] private bool _isUnitVisible = true;
     [Reactive] private bool _isYAxisAutoScaleEnabled = true;
+    [Reactive] private bool _isSharedYAxisEnabled;
 };
 public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
 {
@@ -279,15 +281,9 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
              .AutoRefresh(x => x.IsVisible)
              .Subscribe((_) => { RefreshCurve?.Invoke(); }).DisposeWith(_disposables);
 
-        //只显示选中变量的Y轴
         this.WhenAnyValue(x => x.SelectedCurveItem).Subscribe(s =>
         {
             if (s != null) CurvesLayout.SelectedCurveId = s.Id;
-            foreach (var item in DisplayCurves)
-            {
-                item.YAxis?.IsVisible = false;
-            }
-            s?.YAxis?.IsVisible = true;
             RefreshCurve?.Invoke();
         }).DisposeWith(_disposables);
 

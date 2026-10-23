@@ -8,8 +8,13 @@ internal static class CurveAxisAutoScaler
 {
     public static bool TryAutoScaleY(ScottPlot.Plottables.Signal signal, IAutoScaler autoScaler)
     {
-        if (autoScaler is not FractionalAutoScaler scaler) return false;
         CoordinateRange range = signal.GetAxisLimits().YRange;
+        return TryAutoScaleY(signal.Axes.YAxis, range, autoScaler);
+    }
+
+    public static bool TryAutoScaleY(IYAxis axis, CoordinateRange range, IAutoScaler autoScaler)
+    {
+        if (autoScaler is not FractionalAutoScaler scaler) return false;
         double min = range.Min;
         double max = range.Max;
         if (!double.IsFinite(min) || !double.IsFinite(max))
@@ -31,7 +36,7 @@ internal static class CurveAxisAutoScaler
         double bottom = min - span * scaler.BottomFraction;
         double top = max + span * scaler.TopFraction;
         if (!double.IsFinite(bottom) || !double.IsFinite(top) || bottom == top) return false;
-        signal.Axes.YAxis.Range.Set(scaler.InvertedY ? top : bottom, scaler.InvertedY ? bottom : top);
+        axis.Range.Set(scaler.InvertedY ? top : bottom, scaler.InvertedY ? bottom : top);
         return true;
     }
 }
