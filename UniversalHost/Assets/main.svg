@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>UniversalHost</title>
+  <g fill="#38BDE8">
+    <rect x="10" y="40" width="16" height="12" rx="4"/>
+    <rect x="10" y="76" width="16" height="12" rx="4"/>
+    <rect x="102" y="40" width="16" height="12" rx="4"/>
+    <rect x="102" y="76" width="16" height="12" rx="4"/>
+  </g>
+  <rect x="18" y="18" width="92" height="92" rx="21" fill="#1685D1"/>
+  <rect x="30" y="30" width="68" height="68" rx="10" fill="#EEF8FD"/>
+  <g stroke="#C4E4F4" stroke-width="2.5">
+    <path d="M 53 33 V 95 M 76 33 V 95 M 33 53 H 95 M 33 76 H 95"/>
+  </g>
+  <path d="M 35 65 H 39 C 43 65 43 52 47 52 C 52 52 51 78 55 78 C 59 78 59 42 64 42 C 69 42 69 78 73 78 C 77 78 76 52 81 52 C 85 52 85 65 89 65 H 94"
+        fill="none" stroke="#795BC8" stroke-width="6"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -3,6 +3,8 @@ x:Class="UniversalHost.App"
 xmlns="https://github.com/avaloniaui"
 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 xmlns:local="using:UniversalHost"
+xmlns:dock="using:Dock.Avalonia.Controls"
+xmlns:behaviors="using:UniversalHost.Views.Behaviors"
 RequestedThemeVariant="Default">
     <!--  "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options.  -->
 
@@ -14,6 +16,9 @@ RequestedThemeVariant="Default">
         <FluentTheme />
         <DockFluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+        <Style Selector="dock|MdiDocumentWindow">
+            <Setter Property="behaviors:MdiWindowRenderBehavior.IsEnabled" Value="True" />
+        </Style>
 
     </Application.Styles>
 
