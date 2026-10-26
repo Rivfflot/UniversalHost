@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Dock.Model.Controls;
@@ -114,6 +115,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 {
                     DataContext = SettingWindowViewModel.Instance
                 };
+                WindowScreenSizing.FitAndCenter(_settingWindow,
+                    (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow);
                 _settingWindow.Closed += (_, _) => _settingWindow = null;
                 _settingWindow.Show();
             }
@@ -198,6 +201,8 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 ? Path.GetDirectoryName(Path.GetFullPath(ProjectSaveService.Instance.ProjectFilePath)) : null;
         var viewModel = new LogViewerWindowViewModel();
         var window = new LogViewerWindow(viewModel);
+        WindowScreenSizing.FitAndCenter(window,
+            (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow);
         _logViewerWindow = window;
         window.Closed += (_, _) => _logViewerWindow = null;
         // 使用独立窗口，让主窗口和日志窗口随焦点正常切换前后层级。

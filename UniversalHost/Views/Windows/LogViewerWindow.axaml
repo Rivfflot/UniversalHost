@@ -5,8 +5,7 @@
         xmlns:controls="using:UniversalHost.Views.Controls"
         x:Class="UniversalHost.Views.Windows.LogViewerWindow"
         x:DataType="vm:LogViewerWindowViewModel"
-        Title="日志查看器" Width="1320" Height="720" MinWidth="980" MinHeight="620"
-        WindowStartupLocation="CenterScreen">
+        Title="日志查看器" Width="1320" Height="720" MinWidth="980" MinHeight="620">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>

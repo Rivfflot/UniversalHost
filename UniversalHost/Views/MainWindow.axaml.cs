@@ -50,6 +50,7 @@ namespace UniversalHost.Views
                 vm.ShowDocumentationWindow.RegisterHandler(interaction =>
                     {
                         var window = new DocumentationWindow(interaction.Input);
+                        WindowScreenSizing.FitAndCenter(window, this);
                         window.Show(this);
                         interaction.SetOutput(Unit.Default);
                     })
