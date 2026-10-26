@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using ReactiveUI.Reactive;
@@ -103,23 +104,31 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         //开启设置窗口
         OpenSettingWindowCommand = ReactiveCommand.Create<int>((Action<int>)(tabIndex =>
         {
-            if (_settingWindow != null)
+            // 等菜单点击及焦点恢复处理结束后，再显示并激活设置窗口。
+            Dispatcher.UIThread.Post(() =>
             {
                 SettingWindowViewModel.Instance.SelectedSettingTab = tabIndex;
-                _settingWindow.Activate();
-            }
-            else
-            {
-                SettingWindowViewModel.Instance.SelectedSettingTab = tabIndex;
-                _settingWindow = new SettingWindow
+                var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                if (_settingWindow == null)
                 {
-                    DataContext = SettingWindowViewModel.Instance
-                };
-                WindowScreenSizing.FitAndCenter(_settingWindow,
-                    (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow);
-                _settingWindow.Closed += (_, _) => _settingWindow = null;
-                _settingWindow.Show();
-            }
+                    _settingWindow = new SettingWindow
+                    {
+                        DataContext = SettingWindowViewModel.Instance
+                    };
+                    WindowScreenSizing.FitAndCenter(_settingWindow, owner);
+                    _settingWindow.Closed += (_, _) => _settingWindow = null;
+                }
+
+                if (_settingWindow.WindowState == WindowState.Minimized)
+                    _settingWindow.WindowState = WindowState.Normal;
+
+                // 所属窗口保持在主窗口上方，同时允许继续操作主窗口。
+                if (owner != null)
+                    _settingWindow.Show(owner);
+                else
+                    _settingWindow.Show();
+                _settingWindow.Activate();
+            }, DispatcherPriority.Background);
         }));
         #region 监控
         StartMonitorCommand = ReactiveCommand.CreateFromTask((Func<Task>)(async () =>
