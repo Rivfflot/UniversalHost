@@ -4,7 +4,7 @@
 
 - 本仓库是基于 Avalonia、ReactiveUI 和 Dock.Avalonia 的 C# 桌面上位机，目标框架为 .NET 10。
 - 桌面应用位于 `UniversalHost/UniversalHost.csproj`，独立工程转换器位于 `UniversalHost.ProjectConverter/`，解决方案文件为 `UniversalHost.slnx`。
-- 面向用户的说明在根目录 `README.md`；版本号变更记录在根目录 `ChangeLog.md`。详细说明集中在 `docs/`：IAP 协议见 `docs/IAP协议.md`，故障录波格式见 `docs/故障录波结构体定义.md`，快捷键见 `docs/快捷键.md`。修改协议前，先查看对应 Markdown 文档以及相关协议实现。
+- 面向用户的说明在根目录 `README.md`；版本号变更记录在根目录 `ChangeLog.md`。详细说明集中在 `docs/`：操作说明见 `docs/使用说明.md`，快捷键见 `docs/快捷键.md`，IAP 协议见 `docs/IAP协议.md`，故障录波格式见 `docs/故障录波结构体定义.md`。修改协议前，先查看对应 Markdown 文档以及相关协议实现。
 
 ## 代码结构
 
@@ -24,6 +24,7 @@
 - XCP/IAP 的帧格式、字节序、地址计算、CRC、超时、重试和阶段顺序都属于设备通信契约。修改前检查 `Models/Communication/XcpProtocol.cs`、`Models/Communication/IapProtocol.cs` 及 `Services/Communication/` 中对应实现，不要凭推测改变线上行为。
 - 项目文件是 ZIP 容器，当前格式为 2，最低兼容含元数据的格式 1。低版本由独立转换器依赖固件升级，成功后原子替换并备份原文件；扩展方法见 `docs/工程格式兼容.md`。打开当前格式工程只恢复保存内容，不解析固件、不触发保存。
 - 仅在版本号变更时更新根目录 `ChangeLog.md`，按版本号记录；不再记录逐日功能开发历史。
+- `docs/使用说明.md` 和 `docs/快捷键.md` 面向不懂编程的上位机操作人员。只写操作前提、界面入口、操作步骤、结果及必要的异常处理，使用与界面一致的名称，保持简洁清晰；不要加入代码、协议、数据结构、算法或工程实现细节。功能操作变化时同步核对并更新这两份文档，技术细节另放开发或协议文档。
 
 ## 构建
 
