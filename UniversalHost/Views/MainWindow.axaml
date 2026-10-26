@@ -27,6 +27,9 @@
 			<Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForeground}"/>
 			<Setter Property="Opacity" Value="0.8"/>
 		</Style>
+		<Style Selector="MenuItem.path-icon:disabled Viewbox">
+			<Setter Property="Opacity" Value="0.35"/>
+		</Style>
 	</Window.Styles>
 
 	<DockPanel>
@@ -279,14 +282,27 @@
 
 			<MenuItem
 				Command="{Binding AddGridMonitorPanelCommand}"
-				Header="📅"
+				Classes="path-icon"
 				Cursor="Hand"
-				FontFamily="Apple Color Emoji, Noto Color Emoji"
-				FontSize="18"
 				Padding="0"
 				ToolTip.Tip="新建表格监控窗口"
 				ToolTip.ShowOnDisabled="True"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
+				<MenuItem.Header>
+					<Viewbox Width="22" Height="22" Margin="0,1,0,0" Stretch="Uniform" RenderTransform="translate(0px, 0.5px)">
+						<Canvas Width="36" Height="36">
+							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V30 A2,2 0 0 1 30,32 H6 A2,2 0 0 1 4,30 V6 A2,2 0 0 1 6,4 Z"
+								Fill="#DCECF4" Stroke="#7993AD" StrokeThickness="1"/>
+							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V11 H4 V6 A2,2 0 0 1 6,4 Z"
+								Fill="#3B9ECF"/>
+							<Path Data="M18,12 V31 M5,21 H31"
+								Stroke="#8CA9BB" StrokeThickness="1.4"/>
+							<Path Data="M8,16 H14 M22,16 H28 M8,26 H13 M22,26 H28"
+								Stroke="#16B780" StrokeThickness="2.5" StrokeLineCap="Round"/>
+						</Canvas>
+					</Viewbox>
+				</MenuItem.Header>
+			</MenuItem>
 
 			<MenuItem
 				Command="{Binding AddCurveMonitorPanelCommand}"
@@ -328,14 +344,29 @@
 
 			<MenuItem
 				Command="{Binding AddGridCalibratePanelCommand}"
-				Header="✳️"
+				Classes="path-icon"
 				Cursor="Hand"
-				FontFamily="Apple Color Emoji, Noto Color Emoji"
-				FontSize="18"
 				Padding="0"
 				ToolTip.Tip="新建表格标定窗口"
 				ToolTip.ShowOnDisabled="True"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
+				<MenuItem.Header>
+					<Viewbox Width="22" Height="22" Margin="0,1,0,0" Stretch="Uniform" RenderTransform="translate(0px, 0.5px)">
+						<Canvas Width="36" Height="36">
+							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V30 A2,2 0 0 1 30,32 H6 A2,2 0 0 1 4,30 V6 A2,2 0 0 1 6,4 Z"
+								Fill="#DCECF4" Stroke="#7993AD" StrokeThickness="1"/>
+							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V11 H4 V6 A2,2 0 0 1 6,4 Z"
+								Fill="#3B9ECF"/>
+							<Path Data="M13,12 V30 M22,12 V30 M5,20 H31 M5,26 H31"
+								Stroke="#8CA9BB" StrokeThickness="1.4"/>
+							<Path Data="M19,28 L27,20 L31,24 L23,32 L18,32 Z"
+								Fill="#F5A64B" Stroke="#A86A42" StrokeThickness="1"/>
+							<Path Data="M25,22 L29,26"
+								Stroke="#FFF4D9" StrokeThickness="1.5"/>
+						</Canvas>
+					</Viewbox>
+				</MenuItem.Header>
+			</MenuItem>
 
 			<MenuItem
 				Command="{Binding DownloadValuesCommand}"
@@ -392,15 +423,27 @@
 
 			<MenuItem
 				Command="{Binding AddCommandPanelCommand}"
-				Header="✴️"
+				Classes="path-icon"
 				Cursor="Hand"
-				FontFamily="Apple Color Emoji, Noto Color Emoji"
-				FontSize="18"
 				Padding="0"
 				ToolTip.Tip="新建指令窗口"
 				ToolTip.ShowOnDisabled="True"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}"
-				/>
+				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
+				<MenuItem.Header>
+					<Viewbox Width="22" Height="22" Margin="0,1,0,0" Stretch="Uniform" RenderTransform="translate(0px, 0.5px)">
+						<Canvas Width="36" Height="36">
+							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V30 A2,2 0 0 1 30,32 H6 A2,2 0 0 1 4,30 V6 A2,2 0 0 1 6,4 Z"
+								Fill="#E1EAF5" Stroke="#99AEC8" StrokeThickness="1"/>
+							<Path Data="M9,12 H16 M9,18 H14 M9,24 H16"
+								Stroke="#7895B8" StrokeThickness="2.2" StrokeLineCap="Round"/>
+							<Path Data="M17,18 H25 M22,14 L26,18 L22,22"
+								Stroke="#22A8CD" StrokeThickness="2.8" StrokeJoin="Round" StrokeLineCap="Round"/>
+							<Path Data="M29,12 V24"
+								Stroke="#7895B8" StrokeThickness="2.5" StrokeLineCap="Round"/>
+						</Canvas>
+					</Viewbox>
+				</MenuItem.Header>
+			</MenuItem>
 
 			<Separator
 				Height="NaN"
