@@ -260,38 +260,39 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         });
 
         if (files is { Count: > 0 })
+            await OpenProjectAsync(files[0].Path.LocalPath);
+    }
+
+    public async Task OpenProjectAsync(string projectPath)
+    {
+        try
         {
-            var path = files[0].Path.LocalPath;
-            try
+            var path = Path.GetFullPath(projectPath);
+            var conversion = await ProjectConversionService.EnsureCurrentAsync(path);
+            if (conversion is { RemovedSymbols.Count: > 0 })
+                NotificationService.Show($"工程转换完成：已删除 {conversion.RemovedSymbols.Count} 个无法匹配的变量",
+                    string.Join(Environment.NewLine, conversion.RemovedSymbols.Select(
+                        item => $"{item.Group}: {item.Name} ({item.Source})，{item.Reason}")), NotificationType.Warning);
+            var layout = ProjectSaveService.LoadProject(path);
+            _disposables.Clear();
+            if (layout == null)
             {
-                var conversion = await ProjectConversionService.EnsureCurrentAsync(path);
-                if (conversion is { RemovedSymbols.Count: > 0 })
-                    NotificationService.Show($"工程转换完成：已删除 {conversion.RemovedSymbols.Count} 个无法匹配的变量",
-                        string.Join(Environment.NewLine, conversion.RemovedSymbols.Select(
-                            item => $"{item.Group}: {item.Name} ({item.Source})，{item.Reason}")), NotificationType.Warning);
-                var layout = ProjectSaveService.LoadProject(path);
-                _disposables.Clear();
-                if (layout == null)
-                {
-                    layout = Factory.CreateLayout();
-                    NotificationService.Show("布局读取错误", "已创建默认布局", NotificationType.Warning);
-                }
-                Layout = layout;
-                Factory.InitLayout(Layout);
-
-                // 绑定监控符号运行时集合
-
-                GlobalStatus.Instance.IsProjectOpened = true;
-                LogService.ForModule(LogModule.Project).Information("已加载文件: {ProjectPath}", path);
-                NotificationService.Show("读取成功", conversion?.BackupPath == null
-                    ? $"已加载文件: {path}"
-                    : $"已转换并加载文件: {path}\n原工程备份: {conversion.BackupPath}", NotificationType.Success);
+                layout = Factory.CreateLayout();
+                NotificationService.Show("布局读取错误", "已创建默认布局", NotificationType.Warning);
             }
-            catch (Exception ex)
-            {
-                LogService.ForModule(LogModule.Project).Error(ex, "读取错误，{Reason}", ex.Message);
-                NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
-            }
+            Layout = layout;
+            Factory.InitLayout(Layout);
+
+            GlobalStatus.Instance.IsProjectOpened = true;
+            LogService.ForModule(LogModule.Project).Information("已加载文件: {ProjectPath}", path);
+            NotificationService.Show("读取成功", conversion?.BackupPath == null
+                ? $"已加载文件: {path}"
+                : $"已转换并加载文件: {path}\n原工程备份: {conversion.BackupPath}", NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            LogService.ForModule(LogModule.Project).Error(ex, "读取错误，{Reason}", ex.Message);
+            NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
         }
     }
     [ReactiveCommand]
