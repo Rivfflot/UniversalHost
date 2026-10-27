@@ -441,6 +441,11 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         this.BindWithDefault(x => x.SerialTurnaroundDelayTemp, v => settings.SerialConfig.TurnaroundDelayMilliseconds = v, (UInt16)2).DisposeWith(_projectSubscriptions);
 
         // UDP相关
+        // 工程地址可能不属于当前网卡，仍须作为选项保留，避免双向绑定将其清空。
+        var localAddress = settings.UdpConfig.LocalAddress;
+        if (!string.IsNullOrEmpty(localAddress) && !_localIPSource.Items.Contains(localAddress))
+            _localIPSource.Add(localAddress);
+
         // 检查UI输入的IP是否合法
         RemoteAddressTemp = settings.UdpConfig.RemoteAddress;
         this.WhenAnyValue<SettingWindowViewModel, string?>(x => x.RemoteAddressTemp)
@@ -680,7 +685,10 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     {
         var current = ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress;
 
-        UpdateAvailableItems(_localIPSource, GetLocalIPv4Addresses());
+        var addresses = GetLocalIPv4Addresses();
+        if (!string.IsNullOrEmpty(current))
+            addresses.Add(current);
+        UpdateAvailableItems(_localIPSource, addresses);
 
         if (_availableIPv4Addresses.Contains(current))
             ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress = current;
