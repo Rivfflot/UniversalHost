@@ -206,15 +206,16 @@ public static class DockableRegistry
 
     public static void RestoreContexts(IDockable dockable)
     {
+        // 与创建文档时一致，以 object 赋值，避免 Dock 生成器注册运行时视图模型。
         if (dockable is Tool tool)
         {
             switch (tool.Id)
             {
                 case IapToolId:
-                    tool.Context = IapToolViewModel;
+                    tool.Context = (object)IapToolViewModel;
                     break;
                 case FaultRecordToolId:
-                    tool.Context = FaultRecordViewModel;
+                    tool.Context = (object)FaultRecordViewModel;
                     break;
             }
         }
@@ -222,23 +223,23 @@ public static class DockableRegistry
         {
             if (GridMonitorDocuments.TryGetValue(document.Id, out var vm))
             {
-                document.Context = vm;
+                document.Context = (object)vm;
             }
             else if (CurveMonitorDocuments.TryGetValue(document.Id, out var vm2))
             {
-                document.Context = vm2;
+                document.Context = (object)vm2;
             }
             else if (GridCalibrateDocuments.TryGetValue(document.Id, out var vm3))
             {
-                document.Context = vm3;
+                document.Context = (object)vm3;
             }
             else if (BitsMonitorDocuments.TryGetValue(document.Id, out var vm4))
             {
-                document.Context = vm4;
+                document.Context = (object)vm4;
             }
             else if (UserCommandDocuments.TryGetValue(dockable.Id, out var vm5))
             {
-                document.Context = vm5;
+                document.Context = (object)vm5;
             }
         }
 

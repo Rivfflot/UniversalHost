@@ -97,7 +97,8 @@ public class DockFactory : Factory
             CanFloat = false,
             CanPin = true,
             MdiBounds = new DockRect(0, 0, 360, 240),
-            Context = DockableRegistry.GetOrCreateGridMonitorViewModel(id)
+            // Context 仅供运行时绑定；转为 object，避免 Dock 生成器注册整个视图模型。
+            Context = (object)DockableRegistry.GetOrCreateGridMonitorViewModel(id)
         };
     }
     public Document GetOrCreateCurveMonitorDocument(string id)
@@ -110,7 +111,7 @@ public class DockFactory : Factory
             CanFloat = false,
             CanPin = true,
             MdiBounds = new DockRect(0, 0, 500, 400),
-            Context = DockableRegistry.GetOrCreateCurveMonitorViewModel(id)
+            Context = (object)DockableRegistry.GetOrCreateCurveMonitorViewModel(id)
         };
     }
     public Document GetOrCreateBitsMonitorDocument(string id)
@@ -124,7 +125,7 @@ public class DockFactory : Factory
             CanPin = true,
             MdiBounds = new DockRect(0, 0, 160, 360),
             MinWidth = 160,
-            Context = DockableRegistry.GetOrCreateBitsMonitorViewModel(id)
+            Context = (object)DockableRegistry.GetOrCreateBitsMonitorViewModel(id)
         };
     }
     public Document GetOrCreateGridCalibrateDocument(string id)
@@ -137,7 +138,7 @@ public class DockFactory : Factory
             CanFloat = false,
             CanPin = true,
             MdiBounds = new DockRect(0, 0, 360, 240),
-            Context = DockableRegistry.GetOrCreateGridCalibrateViewModel(id)
+            Context = (object)DockableRegistry.GetOrCreateGridCalibrateViewModel(id)
         };
     }
     public Document GetOrCreateUserCommandDocument(string id)
@@ -150,7 +151,7 @@ public class DockFactory : Factory
             CanFloat = false,
             CanPin = true,
             MdiBounds = new DockRect(0, 0, 200, 200),
-            Context = DockableRegistry.GetOrCreateUserCommandViewModel(id)
+            Context = (object)DockableRegistry.GetOrCreateUserCommandViewModel(id)
         };
     }
     public Tool CreateIapTool()
@@ -163,7 +164,7 @@ public class DockFactory : Factory
             CanFloat = false,
             CanPin = true,
             MdiBounds = default,
-            Context = DockableRegistry.IapToolViewModel
+            Context = (object)DockableRegistry.IapToolViewModel
         };
         ApplyToolSize(tool);
         return tool;
@@ -179,7 +180,7 @@ public class DockFactory : Factory
             CanFloat = false,
             CanPin = true,
             MdiBounds = default,
-            Context = DockableRegistry.FaultRecordViewModel
+            Context = (object)DockableRegistry.FaultRecordViewModel
         };
         ApplyToolSize(tool);
         return tool;
