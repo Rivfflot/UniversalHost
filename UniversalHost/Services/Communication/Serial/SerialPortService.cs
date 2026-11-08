@@ -18,7 +18,7 @@ public sealed class SerialPortService : ICommService
     private readonly SemaphoreSlim _sendGate = new(1, 1);
     private readonly SemaphoreSlim _receiveGate = new(1, 1);
     private readonly byte[] _readBuffer = new byte[4096];
-    private readonly object _disposeGate = new();
+    private readonly Lock _disposeGate = new();
     private Task? _disposeTask;
     private int _receiveError;
 

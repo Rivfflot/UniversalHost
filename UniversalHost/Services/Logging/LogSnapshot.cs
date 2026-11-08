@@ -16,20 +16,30 @@ public sealed record LogSnapshot(LogReadCursor Cursor, LogEntry[] Entries, strin
     public LogSnapshot Append(LogReadBatch batch, CancellationToken token)
     {
         var previous = batch.Reset ? Empty : this;
-        var entries = previous.Entries.Concat(batch.Entries).ToArray();
-        long size = entries.Sum(entry => entry.TextBytes);
-        int first = 0;
-        while (entries.Length - first > MaxEntries || size > MaxTextBytes)
+        int totalCount = previous.Entries.Length + batch.Entries.Length;
+        int first = totalCount;
+        long size = 0;
+        // 从尾部确定可保留范围，避免先合并全部记录、超限后再复制一次。
+        while (first > 0 && totalCount - first < MaxEntries)
         {
             token.ThrowIfCancellationRequested();
-            size -= entries[first++].TextBytes;
+            int index = first - 1;
+            var entry = index < previous.Entries.Length
+                ? previous.Entries[index] : batch.Entries[index - previous.Entries.Length];
+            if (entry.TextBytes > MaxTextBytes - size) break;
+            size += entry.TextBytes;
+            first--;
         }
-        if (first > 0) entries = entries[first..];
+        var entries = new LogEntry[totalCount - first];
+        int previousCount = Math.Max(0, previous.Entries.Length - first);
+        if (previousCount > 0)
+            previous.Entries.AsSpan(first, previousCount).CopyTo(entries);
+        batch.Entries.AsSpan(Math.Max(0, first - previous.Entries.Length)).CopyTo(entries.AsSpan(previousCount));
         token.ThrowIfCancellationRequested();
         return new(batch.Cursor, entries, entries.Select(entry => entry.Module).Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal).ToArray(), previous.LoadedCount + batch.Entries.Length,
             previous.SkippedLines + batch.SkippedLines, batch.Entries.LastOrDefault()?.Id ?? LastId,
-            batch.FileLength, batch.Reset ? "文件已截断、替换或改写，已从头重新读取。" : Notice);
+            batch.FileLength, batch.Reset ? "文件已截断或改写，已从头重新读取。" : Notice);
     }
 
     public static LogFileItem[] GetFiles(string folder, CancellationToken token) =>

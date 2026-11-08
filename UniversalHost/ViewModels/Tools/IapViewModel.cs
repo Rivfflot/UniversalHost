@@ -42,11 +42,11 @@ namespace UniversalHost.ViewModels.Tools
             {
                 Title = "选择 IAP 文件",
                 AllowMultiple = false,
-                FileTypeFilter = new List<FilePickerFileType>
-                {
-                new("BIN 文件") { Patterns = ["*.bin"] },
-                new("所有文件") { Patterns = ["*"] }
-                }
+                FileTypeFilter =
+                [
+                    new("BIN 文件") { Patterns = ["*.bin"] },
+                    new("所有文件") { Patterns = ["*"] }
+                ]
             });
 
             if (files is { Count: > 0 })

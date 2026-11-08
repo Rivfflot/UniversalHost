@@ -159,7 +159,7 @@ public class XcpClient : IAsyncDisposable
             Pid = 0;
             DaqList = 0;
             Odt = 0;
-            Entries = new List<DaqEntry>();
+            Entries = [];
         }
     }
 
@@ -193,7 +193,7 @@ public class XcpClient : IAsyncDisposable
     private readonly ICommService _comm;
     private readonly IDisposable _session;
     private readonly SerialConnectionOptions? _serialOptions;
-    private readonly object _disposeGate = new();
+    private readonly Lock _disposeGate = new();
     private Task? _disposeTask;
     private int _started;
     private int _disconnecting;

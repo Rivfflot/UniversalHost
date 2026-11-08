@@ -1,35 +1,34 @@
 namespace UniversalHost.Symbols;
 
-internal sealed class DwarfModelBuilder
+internal sealed class DwarfModelBuilder(RawImage raw, CancellationToken token = default)
 {
-    private readonly RawImage _raw;
-    private readonly Dictionary<string, RawNode> _nodes;
+    private readonly RawImage _raw = raw;
+    private readonly Dictionary<string, RawNode> _nodes = (raw.Nodes ?? []).ToDictionary(n => n.ID);
     private readonly Dictionary<string, TypeLayout> _types = [];
     private readonly HashSet<string> _building = [];
     private readonly HashSet<string> _invalidCycles = [];
-    private readonly CancellationToken _token;
+    private readonly CancellationToken _token = token;
     private const uint Name = 3, Size = 11, Type = 73, Encoding = 62;
-
-    public DwarfModelBuilder(RawImage raw, CancellationToken token = default)
-    {
-        _token = token;
-        _raw = raw;
-        _nodes = (raw.Nodes ?? []).ToDictionary(n => n.ID);
-    }
 
     public FirmwareImage Build(string path)
     {
         foreach (var variable in _nodes.Values.Where(n => n.Tag == 0x34))
-            variable.Location = InheritedLocation(variable, []);
+            variable.Location = InheritedLocation(variable);
         var variables = _nodes.Values.Where(n => n.Tag == 0x34 && n.Location.HasValue).ToList();
         var byAddress = variables.ToLookup(n => n.Location!.Value);
         var byName = _nodes.Values.Where(n => n.Tag == 0x34).ToLookup(LinkName);
-        var symbols = new List<FirmwareSymbol>();
+        List<FirmwareSymbol> symbols = new(_raw.Symbols.Count);
         foreach (var s in _raw.Symbols)
         {
             _token.ThrowIfCancellationRequested();
-            var candidates = byAddress[s.Address].Where(n =>
-                LinkName(n) == s.Name || Text(n, Name) == s.Name).ToList();
+            RawNode? candidate = null;
+            int candidateCount = 0;
+            foreach (var n in byAddress[s.Address])
+            {
+                if (LinkName(n) != s.Name && Text(n, Name) != s.Name) continue;
+                candidate = n;
+                if (++candidateCount > 1) break;
+            }
             var symbol = new FirmwareSymbol
             {
                 Name = s.Name,
@@ -37,13 +36,13 @@ internal sealed class DwarfModelBuilder
                 Address = s.Address,
                 SizeUnits = s.Size
             };
-            if (candidates.Count > 1)
+            if (candidateCount > 1)
                 symbol = symbol with { Status = AccessStatus.Conflict, Reason = "名称和地址匹配到多个 DWARF 定义" };
-            else if (candidates.Count == 0 && byName[s.Name].Any())
+            else if (candidateCount == 0 && byName[s.Name].Any())
                 symbol = symbol with { Reason = "DWARF 位置表达式不是受支持的固定内存地址，或与符号地址不一致" };
-            else if (candidates.Count == 1)
+            else if (candidate != null)
             {
-                var n = candidates[0];
+                var n = candidate;
                 var typeId = Reference(n, Type);
                 var t = BuildType(typeId);
                 bool conflict = s.Size != 0 && t.SizeUnits.HasValue && s.Size != t.SizeUnits;
@@ -62,7 +61,12 @@ internal sealed class DwarfModelBuilder
         }
         // A fixed DW_OP_addr definition may survive after .symtab stripping.
         // Import it, but never infer deletion from an incomplete symbol table.
-        var imported = symbols.SelectMany(s => new[] { (s.Address, s.LinkageName), (s.Address, s.Name) }).ToHashSet();
+        HashSet<(ulong Address, string Name)> imported = [];
+        foreach (var symbol in symbols)
+        {
+            imported.Add((symbol.Address, symbol.LinkageName));
+            imported.Add((symbol.Address, symbol.Name));
+        }
         var excluded = new HashSet<string>(_raw.ExcludedSymbolNames ?? []);
         foreach (var n in variables)
         {
@@ -117,28 +121,40 @@ internal sealed class DwarfModelBuilder
         };
     }
 
-    private ulong? InheritedLocation(RawNode n, HashSet<string> seen)
+    private ulong? InheritedLocation(RawNode n, HashSet<string>? seen = null)
     {
-        if (!seen.Add(n.ID) || seen.Count > 128) return null;
+        if (seen != null && (!seen.Add(n.ID) || seen.Count > 128)) return null;
         if (n.Location.HasValue || n.HasLocation) return n.Location;
-        foreach (uint attr in new uint[] { 0x47, 0x31 })
+        ReadOnlySpan<uint> references = [0x47, 0x31];
+        foreach (uint attr in references)
             if (n.Attributes.TryGetValue(attr, out var reference) && _nodes.TryGetValue(reference.Ref, out var target))
             {
+                seen ??= [n.ID];
                 var location = InheritedLocation(target, seen);
                 if (location.HasValue) return location;
             }
         return null;
     }
-    private string LinkName(RawNode n) => new[] { Text(n, 0x6e), Text(n, 0x2001), Text(n, 0x2007), Text(n, Name) }.FirstOrDefault(s => s.Length > 0) ?? "";
+    private string LinkName(RawNode n)
+    {
+        ReadOnlySpan<uint> attributes = [0x6e, 0x2001, 0x2007, Name];
+        foreach (uint attribute in attributes)
+        {
+            string name = Text(n, attribute);
+            if (name.Length > 0) return name;
+        }
+        return "";
+    }
 
     private RawAttribute? Attribute(RawNode n, uint attr, HashSet<string>? seen = null)
     {
-        seen ??= [];
-        if (!seen.Add(n.ID) || seen.Count > 128) return null;
+        if (seen != null && (!seen.Add(n.ID) || seen.Count > 128)) return null;
         if (n.Attributes.TryGetValue(attr, out var value)) return value;
-        foreach (uint reference in new uint[] { 0x47, 0x31 })
+        ReadOnlySpan<uint> references = [0x47, 0x31];
+        foreach (uint reference in references)
             if (n.Attributes.TryGetValue(reference, out var origin) && _nodes.TryGetValue(origin.Ref, out var target))
             {
+                seen ??= [n.ID];
                 var inherited = Attribute(target, attr, seen);
                 if (inherited != null) return inherited;
             }
@@ -210,7 +226,7 @@ internal sealed class DwarfModelBuilder
         }
         if (n.Tag is 0x13 or 0x17 or 0x02)
         {
-            var members = new List<MemberLayout>();
+            List<MemberLayout> members = [];
             bool complete = Number(n, 0x3c) != 1 && size.HasValue;
             foreach (var childId in n.Children)
             {
@@ -243,7 +259,7 @@ internal sealed class DwarfModelBuilder
         {
             var elementId = Reference(n, Type);
             var element = BuildType(elementId);
-            var dimensions = new List<ArrayDimension>();
+            List<ArrayDimension> dimensions = [];
             bool supportedOrder = Number(n, 0x09) is null or 0;
             if (Attribute(n, 0x51) != null && !Number(n, 0x51).HasValue) supportedOrder = false;
             foreach (var childId in n.Children)

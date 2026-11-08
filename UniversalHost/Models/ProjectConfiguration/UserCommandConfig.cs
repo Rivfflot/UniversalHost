@@ -20,11 +20,10 @@ public partial class UserCommand : ReactiveObject
         {
             return _ => true; // 显示所有项
         }
-        var lowerSearchText = searchText.ToLowerInvariant();
         return symbol =>
-            symbol.IdHex.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.Name?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.Description?.ToLowerInvariant().Contains(lowerSearchText) == true;
+            symbol.IdHex.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            symbol.Name?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true ||
+            symbol.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true;
     }
 }
 
@@ -37,8 +36,7 @@ public partial class UserCommandConfig : ReactiveObject
         get => UserCommands.Items.ToList(); // 保存时
         set
         {
-            if (value == null)
-                value = new List<UserCommand>();
+            value ??= [];
 
             var dict = value.ToDictionary(x => x.Id);
 

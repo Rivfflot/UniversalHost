@@ -619,11 +619,11 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         {
             Title = "选择符号表文件",
             AllowMultiple = false,
-            FileTypeFilter = new List<FilePickerFileType>
-            {
+            FileTypeFilter =
+            [
                 new("固件符号文件") { Patterns = ["*.elf", "*.axf", "*.out"] },
                 new("所有文件") { Patterns = ["*"] }
-            }
+            ]
         });
 
         if (files is { Count: > 0 })
@@ -667,7 +667,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     // 刷新本地IP
     private static List<string> GetLocalIPv4Addresses()
     {
-        var ipList = new List<string>();
+        List<string> ipList = [];
         foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
         {
             if (ni.OperationalStatus != OperationalStatus.Up)
@@ -714,10 +714,10 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     }
 
     // 判断ipv4是否合法
-    private static bool IsStrictIPv4(string ip)
-    {
-        return Regex.IsMatch(ip, @"^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$");
-    }
+    [GeneratedRegex(@"^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$")]
+    private static partial Regex StrictIPv4Pattern();
+
+    private static bool IsStrictIPv4(string ip) => StrictIPv4Pattern().IsMatch(ip);
 
     // 判断路径是否合法
     private static bool IsValidPath(string path)

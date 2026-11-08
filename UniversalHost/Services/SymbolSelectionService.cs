@@ -25,13 +25,13 @@ public static partial class SymbolSelectionService
 
     public static IReadOnlyList<SymbolTableEntry> BuildRows(DeviceConfig device)
     {
-        var rows = new List<SymbolTableEntry>();
+        List<SymbolTableEntry> rows = [];
         foreach (var root in device.Symbols.Items)
         {
             var image = FirmwareSymbolService.FindImage(device, root);
             TypeLayout? type = null;
             if (root.Definition != null) image?.Types.TryGetValue(root.Definition.TypeId, out type);
-            var visiting = new HashSet<string>();
+            HashSet<string> visiting = [];
             Visit("", type, 0, true);
 
             void Visit(string path, TypeLayout? current, ulong? offset, bool canAdd)
@@ -73,8 +73,8 @@ public static partial class SymbolSelectionService
 
     private static IReadOnlyList<ArrayDimension> ArrayDimensions(FirmwareImage? image, TypeLayout? type)
     {
-        var dimensions = new List<ArrayDimension>();
-        var seen = new HashSet<string>();
+        List<ArrayDimension> dimensions = [];
+        HashSet<string> seen = [];
         while (type?.Kind == LayoutKind.Array && seen.Add(type.Id))
         {
             dimensions.AddRange(type.Dimensions);
@@ -85,7 +85,7 @@ public static partial class SymbolSelectionService
 
     private static TypeLayout? ElementType(FirmwareImage image, TypeLayout type)
     {
-        var seen = new HashSet<string>();
+        HashSet<string> seen = [];
         while (type.Kind == LayoutKind.Array)
             if (!seen.Add(type.Id) || !image.Types.TryGetValue(type.ElementTypeId, out type!)) return null;
         return type;

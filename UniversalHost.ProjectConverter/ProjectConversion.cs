@@ -26,7 +26,7 @@ public static class ProjectConversion
         {
             int originalVersion;
             byte[] originalHash;
-            var removedSymbols = new List<ProjectConversionRemoval>();
+            List<ProjectConversionRemoval> removedSymbols = [];
             // 原文件始终以只读方式打开，所有步骤均在同目录临时副本中执行。
             await using (var original = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true))
             {
@@ -84,7 +84,7 @@ public static class ProjectConversion
             throw new InvalidDataException("仅兼容含元数据的格式 1 及以上工程。");
         if (version > ProjectMetadata.CurrentFormatVersion)
             throw new InvalidDataException($"工程格式 {version} 高于转换器支持的格式 {ProjectMetadata.CurrentFormatVersion}，请更新程序。");
-        var steps = new List<IProjectMigration>();
+        List<IProjectMigration> steps = [];
         while (version < ProjectMetadata.CurrentFormatVersion)
         {
             var candidates = Migrations.Where(m => m.FromVersion == version).ToArray();

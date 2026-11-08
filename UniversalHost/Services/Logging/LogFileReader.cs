@@ -1,9 +1,6 @@
-using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -13,10 +10,10 @@ using UniversalHost.Models.Logging;
 namespace UniversalHost.Services.Logging;
 
 // 游标是一次读取的快照。调用方仅在结果仍有效时接受新游标，取消/暂停不会漏读。
-public sealed record LogReadCursor(string? Identity, long Position, long LineNumber,
+public sealed record LogReadCursor(long Position, long LineNumber,
     byte[] Pending, bool DiscardingLongLine, byte[] Anchor)
 {
-    public static LogReadCursor Empty { get; } = new(null, 0, 0, [], false, []);
+    public static LogReadCursor Empty { get; } = new(0, 0, [], false, []);
 }
 
 public sealed record LogReadBatch(LogReadCursor Cursor, LogEntry[] Entries,
@@ -33,10 +30,9 @@ public static class LogFileReader
     {
         await using var file = new FileStream(path, FileMode.Open, FileAccess.Read,
             FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        var identity = GetIdentity(file, path);
         long length = file.Length;
-        bool reset = previous.Identity != null &&
-            (previous.Identity != identity || length < previous.Position ||
+        bool reset = previous.Position > 0 &&
+            (length < previous.Position ||
              !await AnchorMatchesAsync(file, previous, token).ConfigureAwait(false));
         var cursor = reset ? LogReadCursor.Empty : previous;
         file.Position = cursor.Position;
@@ -47,7 +43,7 @@ public static class LogFileReader
         long skipped = 0;
         long position = cursor.Position;
         long end = Math.Min(length, position + MaxReadBytes);
-        var entries = new List<LogEntry>();
+        List<LogEntry> entries = [];
         var buffer = new byte[65536];
 
         while (position < end)
@@ -99,7 +95,7 @@ public static class LogFileReader
         file.Position = position - anchorLength;
         await file.ReadExactlyAsync(anchor, token).ConfigureAwait(false);
         token.ThrowIfCancellationRequested();
-        return new(new(identity, position, lineNumber, line.ToArray(), discarding, anchor),
+        return new(new(position, lineNumber, line.ToArray(), discarding, anchor),
             entries.ToArray(), skipped, length, reset, reset || position != previous.Position);
     }
 
@@ -121,7 +117,7 @@ public static class LogFileReader
     {
         try
         {
-            if (lineNumber == 1 && bytes.StartsWith(new byte[] { 0xef, 0xbb, 0xbf })) bytes = bytes[3..];
+            if (lineNumber == 1 && bytes.StartsWith("\uFEFF"u8)) bytes = bytes[3..];
             string json = Utf8.GetString(bytes).TrimEnd('\r');
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
@@ -145,27 +141,4 @@ public static class LogFileReader
     private static string? GetString(JsonElement value, string name) =>
         value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString() : null;
-
-    private static string GetIdentity(FileStream file, string path)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            if (!GetFileInformationByHandle(file.SafeFileHandle, out var info))
-                throw new IOException("无法获取日志文件标识。", Marshal.GetLastWin32Error());
-            return $"{info.VolumeSerialNumber}:{info.FileIndexHigh}:{info.FileIndexLow}:{info.CreationTimeHigh}:{info.CreationTimeLow}";
-        }
-        return File.GetCreationTimeUtc(path).Ticks.ToString(CultureInfo.InvariantCulture);
-    }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetFileInformationByHandle(SafeFileHandle handle, out FileInformation information);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct FileInformation
-    {
-        public uint Attributes, CreationTimeLow, CreationTimeHigh, AccessTimeLow, AccessTimeHigh,
-            WriteTimeLow, WriteTimeHigh, VolumeSerialNumber, FileSizeHigh, FileSizeLow,
-            NumberOfLinks, FileIndexHigh, FileIndexLow;
-    }
 }

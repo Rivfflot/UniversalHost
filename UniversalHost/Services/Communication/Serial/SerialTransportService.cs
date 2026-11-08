@@ -23,8 +23,8 @@ public sealed class SerialTransportService : ICommService
     private readonly SemaphoreSlim _sendGate = new(1, 1);
     private readonly SemaphoreSlim _receiveGate = new(1, 1);
     private readonly CancellationTokenSource _shutdown = new();
-    private readonly object _echoGate = new();
-    private readonly object _disposeGate = new();
+    private readonly Lock _echoGate = new();
+    private readonly Lock _disposeGate = new();
     // 有界保存未消费的回显，重试不能覆盖前一次发送的回显期望。
     private const int MaxPendingEchoFrames = 32;
     private readonly List<byte[]> _echoPackets = [];

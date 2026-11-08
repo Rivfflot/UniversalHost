@@ -103,7 +103,7 @@ public static class FirmwareSymbolService
     {
         EnsureLayoutEditable();
         parser ??= new FirmwareParser();
-        var snapshots = new List<FirmwareImage>();
+        List<FirmwareImage> snapshots = [];
         var failures = new Dictionary<string, string>();
         // Stage every file before mutating any saved configuration.
         foreach (var key in settings.DeviceConfig.SymbolFilePaths.Items.ToArray())
@@ -126,9 +126,9 @@ public static class FirmwareSymbolService
         IReadOnlyDictionary<string, string>? failures = null)
     {
         EnsureLayoutEditable();
-        var removed = new List<RemovedAccess>();
-        var diagnostics = new List<string>();
-        var all = settings.MonitorConfig.MonitoredSymbols.Items.Concat(settings.CalibrateConfig.CalibratedSymbols.Items).ToArray();
+        List<RemovedAccess> removed = [];
+        List<string> diagnostics = [];
+        UserSymbolInfo[] all = [.. settings.MonitorConfig.MonitoredSymbols.Items, .. settings.CalibrateConfig.CalibratedSymbols.Items];
         foreach (var image in snapshots)
         {
             diagnostics.AddRange(image.Diagnostics.Select(d => $"{image.SourcePath}: {d}"));

@@ -468,7 +468,7 @@ public static class DataSaveService
 
         using var writer = new StreamWriter(fs, Encoding.UTF8, 131072);
 
-        List<string> names = new List<string>();
+        List<string> names = [];
 
         int maxLen = 0;
         foreach (var item in runtimes)

@@ -58,8 +58,8 @@ public static class CalibrationPreflight
     public static IReadOnlyList<PreparedCalibration> Prepare(DeviceConfig device, IEnumerable<SymbolRuntime> runtimes,
         int granularityBytes, bool littleEndian)
     {
-        var prepared = new List<PreparedCalibration>();
-        var intervals = new List<(ulong Start, ulong End, string Name)>();
+        List<PreparedCalibration> prepared = [];
+        List<(ulong Start, ulong End, string Name)> intervals = [];
         foreach (var runtime in runtimes)
         {
             ValidateAccess(device, runtime, granularityBytes, littleEndian);

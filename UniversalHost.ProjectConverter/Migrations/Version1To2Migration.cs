@@ -17,7 +17,7 @@ internal sealed class Version1To2Migration : IProjectMigration
         var settings = await ProjectJson.ReadAsync(archive, "settings.json", token);
         var device = settings["DeviceConfig"] as JsonObject
             ?? throw new InvalidDataException("工程缺少设备设置。");
-        var images = new List<FirmwareImage>();
+        List<FirmwareImage> images = [];
         // 转换器与主程序共享 dependencies 下唯一的一份解析工具。
         var parser = new FirmwareParser(new ParseOptions { WorkerPath = FirmwareParser.GetWorkerPath(AppContext.BaseDirectory) });
         if (device["SymbolFilePaths"] is not null and not JsonArray)
@@ -45,9 +45,9 @@ internal sealed class Version1To2Migration : IProjectMigration
         }
 
         // 1 曾同时用于旧符号表和类型快照结构。按行识别，避免破坏过渡版本的自动访问。
-        var removed = new List<ProjectConversionRemoval>();
-        var removedMonitorIds = new HashSet<Guid>();
-        var removedCalibrateIds = new HashSet<Guid>();
+        List<ProjectConversionRemoval> removed = [];
+        HashSet<Guid> removedMonitorIds = [];
+        HashSet<Guid> removedCalibrateIds = [];
         foreach (var (configName, rowsName, group, removedIds) in new[]
         {
             ("MonitorConfig", "MonitoredSymbols", "监控", removedMonitorIds),

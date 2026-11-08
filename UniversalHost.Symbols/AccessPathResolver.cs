@@ -16,7 +16,7 @@ public static partial class AccessPathResolver
 
     public static string GetDefaultElementPath(FirmwareImage image, TypeLayout type, string path)
     {
-        var seen = new HashSet<string>();
+        HashSet<string> seen = [];
         while (type.Kind == LayoutKind.Array && seen.Add(type.Id))
         {
             path += string.Concat(type.Dimensions.Select(d => $"[{d.LowerBound.ToString(CultureInfo.InvariantCulture)}]"));
@@ -27,7 +27,7 @@ public static partial class AccessPathResolver
 
     public static IReadOnlyList<ArrayDimension> GetArrayDimensions(FirmwareImage image, FirmwareSymbol root, string path)
     {
-        var dimensions = new List<ArrayDimension>();
+        List<ArrayDimension> dimensions = [];
         var access = ResolveCore(image, root, path, false, dimensions);
         if (access.Status != AccessStatus.Verified) throw new InvalidOperationException(access.Reason);
         return dimensions;
@@ -46,7 +46,7 @@ public static partial class AccessPathResolver
             ulong offset = 0;
             int pos = 0, dimension = 0, segments = 0;
             // Every aggregate contributes a bound, not only the outer symbol.
-            var bounds = new List<(ulong Start, ulong Size)>();
+            List<(ulong Start, ulong Size)> bounds = [];
             if (root.SizeUnits > 0) bounds.Add((0, root.SizeUnits));
             if (type.SizeUnits.HasValue) bounds.Add((0, type.SizeUnits.Value));
             while (pos < path.Length)
@@ -58,11 +58,15 @@ public static partial class AccessPathResolver
                 if (match.Groups[1].Success)
                 {
                     if (type.Kind is not (LayoutKind.Structure or LayoutKind.Union)) return Fail(AccessStatus.Unsupported, "此层不是结构体或联合体");
-                    var members = type.Members.Where(m => m.Name == match.Groups[1].Value).ToList();
-                    if (members.Count == 0) return Fail(type.Complete ? AccessStatus.MissingMember : AccessStatus.Unverified,
+                    MemberLayout? member = null;
+                    foreach (var candidate in type.Members)
+                    {
+                        if (!match.Groups[1].ValueSpan.SequenceEqual(candidate.Name)) continue;
+                        if (member != null) return Fail(AccessStatus.Conflict, "成员名称不唯一");
+                        member = candidate;
+                    }
+                    if (member == null) return Fail(type.Complete ? AccessStatus.MissingMember : AccessStatus.Unverified,
                         type.Complete ? $"成员 {match.Groups[1].Value} 已不存在" : "类型布局不完整，不能确认成员已删除");
-                    if (members.Count != 1) return Fail(AccessStatus.Conflict, "成员名称不唯一");
-                    var member = members[0];
                     if (member.BitField || !member.OffsetUnits.HasValue) return Fail(AccessStatus.Unsupported, member.Reason);
                     offset = checked(offset + member.OffsetUnits.Value);
                     if (!image.Types.TryGetValue(member.TypeId, out type)) return Fail(AccessStatus.Unverified, "缺少成员类型定义");
@@ -71,7 +75,7 @@ public static partial class AccessPathResolver
                 {
                     if (type.Kind != LayoutKind.Array || dimension >= type.Dimensions.Count) return Fail(AccessStatus.Unsupported, "此层不是数组或维度不完整");
                     var dim = type.Dimensions[dimension];
-                    if (!long.TryParse(match.Groups[2].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var index))
+                    if (!long.TryParse(match.Groups[2].ValueSpan, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var index))
                         return Fail(AccessStatus.InvalidPath, "下标超出整数范围");
                     if (!dim.Count.HasValue || !dim.StrideUnits.HasValue || !type.Complete) return Fail(AccessStatus.Unverified, "数组长度或步长不完整");
                     if (index < dim.LowerBound || checked((ulong)(index - dim.LowerBound)) >= dim.Count.Value)

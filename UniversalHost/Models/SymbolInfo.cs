@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using System.Threading;
 using UniversalHost.Symbols;
 
 namespace UniversalHost.Models;
@@ -41,11 +42,10 @@ public partial class SymbolInfo : ReactiveObject
             return _ => true; // 显示所有项
         }
 
-        var lowerSearchText = searchText.ToLowerInvariant();
         return symbol =>
-            symbol.Name?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.AddressHex?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.SourceFileName?.ToLowerInvariant().Contains(lowerSearchText) == true;
+            symbol.Name?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true ||
+            symbol.AddressHex.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            symbol.SourceFileName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true;
     }
 }
 
@@ -117,6 +117,7 @@ public partial class UserSymbolInfo : SymbolInfo
     [Reactive] private ScalarType _dataType = ScalarType.Unknown;
 
     private readonly Dictionary<int, SymbolBitAlias> _bitAliases = [];
+    private readonly Lock _bitAliasesGate = new();
 
     // 只保存非空别名；没有位别名的变量不输出此属性。
     [JsonPropertyName("BitAliases")]
@@ -126,7 +127,7 @@ public partial class UserSymbolInfo : SymbolInfo
         get
         {
             // 自动保存在线程池读取快照，窗口可能同时按需创建位别名。
-            lock (_bitAliases)
+            lock (_bitAliasesGate)
             {
                 Dictionary<int, string>? aliases = null;
                 foreach (var (index, bitAlias) in _bitAliases)
@@ -140,7 +141,7 @@ public partial class UserSymbolInfo : SymbolInfo
         }
         set
         {
-            lock (_bitAliases)
+            lock (_bitAliasesGate)
             {
                 foreach (var bitAlias in _bitAliases.Values.ToArray())
                     bitAlias.Alias = string.Empty;
@@ -160,7 +161,7 @@ public partial class UserSymbolInfo : SymbolInfo
         if (index < 0 || index >= 64)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        lock (_bitAliases)
+        lock (_bitAliasesGate)
         {
             if (!_bitAliases.TryGetValue(index, out var bitAlias))
             {
@@ -179,12 +180,11 @@ public partial class UserSymbolInfo : SymbolInfo
             return _ => true; // 显示所有项
         }
 
-        var lowerSearchText = searchText.ToLowerInvariant();
         return symbol =>
-            symbol.Name?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.AddressHex?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.SourceFileName?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.Alias?.ToLowerInvariant().Contains(lowerSearchText) == true ||
-            symbol.Description?.ToLowerInvariant().Contains(lowerSearchText) == true;
+            symbol.Name?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true ||
+            symbol.AddressHex.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            symbol.SourceFileName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true ||
+            symbol.Alias?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true ||
+            symbol.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true;
     }
 }

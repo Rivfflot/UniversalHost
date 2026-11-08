@@ -228,11 +228,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             {
                 Title = "新建工程",
                 SuggestedFileName = "NewProject",
-                FileTypeChoices = new List<FilePickerFileType>
-                    {
+                FileTypeChoices =
+                    [
                         new("工程文件") { Patterns = ["*.uhprj"] },
                         new("所有文件") { Patterns = ["*"] }
-                    }
+                    ]
             });
             if (result != null)
             {
@@ -261,11 +261,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             Title = "选择工程文件",
             AllowMultiple = false,
-            FileTypeFilter = new List<FilePickerFileType>
-            {
+            FileTypeFilter =
+            [
                 new("工程文件") { Patterns = ["*.uhprj"] },
                 new("所有文件") { Patterns = ["*"] }
-            }
+            ]
         });
 
         if (files is { Count: > 0 })
@@ -313,11 +313,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             {
                 Title = "另存为工程",
                 SuggestedFileName = "SaveAsProject",
-                FileTypeChoices = new List<FilePickerFileType>
-                    {
+                FileTypeChoices =
+                    [
                         new("工程文件") { Patterns = ["*.uhprj"] },
                         new("所有文件") { Patterns = ["*"] }
-                    }
+                    ]
             });
             if (result != null)
             {
@@ -586,11 +586,11 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         {
             Title = "选择参数文件",
             AllowMultiple = false,
-            FileTypeFilter = new List<FilePickerFileType>
-            {
+            FileTypeFilter =
+            [
                 new("参数文件") { Patterns = ["*.json"] },
                 new("所有文件") { Patterns = ["*"] }
-            }
+            ]
         });
 
         if (files is { Count: > 0 })

@@ -8,7 +8,7 @@ namespace UniversalHost.Services.Communication;
 /// <summary>业务层原子占用会话，包含准备、连接、取消和资源清理阶段。</summary>
 internal static class CommunicationSessionCoordinator
 {
-    private static readonly object Gate = new();
+    private static readonly Lock Gate = new();
     private static SessionLease? _xcp;
     private static SessionLease? _iap;
 

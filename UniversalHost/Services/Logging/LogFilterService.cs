@@ -21,7 +21,7 @@ public static partial class LogFilterService
     public static bool TryParseTime(string text, out DateTimeOffset time)
     {
         time = default;
-        return OffsetSuffix().IsMatch(text.Trim()) && DateTimeOffset.TryParse(text,
+        return OffsetSuffix().IsMatch(text.AsSpan().Trim()) && DateTimeOffset.TryParse(text.AsSpan(),
             CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out time);
     }
 
@@ -38,7 +38,7 @@ public static partial class LogFilterService
 
     public static LogEntry[] Apply(LogEntry[] entries, LogFilter filter, CancellationToken token)
     {
-        var result = new List<LogEntry>();
+        List<LogEntry> result = [];
         foreach (var entry in entries)
         {
             token.ThrowIfCancellationRequested();
