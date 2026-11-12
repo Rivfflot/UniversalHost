@@ -78,21 +78,17 @@
 							Orientation="Horizontal" >
 							<Button
 								Content="更新符号表"
-								Command="{Binding ReloadSymbolFileCommand}"
-								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+								Command="{Binding ReloadSymbolFileCommand}"/>
 							<Button
 								Content="添加固件"
 								Command="{Binding SelectSymbolFileCommand}"
-								CommandParameter="{Binding $parent[Window]}"
-								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+								CommandParameter="{Binding $parent[Window]}"/>
 							<Button
 								Content="清空固件"
-								Command="{Binding ClearSymbolFilePathsCommand}"
-								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+								Command="{Binding ClearSymbolFilePathsCommand}"/>
 							<Button
 								Content="清空符号表"
-								Command="{Binding ClearSymbolsCommand}"
-								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"/>
+								Command="{Binding ClearSymbolsCommand}"/>
 						</StackPanel>
 						<!--  第 7 行 -->
 						<TabControl Grid.Row="6"
@@ -813,9 +809,7 @@
 								Content="更新符号表"
 								Command="{Binding ReloadSymbolFileCommand}"
 								ToolTip.ShowOnDisabled="True"
-								ToolTip.Tip="只删除已确认失效的根变量、成员和数组访问项；解析失败时保留配置"
-								IsEnabled="{Binding !GlobalStatusInstance.IsMonitoring}"
-								/>
+								ToolTip.Tip="只删除已确认失效的根变量、成员和数组访问项；解析失败时保留配置"/>
 							<Button
 								Content="清空标定变量"
 								Command="{Binding ClearCalibrateSymbolsCommand}"/>

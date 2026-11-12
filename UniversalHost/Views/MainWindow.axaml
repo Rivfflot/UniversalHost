@@ -66,8 +66,7 @@
 					Command="{Binding ReloadSymbolsCommand}"
 					Header="重载符号表"
 					InputGesture="Ctrl+R"
-					HotKey="Ctrl+R"
-					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
+					HotKey="Ctrl+R" />
 				<Separator />
 				<MenuItem
 					Header="日志查看器"
@@ -238,8 +237,7 @@
 				FontSize="18"
 				Cursor="Hand"
 				ToolTip.Tip="重新加载符号表"
-				ToolTip.ShowOnDisabled="True"
-				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}" />
+				ToolTip.ShowOnDisabled="True" />
 
 			<Separator
 				Height="NaN"

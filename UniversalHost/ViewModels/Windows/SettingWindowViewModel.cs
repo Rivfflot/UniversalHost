@@ -321,8 +321,10 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                     .Bind(out _availableIPv4Addresses)
                     .Subscribe().DisposeWith(_disposables);
 
-        ReloadSymbolFileCommand = ReactiveCommand.CreateFromTask(FirmwareImportCoordinator.Instance.ReloadAsync);
-        SelectSymbolFileCommand = ReactiveCommand.CreateFromTask<Window>(SelectSymbolFileAsync);
+        var canEditFirmwareSymbols = GlobalStatus.Instance.WhenAnyValue(x => x.CanEditFirmwareSymbols)
+            .ObserveOn(AvaloniaScheduler.Instance);
+        ReloadSymbolFileCommand = ReactiveCommand.CreateFromTask(ImportCoordinator.ReloadAsync, canEditFirmwareSymbols);
+        SelectSymbolFileCommand = ReactiveCommand.CreateFromTask<Window>(SelectSymbolFileAsync, canEditFirmwareSymbols);
         ClearSymbolFilePathsCommand = ReactiveCommand.Create(() =>
         {
             if (!CanChangeLayout()) return;
@@ -330,14 +332,14 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Clear();
             FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings);
             NotificationService.Show("符号文件列表已清空", $"删除了{count}个路径", NotificationType.Success);
-        });
+        }, canEditFirmwareSymbols);
         ClearSymbolsCommand = ReactiveCommand.Create(() =>
         {
             if (!CanChangeLayout()) return;
             var count = ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count;
             FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings);
             NotificationService.Show("符号表已清空", $"删除了{count}个符号", NotificationType.Success);
-        });
+        }, canEditFirmwareSymbols);
         RemoveSymbolFileCommand = ReactiveCommand.Create<string>(path =>
         {
             if (!CanChangeLayout()) return;
@@ -347,7 +349,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                 FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings, path);
             }
             NotificationService.Show("文件已移除", $"移除文件: {path}", NotificationType.Success);
-        });
+        }, canEditFirmwareSymbols);
         ShowSymbolFileInformationCommand = ReactiveCommand.Create<string>(ShowSymbolFileInformation);
         CopySymbolFilePathCommand = ReactiveCommand.CreateFromTask<(Window window, string path)>(async tuple =>
         {

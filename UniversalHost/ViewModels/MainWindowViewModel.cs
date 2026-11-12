@@ -6,6 +6,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
@@ -99,7 +100,9 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
                 NotificationService.Show("保存错误", $"{ex.Message}", NotificationType.Error);
             }
         }));
-        ReloadSymbolsCommand = ReactiveCommand.CreateFromTask(FirmwareImportCoordinator.Instance.ReloadAsync);
+        ReloadSymbolsCommand = ReactiveCommand.CreateFromTask(FirmwareImportCoordinator.Instance.ReloadAsync,
+            GlobalStatus.Instance.WhenAnyValue(x => x.CanEditFirmwareSymbols)
+                .ObserveOn(AvaloniaScheduler.Instance));
         #endregion
         //开启设置窗口
         OpenSettingWindowCommand = ReactiveCommand.Create<int>((Action<int>)(tabIndex =>

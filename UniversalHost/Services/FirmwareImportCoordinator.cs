@@ -18,7 +18,7 @@ public sealed partial class FirmwareImportCoordinator : ReactiveObject
 
     public async Task ReloadAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy || !GlobalStatus.Instance.CanEditFirmwareSymbols) return;
         IsBusy = true;
         using var cancellation = new CancellationTokenSource();
         _cancellation = cancellation;
@@ -33,15 +33,13 @@ public sealed partial class FirmwareImportCoordinator : ReactiveObject
         catch (Exception ex)
         {
             LogService.ForModule(LogModule.Symbols).Error(ex, "主动更新固件失败");
-            NotificationService.Show("更新失败", ex.Message, NotificationType.Error);
         }
         finally { _cancellation = null; IsBusy = false; }
     }
 
     public async Task ImportAsync(string path)
     {
-        if (IsBusy) return;
-        FirmwareSymbolService.EnsureLayoutEditable();
+        if (IsBusy || !GlobalStatus.Instance.CanEditFirmwareSymbols) return;
         IsBusy = true;
         using var cancellation = new CancellationTokenSource();
         _cancellation = cancellation;

@@ -34,6 +34,8 @@ public partial class GlobalStatus : ReactiveObject
 
     private readonly ObservableAsPropertyHelper<bool> _canEditMonitorSymbol;
     public bool CanEditMonitorSymbol => _canEditMonitorSymbol.Value;
+    private readonly ObservableAsPropertyHelper<bool> _canEditFirmwareSymbols;
+    public bool CanEditFirmwareSymbols => _canEditFirmwareSymbols.Value;
 
     private readonly ObservableAsPropertyHelper<bool> _canStartMonitor;
     public bool CanStartMonitor => _canStartMonitor.Value;
@@ -70,6 +72,14 @@ public partial class GlobalStatus : ReactiveObject
             .ToProperty(this,
                         x => x.CanEditMonitorSymbol,
                         out _canEditMonitorSymbol);
+
+        this.WhenAnyValue(
+                x => x.IsProjectOpened,
+                x => x.IsConnected,
+                x => x.IsXcpSessionActive,
+                x => x.IsMonitoring,
+                (opened, connected, xcpActive, monitoring) => opened && !connected && !xcpActive && !monitoring)
+            .ToProperty(this, x => x.CanEditFirmwareSymbols, out _canEditFirmwareSymbols);
 
         this.WhenAnyValue(
                 x => x.IsConnected,

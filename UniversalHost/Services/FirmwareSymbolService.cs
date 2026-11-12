@@ -83,8 +83,8 @@ public static class FirmwareSymbolService
 
     public static void EnsureLayoutEditable()
     {
-        if (GlobalStatus.Instance.IsMonitoring || GlobalStatus.Instance.IsXcpSessionActive || GlobalStatus.Instance.IsConnected)
-            throw new InvalidOperationException("请先停止采集并断开设备，再修改变量访问布局");
+        if (!GlobalStatus.Instance.CanEditFirmwareSymbols)
+            throw new InvalidOperationException("请打开工程并断开设备后再修改固件符号表");
     }
 
     public static void RemoveSnapshot(ProjectSettings settings, string? source = null)
