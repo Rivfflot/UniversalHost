@@ -461,7 +461,7 @@ public class XcpClient : IAsyncDisposable
             int written = 0;
             foreach (var item in batch)
             {
-                if (item.OldValue == item.NewValue) continue;
+                if (!item.HasChanged) continue;
                 await Cal.ShortDownloadAsync(item.Address, item.Bytes);
                 item.Runtime.UpdateValueFromBytes(item.Bytes, true);
                 item.Runtime.ValueToString();

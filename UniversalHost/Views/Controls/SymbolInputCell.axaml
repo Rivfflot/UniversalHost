@@ -1,22 +1,26 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:UniversalHost.ViewModels.Windows"
              x:Class="UniversalHost.Views.Controls.SymbolInputCell">
-  <Grid x:Name="EditorRoot" x:DataType="vm:SymbolInputViewModel" RowDefinitions="Auto,Auto" ColumnDefinitions="96,*">
-    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Kind, Mode=TwoWay}"
-              MinWidth="0" Width="96" Padding="6,4" VerticalAlignment="Top" IsEnabled="{Binding CanEditInput}" />
-    <ItemsControl Grid.Column="1" ItemsSource="{Binding Inputs}" Margin="2,0,0,0" IsEnabled="{Binding CanEditInput}">
+  <StackPanel x:Name="EditorRoot" x:DataType="vm:SymbolInputViewModel" Spacing="6">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock Text="偏移 / 下标" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Kind, Mode=TwoWay}"
+                IsEnabled="{Binding CanEditInput}" />
+    </StackPanel>
+    <ItemsControl ItemsSource="{Binding Inputs}" IsEnabled="{Binding CanEditInput}">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:SymbolNumberInputViewModel">
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding Label}" IsVisible="{Binding HasLabel}" Width="14" VerticalAlignment="Center" />
-            <NumericUpDown Value="{Binding Value, Mode=TwoWay}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+            <NumericUpDown Value="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                           Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                            ParsingNumberStyle="Integer" ShowButtonSpinner="False" ClipValueToMinMax="False"
-                           MinWidth="0" Width="{Binding Width}" Padding="4" ToolTip.Tip="{Binding Hint}" />
+                           Width="120" ToolTip.Tip="{Binding Hint}" />
           </StackPanel>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Error}" IsVisible="{Binding HasError}"
-               Foreground="Red" TextWrapping="Wrap" MaxWidth="176" />
-  </Grid>
+    <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}"
+               Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" />
+  </StackPanel>
 </UserControl>

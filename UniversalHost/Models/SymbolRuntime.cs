@@ -3,8 +3,10 @@ using ReactiveUI.SourceGenerators;
 using System;
 using System.Buffers.Binary;
 using System.Globalization;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using UniversalHost.Models.Plotting;
 using UniversalHost.Symbols;
 
@@ -33,6 +35,7 @@ public abstract partial class SymbolRuntime : ReactiveObject
     public abstract bool UpdateValueFromBytes(ReadOnlySpan<byte> data, bool isLittleEndian);
     public abstract byte[]? StringToValue();
     public abstract byte[] EncodeValue(string text);
+    public abstract bool MatchesDeviceValue(ReadOnlySpan<byte> encoded);
     public abstract string ValueToString();
     public abstract string ValueToStringWithoutUpdate();
     public abstract string? GetValueHistoryIndexString(int index);
@@ -64,6 +67,7 @@ public abstract partial class SymbolRuntime : ReactiveObject
 public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
 {
     public T Value { get; private set; }
+    private int _valueUpdated;
     private readonly CircularBuffer.CircularBuffer<T> _valuesHistory;
     private readonly CurvePlotBuffer _plotHistory;
     public override CurvePlotBuffer PlotHistory => _plotHistory;
@@ -143,6 +147,7 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
         _valuesHistory.PushBack(Value);
 
         _plotHistory.Add(ConvertToDouble(Value));
+        Volatile.Write(ref _valueUpdated, 1);
         return true;
     }
     /// <summary>
@@ -216,34 +221,85 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     public override byte[] EncodeValue(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("输入数值为空");
-        object value = typeof(T) == typeof(bool)
-            ? text.Trim() switch { "0" => false, "1" => true, _ => bool.Parse(text) }
-            : Convert.ChangeType(text, typeof(T), CultureInfo.CurrentCulture);
-        T parsedValue = (T)value;
+        text = text.Trim();
+        T parsedValue = text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+            ? ParseHex(text.AsSpan(2))
+            : (T)(typeof(T) == typeof(bool)
+                ? (object)(text switch { "0" => false, "1" => true, _ => bool.Parse(text) })
+                : Convert.ChangeType(text, typeof(T), CultureInfo.CurrentCulture));
         double val = ConvertToDouble(parsedValue);
         if (!double.IsFinite(val)) throw new ArgumentOutOfRangeException(nameof(text), "不允许 NaN 或无穷大标定值");
-        if (Symbol.MaxValue.HasValue && val > Symbol.MaxValue)
+        if (Symbol.MaxValue is { } maximum && CompareToLimit(parsedValue, val, maximum) > 0)
         {
             throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {text} 大于上限 {Symbol.MaxValue}");
         }
-        else if (Symbol.MinValue.HasValue && val < Symbol.MinValue)
+        else if (Symbol.MinValue is { } minimum && CompareToLimit(parsedValue, val, minimum) < 0)
         {
             throw new ArgumentOutOfRangeException($"变量 {Symbol.Name} 写入值 {text} 小于下限 {Symbol.MinValue}");
         }
 
         byte[] bytes = new byte[ValueSizeInBytes];
-        if (typeof(T) == typeof(bool)) bytes[0] = (bool)value ? (byte)1 : (byte)0;
-        else MemoryMarshal.Write(bytes, in parsedValue);
-        if (!BitConverter.IsLittleEndian) Array.Reverse(bytes);
+        WriteValue(parsedValue, bytes);
         return bytes;
+    }
+
+    private static int CompareToLimit(T value, double approximate, double limit) =>
+        approximate != limit ? approximate.CompareTo(limit) : value switch
+        {
+            long signed => new BigInteger(signed).CompareTo(new BigInteger(limit)),
+            ulong unsigned => new BigInteger(unsigned).CompareTo(new BigInteger(limit)),
+            _ => 0
+        };
+
+    private T ParseHex(ReadOnlySpan<char> digits)
+    {
+        if (!Symbol.CanDisplayHex) throw new FormatException($"{Symbol.Name} 的类型不支持十六进制输入");
+        ulong bits = ulong.Parse(digits, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture);
+        if (ValueSizeInBytes < sizeof(ulong) && bits >> (ValueSizeInBytes * 8) != 0)
+            throw new OverflowException($"{Symbol.Name} 的输入值超出 {Symbol.DataType} 的范围");
+
+        object value = Symbol.DataType switch
+        {
+            ScalarType.Int8 => unchecked((sbyte)bits),
+            ScalarType.Uint8 => (byte)bits,
+            ScalarType.Int16 => unchecked((short)bits),
+            ScalarType.Uint16 => (ushort)bits,
+            ScalarType.Int32 => unchecked((int)bits),
+            ScalarType.Uint32 => (uint)bits,
+            ScalarType.Int64 => unchecked((long)bits),
+            _ => bits
+        };
+        return (T)value;
+    }
+
+    private static void WriteValue(T value, Span<byte> bytes)
+    {
+        if (value is bool flag)
+        {
+            bytes.Clear();
+            bytes[0] = flag ? (byte)1 : (byte)0;
+        }
+        else MemoryMarshal.Write(bytes, in value);
+        if (!BitConverter.IsLittleEndian) bytes.Reverse();
+    }
+
+    public override bool MatchesDeviceValue(ReadOnlySpan<byte> encoded)
+    {
+        if (_valuesHistory.IsEmpty) return false;
+        Span<byte> current = stackalloc byte[ValueSizeInBytes];
+        WriteValue(Value, current);
+        return encoded.SequenceEqual(current);
     }
 
     public override string ValueToString()
     {
-
         if (_valuesHistory.IsEmpty) return "";
+        if (Volatile.Read(ref _valueUpdated) == 0 || Interlocked.Exchange(ref _valueUpdated, 0) == 0)
+            return ValueString;
 
-        ValueString = Value.ToString() ?? "";
+        ValueString = Symbol.IsDisplayingHex && Value is IFormattable number
+            ? "0x" + number.ToString($"X{ValueSizeInBytes * 2}", CultureInfo.InvariantCulture)
+            : Value.ToString() ?? "";
 
         return ValueString;
     }
@@ -306,6 +362,7 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
         }
         _valuesHistory.PushBack(Value);
         _plotHistory.Add(ConvertToDouble(Value));
+        Volatile.Write(ref _valueUpdated, 1);
     }
 
     public override void GetBitsValue(Span<byte> data)

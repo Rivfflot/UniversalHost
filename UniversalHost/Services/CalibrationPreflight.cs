@@ -6,7 +6,8 @@ using UniversalHost.Symbols;
 
 namespace UniversalHost.Services;
 
-public sealed record PreparedCalibration(SymbolRuntime Runtime, uint Address, byte[] Bytes, string OldValue, string NewValue);
+public sealed record PreparedCalibration(SymbolRuntime Runtime, uint Address, byte[] Bytes,
+    string OldValue, string NewValue, bool HasChanged);
 
 /// <summary>Pure preflight: no transport calls and no changes to pending values.</summary>
 public static class CalibrationPreflight
@@ -63,14 +64,16 @@ public static class CalibrationPreflight
         foreach (var runtime in runtimes)
         {
             ValidateAccess(device, runtime, granularityBytes, littleEndian);
-            var bytes = runtime.EncodeValue(runtime.ValueString);
+            string text = runtime.ValueString;
+            var bytes = runtime.EncodeValue(text);
+            bool hasChanged = !runtime.MatchesDeviceValue(bytes);
             if (bytes.Length < granularityBytes) Array.Resize(ref bytes, granularityBytes);
             ulong start = runtime.Symbol.ActualAddress;
             ulong end = checked(start + (ulong)Math.Max(1, (bytes.Length + granularityBytes - 1) / granularityBytes));
             if (intervals.Any(i => start < i.End && i.Start < end))
                 throw new InvalidOperationException($"{runtime.Symbol.Name}: 本批标定地址区间重叠（包括联合体成员和不同来源文件）");
             intervals.Add((start, end, runtime.Symbol.Name));
-            prepared.Add(new(runtime, (uint)start, bytes, runtime.ValueToStringWithoutUpdate(), runtime.ValueString));
+            prepared.Add(new(runtime, (uint)start, bytes, runtime.ValueToStringWithoutUpdate(), text, hasChanged));
         }
         return prepared;
     }

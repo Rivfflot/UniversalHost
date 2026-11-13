@@ -114,7 +114,42 @@ public partial class UserSymbolInfo : SymbolInfo
     [Reactive] private string _alias = string.Empty;
     [Reactive] private string _unit = string.Empty;
     [Reactive] private string _description = string.Empty;
-    [Reactive] private ScalarType _dataType = ScalarType.Unknown;
+    private ScalarType _dataType = ScalarType.Unknown;
+    public ScalarType DataType
+    {
+        get => _dataType;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _dataType, value);
+            this.RaisePropertyChanged(nameof(CanDisplayHex));
+            this.RaisePropertyChanged(nameof(IsDisplayingHex));
+        }
+    }
+
+    private bool _displayInHex;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DisplayInHex
+    {
+        get => _displayInHex;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _displayInHex, value);
+            this.RaisePropertyChanged(nameof(IsDisplayingHex));
+        }
+    }
+
+    [JsonIgnore] public bool CanDisplayHex => DataType is ScalarType.Int8 or ScalarType.Uint8
+        or ScalarType.Int16 or ScalarType.Uint16 or ScalarType.Int32 or ScalarType.Uint32
+        or ScalarType.Int64 or ScalarType.Uint64;
+    [JsonIgnore]
+    public bool IsDisplayingHex
+    {
+        get => CanDisplayHex && DisplayInHex;
+        set
+        {
+            if (CanDisplayHex) DisplayInHex = value;
+        }
+    }
 
     private readonly Dictionary<int, SymbolBitAlias> _bitAliases = [];
     private readonly Lock _bitAliasesGate = new();

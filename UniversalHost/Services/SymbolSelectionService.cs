@@ -12,6 +12,8 @@ public static partial class SymbolSelectionService
 {
     [GeneratedRegex(@"\[(-?\d+)\]")]
     private static partial Regex Indices();
+    [GeneratedRegex(@"(?:^|\.)([^.\[]+)((?:\[-?\d+\])+)")]
+    private static partial Regex IndexedMembers();
 
     public static string TypeName(FirmwareImage? image, TypeLayout? type) => type?.Kind switch
     {
@@ -132,22 +134,30 @@ public static partial class SymbolSelectionService
         return symbol.Mode != AccessMode.Automatic || Indices().IsMatch(symbol.MemberPath);
     }
 
-    public static IReadOnlyList<(long Value, long Minimum, long Maximum)> GetInputValues(
+    public static IReadOnlyList<(long Value, long Minimum, long Maximum, string Label)> GetInputValues(
         DeviceConfig device, UserSymbolInfo symbol, SymbolInputKind kind)
     {
         if (kind == SymbolInputKind.Offset)
         {
             var value = symbol.Mode == AccessMode.Automatic ? symbol.Access?.OffsetUnits ?? symbol.Offset : symbol.Offset;
             long maximum = Math.Min(uint.MaxValue - symbol.Address, symbol.Size > 0 ? symbol.Size - 1 : uint.MaxValue);
-            return [(checked((long)value), 0, maximum)];
+            return [(checked((long)value), 0, maximum, "偏移量")];
         }
         var (image, root, template) = ArrayInputContext(device, symbol);
         var dimensions = AccessPathResolver.GetArrayDimensions(image, root, template);
         var matches = Indices().Matches(template);
+        var labels = IndexedMembers().Matches(root.Name + template).SelectMany(member =>
+        {
+            string name = member.Groups[1].Value;
+            int count = Indices().Matches(member.Groups[2].Value).Count;
+            return Enumerable.Range(1, count).Select(dimension =>
+                count == 1 ? $"{name} 下标" : $"{name} 第 {dimension} 维下标");
+        }).ToArray();
         return dimensions.Select((dimension, index) => (
             long.Parse(matches[index].Groups[1].Value, CultureInfo.InvariantCulture),
             dimension.LowerBound,
-            (long)Math.Min(long.MaxValue, (decimal)dimension.LowerBound + dimension.Count!.Value - 1))).ToArray();
+            (long)Math.Min(long.MaxValue, (decimal)dimension.LowerBound + dimension.Count!.Value - 1),
+            labels.Length == dimensions.Count ? labels[index] : $"第 {index + 1} 个下标")).ToArray();
     }
 
     public static void ApplyInput(DeviceConfig device, UserSymbolInfo symbol, SymbolInputKind kind, IReadOnlyList<long> values)

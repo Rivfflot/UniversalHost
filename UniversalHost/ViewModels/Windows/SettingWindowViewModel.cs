@@ -170,10 +170,12 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     private readonly ReadOnlyObservableCollection<UserSymbolInfo> _filteredMonitorSymbols;
     public ReadOnlyObservableCollection<UserSymbolInfo> FilteredMonitorSymbols => _filteredMonitorSymbols;
     [Reactive] private bool? _selectAllMonitorSymbolsBox;
+    [Reactive] private bool _isMonitorSymbolPropertiesOpen = true;
     //标定
     [Reactive] private string _calibrateSymbolSearchText = string.Empty;
     private readonly ReadOnlyObservableCollection<UserSymbolInfo> _filteredCalibrateSymbols;
     public ReadOnlyObservableCollection<UserSymbolInfo> FilteredCalibrateSymbols => _filteredCalibrateSymbols;
+    [Reactive] private bool _isCalibrateSymbolPropertiesOpen = true;
 
     //指令
     [Reactive] private string _userCommandSearchText = string.Empty;

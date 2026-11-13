@@ -15,9 +15,7 @@ public sealed class SymbolNumberInputViewModel : ReactiveObject
     public long Minimum { get; }
     public long Maximum { get; }
     public string Label { get; }
-    public bool HasLabel => Label.Length > 0;
     public string Hint { get; }
-    public double Width { get; }
     public long? Value
     {
         get => _value;
@@ -28,14 +26,13 @@ public sealed class SymbolNumberInputViewModel : ReactiveObject
             _changed();
         }
     }
-    public SymbolNumberInputViewModel(long value, long minimum, long maximum, string label, string hint, double width, Action changed)
+    public SymbolNumberInputViewModel(long value, long minimum, long maximum, string label, Action changed)
     {
         _value = value;
         Minimum = minimum;
         Maximum = maximum;
         Label = label;
-        Hint = $"{hint}：{minimum} ～ {maximum}";
-        Width = width;
+        Hint = $"允许范围：{minimum} ～ {maximum}";
         _changed = changed;
     }
 }
@@ -68,7 +65,7 @@ public sealed class SymbolInputViewModel : ReactiveObject, IDisposable
             if (!CanEditInput || value == _kind || value is not ("偏移" or "下标")) return;
             this.RaiseAndSetIfChanged(ref _kind, value);
             RefreshInputs();
-            TryApply();
+            UpdateSymbol();
         }
     }
     private SymbolInputKind InputKind => Kind == "下标" ? SymbolInputKind.ArrayIndex : SymbolInputKind.Offset;
@@ -97,18 +94,20 @@ public sealed class SymbolInputViewModel : ReactiveObject, IDisposable
         try
         {
             var values = SymbolSelectionService.GetInputValues(_settings.DeviceConfig, _symbol, InputKind);
-            bool indices = InputKind == SymbolInputKind.ArrayIndex;
-            Inputs = values.Select((value, index) => new SymbolNumberInputViewModel(
-                value.Value, value.Minimum, value.Maximum, values.Count > 1 ? $"{index + 1}:" : "",
-                indices ? $"第 {index + 1} 维下标" : "相对根变量的偏移量（目标地址单位）",
-                indices ? 60 : 76, TryApply)).ToArray();
+            Inputs = values.Select(value =>
+                new SymbolNumberInputViewModel(value.Value, value.Minimum, value.Maximum, value.Label, UpdateSymbol)).ToArray();
             Error = "";
         }
         catch (Exception ex) { Inputs = []; Error = ex.Message; }
     }
-    private void TryApply()
+    private void UpdateSymbol()
     {
-        if (_applying || !CanEditInput || Inputs.Count == 0 || Inputs.Any(input => !input.Value.HasValue)) return;
+        if (_applying || !CanEditInput || Inputs.Count == 0) return;
+        if (Inputs.Any(input => !input.Value.HasValue || input.Value < input.Minimum || input.Value > input.Maximum))
+        {
+            Error = "请填写全部数值，并核对每一项的允许范围。";
+            return;
+        }
         _applying = true;
         try
         {

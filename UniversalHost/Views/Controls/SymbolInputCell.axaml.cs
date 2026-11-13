@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using UniversalHost.Models;
 using UniversalHost.ViewModels.Windows;
 
@@ -20,7 +21,7 @@ public partial class SymbolInputCell : UserControl
     private void BindEditor()
     {
         _editor?.Dispose();
-        _editor = Symbol == null ? null : new SymbolInputViewModel(Symbol);
+        _editor = this.IsAttachedToVisualTree() && Symbol is { } symbol ? new SymbolInputViewModel(symbol) : null;
         EditorRoot.DataContext = _editor;
     }
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

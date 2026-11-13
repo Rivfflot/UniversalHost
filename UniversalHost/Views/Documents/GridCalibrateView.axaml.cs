@@ -1,12 +1,19 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using DynamicData;
+using System;
+using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using UniversalHost.Models;
+using UniversalHost.Services;
 using UniversalHost.ViewModels.Documents;
 
 namespace UniversalHost.Views.Documents;
@@ -19,21 +26,104 @@ public partial class GridCalibrateView : UserControl
     public GridCalibrateView()
     {
         InitializeComponent();
+        var valueColumn = Grid.Columns.OfType<DataGridTemplateColumn>().Single();
+        var integerEditor = (IDataTemplate)Resources["IntegerValueEditor"]!;
+        var otherEditor = (IDataTemplate)Resources["OtherValueEditor"]!;
+        valueColumn.CellEditingTemplate = new FuncDataTemplate<SymbolRuntime>((runtime, _) =>
+        {
+            if (!runtime.Symbol.CanDisplayHex) return otherEditor.Build(runtime);
+            var editor = (NumericUpDown)integerEditor.Build(runtime)!;
+            var converter = new IntegerTextConverter(runtime.ValueString);
+            editor.TextConverter = converter;
+            editor.Bind(NumericUpDown.TextProperty,
+                CompiledBinding.Create((SymbolRuntime item) => item.ValueString, source: runtime,
+                    mode: BindingMode.TwoWay, updateSourceTrigger: UpdateSourceTrigger.Explicit));
+            editor.Initialized += (_, _) =>
+            {
+                // Initialize the numeric value after the control has loaded its bound text.
+                var text = editor.Text;
+                editor.SetCurrentValue(NumericUpDown.TextProperty, null);
+                editor.SetCurrentValue(NumericUpDown.TextProperty, text);
+            };
+            editor.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == NumericUpDown.TextProperty && string.IsNullOrEmpty(editor.Text))
+                    converter.Clear();
+            };
+            return editor;
+        });
+        Grid.CellEditEnding += (_, e) =>
+        {
+            if (e.Column == valueColumn && e.EditAction == DataGridEditAction.Commit)
+                CommitValueEdit(e);
+        };
         Grid.AddHandler(PointerPressedEvent, Grid_PointerPressed, handledEventsToo: true);
         Grid.AddHandler(DragDrop.DragOverEvent, DataGrid_DragOver);
         Grid.AddHandler(DragDrop.DragLeaveEvent, DataGrid_DragLeave);
         Grid.AddHandler(InputElement.KeyDownEvent, DataGrid_KeyDown, RoutingStrategies.Tunnel);
     }
+
+    private sealed class IntegerTextConverter(string? input) : IValueConverter
+    {
+        private string? _input = input;
+        public void Clear() => _input = null;
+
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            _input = (string?)value;
+            var text = _input?.Trim();
+            if (string.IsNullOrEmpty(text)) return null;
+            return text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? (decimal)ulong.Parse(text.AsSpan(2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture)
+                : decimal.Parse(text, NumberStyles.Integer, culture);
+        }
+
+        // Preserve the entered spelling when NumericUpDown formats on focus loss.
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => _input;
+    }
+
+    private static void CommitValueEdit(DataGridCellEditEndingEventArgs e)
+    {
+        if (e.Row.DataContext is not SymbolRuntime runtime) return;
+        var (text, property) = e.EditingElement switch
+        {
+            NumericUpDown number => (number.Text, NumericUpDown.TextProperty),
+            TextBox box => (box.Text, TextBox.TextProperty),
+            _ => (null, null)
+        };
+        if (property == null) return;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(text)) runtime.EncodeValue(text);
+            BindingOperations.GetBindingExpressionBase(e.EditingElement, property)?.UpdateSource();
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
+        {
+            e.Cancel = true;
+            NotificationService.Show("标定输入错误", $"{runtime.Symbol.Name}：{ex.Message}", NotificationType.Warning);
+        }
+    }
+
     private async Task DataGrid_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.KeyModifiers != KeyModifiers.None || DataContext is not GridCalibrateViewModel vm) return;
         if (e.Key == Key.Enter)
         {
-            e.Handled = true; // 阻止DataGrid默认处理
-
-            if (DataContext is GridCalibrateViewModel vm)
+            e.Handled = true;
+            if (Grid.CommitEdit()) await vm.DownloadSelectedSymbolValue();
+        }
+        else if (e.Source is not TextBox)
+        {
+            var command = e.Key switch
             {
-                await vm.DownloadSelectedSymbolValue();
-            }
+                Key.Delete => (ICommand)vm.RemoveSelectedSymbolCommand,
+                Key.D => vm.DownloadSelectedSymbolValueCommand,
+                Key.U => vm.UploadSelectedSymbolValueCommand,
+                _ => null
+            };
+            if (command?.CanExecute(null) != true) return;
+            e.Handled = true;
+            command.Execute(null);
         }
     }
     private void DataGrid_DragOver(object? sender, DragEventArgs e)

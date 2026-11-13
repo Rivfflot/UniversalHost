@@ -37,11 +37,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Avalonia" Version="12.1.5" />
+		<PackageReference Include="Avalonia" Version="12.1.6" />
 		<PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
-		<PackageReference Include="Avalonia.Desktop" Version="12.1.5" />
-		<PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.5" />
-		<PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.5" />
+		<PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+		<PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+		<PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
 		<PackageReference Include="CircularBuffer" Version="1.4.0" />
 		<PackageReference Include="Dock.Avalonia" Version="12.1.5" />
 		<PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.1.5" />
@@ -58,7 +58,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="System.IO.Ports" Version="10.0.14" />
+		<PackageReference Include="System.IO.Ports" Version="11.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

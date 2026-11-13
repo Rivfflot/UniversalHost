@@ -3,15 +3,20 @@
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:vm="using:UniversalHost.ViewModels.Documents"
+			 xmlns:models="using:UniversalHost.Models"
 			 x:DataType="vm:GridCalibrateViewModel"
 			 xmlns:services="clr-namespace:UniversalHost.Services"
 			 mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="200"
 			 x:Class="UniversalHost.Views.Documents.GridCalibrateView">
-	<UserControl.KeyBindings>
-		<KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedSymbolCommand}" />
-		<KeyBinding Gesture="U" Command="{Binding UploadSelectedSymbolValueCommand}" />
-		<KeyBinding Gesture="D" Command="{Binding DownloadSelectedSymbolValueCommand}" />
-	</UserControl.KeyBindings>
+	<UserControl.Resources>
+		<DataTemplate x:Key="IntegerValueEditor" x:DataType="models:SymbolRuntime">
+			<NumericUpDown AllowSpin="False" ShowButtonSpinner="False"
+				ToolTip.Tip="十六进制整数以 0x 开头，例如 0xABCD" />
+		</DataTemplate>
+		<DataTemplate x:Key="OtherValueEditor" x:DataType="models:SymbolRuntime">
+			<TextBox Text="{Binding ValueString, Mode=TwoWay, UpdateSourceTrigger=Explicit}" />
+		</DataTemplate>
+	</UserControl.Resources>
 	<UserControl.Styles>
 		<!-- 鼠标悬停时的行是伪类 drag-hover -->
 		<Style Selector="DataGridRow.drag-hover">
@@ -173,12 +178,18 @@
 				Width="Auto"
 				IsVisible="{Binding IsAliasColumnVisible}"
 				CellStyleClasses="draggable-column"/>
-				<DataGridTextColumn
+				<DataGridTemplateColumn
 				Header="值"
-				Binding="{Binding ValueString}"
+				SortMemberPath="ValueString"
 				Width="Auto"
 				IsReadOnly="False"
-				IsVisible="{Binding IsValueColumnVisible}"/>
+				IsVisible="{Binding IsValueColumnVisible}">
+					<DataGridTemplateColumn.CellTemplate>
+						<DataTemplate x:DataType="models:SymbolRuntime">
+							<TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ValueString}" />
+						</DataTemplate>
+					</DataGridTemplateColumn.CellTemplate>
+				</DataGridTemplateColumn>
 				<DataGridTextColumn
 				IsReadOnly="False"
 				Header="单位"
