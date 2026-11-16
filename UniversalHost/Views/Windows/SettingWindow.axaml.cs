@@ -35,4 +35,10 @@ public partial class SettingWindow : ReactiveWindow<SettingWindowViewModel>
             }
         }
     }
+
+    private async void SymbolFileMenuItemUpdatePathClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is SettingWindowViewModel vm && sender is MenuItem { DataContext: string path })
+            await vm.UpdateSymbolFilePathAsync(this, path);
+    }
 }

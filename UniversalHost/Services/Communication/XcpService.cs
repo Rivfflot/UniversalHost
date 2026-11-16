@@ -32,7 +32,7 @@ public static class XcpService
 
     public static async Task ConnectAsync()
     {
-        if (FirmwareImportCoordinator.Instance.IsBusy) throw new InvalidOperationException("请等待固件解析完成或取消解析后连接设备");
+        if (FirmwareImportCoordinator.Instance.IsBusy) throw new InvalidOperationException("请等待固件解析完成后再连接设备");
         // 重复入口立即拒绝，不能排队后清理另一个入口刚建立的连接。
         if (!await ClientGate.WaitAsync(0))
             throw new InvalidOperationException("设备连接正在建立或清理，请稍后再试");

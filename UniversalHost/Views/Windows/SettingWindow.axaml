@@ -115,6 +115,9 @@
 														<MenuItem Header="删除"
 																  Command="{Binding $parent[Window].DataContext.RemoveSymbolFileCommand}"
 																  CommandParameter="{Binding}" />
+														<MenuItem Header="更新路径"
+																  IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditFirmwareSymbols}"
+																  Click="SymbolFileMenuItemUpdatePathClick" />
 														<MenuItem Header="信息"
 																  Command="{Binding $parent[Window].DataContext.ShowSymbolFileInformationCommand}"
 																  CommandParameter="{Binding}"/>

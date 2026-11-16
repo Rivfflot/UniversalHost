@@ -123,25 +123,55 @@ public static class FirmwareSymbolService
     }
 
     public static FirmwareUpdateReport ApplySnapshots(ProjectSettings settings, IReadOnlyList<FirmwareImage> snapshots,
-        IReadOnlyDictionary<string, string>? failures = null)
+        IReadOnlyDictionary<string, string>? failures = null) => ApplySnapshots(settings, snapshots, failures, null);
+
+    internal static FirmwareUpdateReport ReplaceSnapshot(ProjectSettings settings, string previousPath, FirmwareImage image)
+    {
+        EnsureLayoutEditable();
+        var paths = settings.DeviceConfig.SymbolFilePaths;
+        var index = paths.Items.ToList().IndexOf(previousPath);
+        if (index < 0)
+            throw new InvalidOperationException("原固件路径已不在列表中，请重新选择");
+
+        var report = ApplySnapshots(settings, [image], null, previousPath);
+        if (previousPath != image.SourcePath)
+            paths.Edit(list => list[index] = image.SourcePath);
+        return report;
+    }
+
+    private static FirmwareUpdateReport ApplySnapshots(ProjectSettings settings, IReadOnlyList<FirmwareImage> snapshots,
+        IReadOnlyDictionary<string, string>? failures, string? previousPath)
     {
         EnsureLayoutEditable();
         List<RemovedAccess> removed = [];
         List<string> diagnostics = [];
         UserSymbolInfo[] all = [.. settings.MonitorConfig.MonitoredSymbols.Items, .. settings.CalibrateConfig.CalibratedSymbols.Items];
-        foreach (var image in snapshots)
+        foreach (var parsed in snapshots)
         {
-            diagnostics.AddRange(image.Diagnostics.Select(d => $"{image.SourcePath}: {d}"));
-            var oldImages = settings.DeviceConfig.FirmwareSnapshots.Where(f => f.SourcePath != image.SourcePath).ToList();
+            var source = previousPath ?? parsed.SourcePath;
+            var oldImage = previousPath == null ? null :
+                settings.DeviceConfig.FirmwareSnapshots.FirstOrDefault(f => f.SourcePath == source);
+            // 文件内容一致时保留原快照，以便已保存的类型 ID 和访问结果继续对应同一份类型数据。
+            var image = oldImage != null && parsed.Sha256.Length > 0 && parsed.Sha256 == oldImage.Sha256
+                ? oldImage with { SourcePath = parsed.SourcePath }
+                : parsed;
+            diagnostics.AddRange(parsed.Diagnostics.Select(d => $"{image.SourcePath}: {d}"));
+            var oldImages = settings.DeviceConfig.FirmwareSnapshots.Where(f => f.SourcePath != source).ToList();
             oldImages.Add(image);
             settings.DeviceConfig.FirmwareSnapshots = oldImages;
             settings.DeviceConfig.Symbols.Edit(list =>
             {
-                list.RemoveMany(list.Where(s => s.SourceKey == image.SourcePath).ToArray());
+                list.RemoveMany(list.Where(s => s.SourceKey == source).ToArray());
                 list.AddRange(image.Symbols.Where(s => s.Address <= uint.MaxValue).Select(s => ToSymbolInfo(image, s)));
             });
-            foreach (var item in all.Where(s => s.SourceKey == image.SourcePath))
+            foreach (var item in all.Where(s => s.SourceKey == source))
             {
+                if (previousPath != null)
+                {
+                    item.SourceKey = image.SourcePath;
+                    item.SourceFileName = Path.GetFileName(image.SourcePath);
+                    if (!ReferenceEquals(image, parsed)) continue;
+                }
                 var (root, ambiguous) = MatchRoot(image, item);
                 if (root == null)
                 {

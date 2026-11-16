@@ -15,7 +15,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
@@ -36,7 +35,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         try
         {
             FirmwareSymbolService.EnsureLayoutEditable();
-            if (ImportCoordinator.IsBusy) throw new InvalidOperationException("请等待固件解析完成或取消解析");
+            if (ImportCoordinator.IsBusy) throw new InvalidOperationException("请等待固件解析完成");
             return true;
         }
         catch (InvalidOperationException ex)
@@ -51,7 +50,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         try
         {
             if (!calibrate) FirmwareSymbolService.EnsureSymbolEditable();
-            if (ImportCoordinator.IsBusy) throw new InvalidOperationException("请等待固件解析完成或取消解析");
+            if (ImportCoordinator.IsBusy) throw new InvalidOperationException("请等待固件解析完成");
             return true;
         }
         catch (InvalidOperationException ex)
@@ -60,8 +59,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             return false;
         }
     }
-    [ReactiveCommand] private void CancelFirmwareParsing() => ImportCoordinator.Cancel();
-
     private void AddSymbol(SymbolTableEntry row, bool calibrate)
     {
         try
@@ -107,14 +104,9 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [Reactive] private byte? _deviceIDTemp;
     private readonly ReadOnlyObservableCollection<string> _symbolFilePaths;
     public ReadOnlyObservableCollection<string> SymbolFilePaths => _symbolFilePaths;
-    public ReactiveCommand<Unit, Unit> ReloadSymbolFileCommand { get; }
-    public ReactiveCommand<Window, Unit> SelectSymbolFileCommand { get; }
-    public ReactiveCommand<Unit, Unit> ClearSymbolFilePathsCommand { get; }
-    public ReactiveCommand<Unit, Unit> ClearSymbolsCommand { get; }
-    public ReactiveCommand<string, Unit> ShowSymbolFileInformationCommand { get; }
-    public ReactiveCommand<string, Unit> RemoveSymbolFileCommand { get; }
-    public ReactiveCommand<(Window window, string path), Unit> CopySymbolFilePathCommand { get; }
-    public ReactiveCommand<string, Unit> OpenSymbolFileFolderCommand { get; }
+    private readonly IObservable<bool> _canEditFirmwareSymbols = GlobalStatus.Instance
+        .WhenAnyValue(x => x.CanEditFirmwareSymbols)
+        .ObserveOn(AvaloniaScheduler.Instance);
 
     // 符号表过滤
     [Reactive] private string _symbolSearchText = string.Empty;
@@ -129,7 +121,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [Reactive] private UInt16? _serialTimeoutTemp;
     [Reactive] private UInt16? _serialRetryTimesTemp;
     [Reactive] private UInt16? _serialTurnaroundDelayTemp;
-    public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
 
     // 串口和IP的SourceList，用于更新数据
     private readonly SourceList<string> _serialPortSource;
@@ -146,7 +137,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     // UDP设置
     private readonly ReadOnlyObservableCollection<string> _availableIPv4Addresses;
     public ReadOnlyObservableCollection<string> AvailableIPv4Addresses => _availableIPv4Addresses;
-    public ReactiveCommand<Unit, Unit> RefreshIPCommand { get; }
     [Reactive] private string? _remoteAddressTemp;//IP
     [Reactive] private string? _remoteAddressError;//IP错误提示
     [Reactive] private int? _iapLocalPortTemp;
@@ -160,9 +150,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     [Reactive] private int? _maxSaveLenTemp;
     [Reactive] private int _monitoredSymbolCount;
     [Reactive] private long _monitoredSymbolsTotalSize;
-    public ReactiveCommand<Unit, Unit> ClearMonitorSymbolsCommand { get; }
-    public ReactiveCommand<Unit, Unit> RemoveDuplicateMonitorSymbolsCommand { get; }
-    public ReactiveCommand<UserSymbolInfo, Unit> RemoveMonitorSymbolCommand { get; }
     public static IEnumerable<ScalarType> AvailableDataTypes => Enum.GetValues<ScalarType>();
     // 监控符号表
     [Reactive] private string _monitorSymbolSearchText = string.Empty;
@@ -323,91 +310,6 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                     .Bind(out _availableIPv4Addresses)
                     .Subscribe().DisposeWith(_disposables);
 
-        var canEditFirmwareSymbols = GlobalStatus.Instance.WhenAnyValue(x => x.CanEditFirmwareSymbols)
-            .ObserveOn(AvaloniaScheduler.Instance);
-        ReloadSymbolFileCommand = ReactiveCommand.CreateFromTask(ImportCoordinator.ReloadAsync, canEditFirmwareSymbols);
-        SelectSymbolFileCommand = ReactiveCommand.CreateFromTask<Window>(SelectSymbolFileAsync, canEditFirmwareSymbols);
-        ClearSymbolFilePathsCommand = ReactiveCommand.Create(() =>
-        {
-            if (!CanChangeLayout()) return;
-            var count = ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count;
-            ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Clear();
-            FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings);
-            NotificationService.Show("符号文件列表已清空", $"删除了{count}个路径", NotificationType.Success);
-        }, canEditFirmwareSymbols);
-        ClearSymbolsCommand = ReactiveCommand.Create(() =>
-        {
-            if (!CanChangeLayout()) return;
-            var count = ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count;
-            FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings);
-            NotificationService.Show("符号表已清空", $"删除了{count}个符号", NotificationType.Success);
-        }, canEditFirmwareSymbols);
-        RemoveSymbolFileCommand = ReactiveCommand.Create<string>(path =>
-        {
-            if (!CanChangeLayout()) return;
-            if (!string.IsNullOrEmpty(path))
-            {
-                ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Remove(path);
-                FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings, path);
-            }
-            NotificationService.Show("文件已移除", $"移除文件: {path}", NotificationType.Success);
-        }, canEditFirmwareSymbols);
-        ShowSymbolFileInformationCommand = ReactiveCommand.Create<string>(ShowSymbolFileInformation);
-        CopySymbolFilePathCommand = ReactiveCommand.CreateFromTask<(Window window, string path)>(async tuple =>
-        {
-            var (window, path) = tuple;
-            if (!string.IsNullOrEmpty(path))
-            {
-                path = ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath);
-                var topLevel = TopLevel.GetTopLevel(window);
-                if (topLevel?.Clipboard != null)
-                {
-                    await topLevel.Clipboard.SetTextAsync(path);
-                }
-            }
-            NotificationService.Show("文件路径已复制至剪贴板", path, NotificationType.Success);
-        });
-        OpenSymbolFileFolderCommand = ReactiveCommand.Create<string>(path =>
-        {
-            try
-            {
-                var directory = Path.GetDirectoryName(ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath));
-                // 根据操作系统打开文件夹
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = directory,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                LogService.ForModule(LogModule.Symbols).Error(ex, "打开错误 {Reason}", ex.Message);
-                NotificationService.Show("打开错误", ex.Message, NotificationType.Error);
-            }
-        });
-
-        RefreshPortsCommand = ReactiveCommand.Create(RefreshPorts);
-        RefreshIPCommand = ReactiveCommand.Create(RefreshIPs);
-
-        ClearMonitorSymbolsCommand = ReactiveCommand.Create(() =>
-        {
-            if (!CanChangeSymbolList()) return;
-            var count = ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Count;
-            ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Clear();
-            NotificationService.Show("监控符号列表已清空", $"移除了{count}个变量", NotificationType.Success);
-        });
-        RemoveDuplicateMonitorSymbolsCommand = ReactiveCommand.Create(() =>
-        {
-            if (!CanChangeSymbolList()) return;
-            var cnt = ProjectSaveService.Instance.Settings.MonitorConfig.RemoveDuplicateSymbols();
-            NotificationService.Show("移除成功", $"已移除 {cnt} 个重复变量", NotificationType.Success);
-        });
-        RemoveMonitorSymbolCommand = ReactiveCommand.Create<UserSymbolInfo>(symbol =>
-        {
-            if (!CanChangeSymbolList()) return;
-            ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Remove(symbol);
-            NotificationService.Show("符号已移除出监控列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
-        });
         // 用户指令过滤
         var userCommandFilter = this.WhenValueChanged(x => x.UserCommandSearchText)
                                         .Throttle(TimeSpan.FromMilliseconds(100))
@@ -574,6 +476,28 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     }
     [ReactiveCommand]
     private void AddMonitorSymbol(SymbolTableEntry symbol) => AddSymbol(symbol, false);
+    [ReactiveCommand]
+    private void ClearMonitorSymbols()
+    {
+        if (!CanChangeSymbolList()) return;
+        var count = ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Count;
+        ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Clear();
+        NotificationService.Show("监控符号列表已清空", $"移除了{count}个变量", NotificationType.Success);
+    }
+    [ReactiveCommand]
+    private void RemoveDuplicateMonitorSymbols()
+    {
+        if (!CanChangeSymbolList()) return;
+        var cnt = ProjectSaveService.Instance.Settings.MonitorConfig.RemoveDuplicateSymbols();
+        NotificationService.Show("移除成功", $"已移除 {cnt} 个重复变量", NotificationType.Success);
+    }
+    [ReactiveCommand]
+    private void RemoveMonitorSymbol(UserSymbolInfo symbol)
+    {
+        if (!CanChangeSymbolList()) return;
+        ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols.Remove(symbol);
+        NotificationService.Show("符号已移除出监控列表", $"{symbol.SourceFileName} : {symbol.Name}", NotificationType.Success);
+    }
     #endregion
     #region CAL
     [ReactiveCommand]
@@ -617,11 +541,40 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         NotificationService.Show("位别名已清空", $"已清空 {count} 个变量的位别名", NotificationType.Success);
     }
 
+    [ReactiveCommand(CanExecute = nameof(_canEditFirmwareSymbols))]
+    private Task ReloadSymbolFileAsync() => ImportCoordinator.ReloadAsync();
+
+    [ReactiveCommand(CanExecute = nameof(_canEditFirmwareSymbols))]
     private async Task SelectSymbolFileAsync(Window window)
+    {
+        var path = await PickSymbolFileAsync(window, "选择符号表文件");
+        if (path != null)
+            await ImportCoordinator.ImportAsync(path);
+    }
+
+    public async Task UpdateSymbolFilePathAsync(Window window, string previousPath)
+    {
+        if (!CanChangeLayout()) return;
+        var project = ProjectSaveService.Instance;
+        var settings = project.Settings;
+        var projectPath = project.ProjectFilePath;
+        try
+        {
+            var path = await PickSymbolFileAsync(window, "选择替换的固件符号文件");
+            if (path != null && ReferenceEquals(settings, project.Settings) && projectPath == project.ProjectFilePath)
+                await ImportCoordinator.ImportAsync(path, previousPath);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Show("更新路径失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    private static async Task<string?> PickSymbolFileAsync(Window window, string title)
     {
         var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "选择符号表文件",
+            Title = title,
             AllowMultiple = false,
             FileTypeFilter =
             [
@@ -630,15 +583,84 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             ]
         });
 
-        if (files is { Count: > 0 })
-            await FirmwareImportCoordinator.Instance.ImportAsync(files[0].Path.LocalPath);
+        return files.Count > 0 ? files[0].Path.LocalPath : null;
     }
+
+    [ReactiveCommand(CanExecute = nameof(_canEditFirmwareSymbols))]
+    private void ClearSymbolFilePaths()
+    {
+        if (!CanChangeLayout()) return;
+        var count = ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Count;
+        ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Clear();
+        FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings);
+        NotificationService.Show("符号文件列表已清空", $"删除了{count}个路径", NotificationType.Success);
+    }
+
+    [ReactiveCommand(CanExecute = nameof(_canEditFirmwareSymbols))]
+    private void ClearSymbols()
+    {
+        if (!CanChangeLayout()) return;
+        var count = ProjectSaveService.Instance.Settings.DeviceConfig.Symbols.Count;
+        FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings);
+        NotificationService.Show("符号表已清空", $"删除了{count}个符号", NotificationType.Success);
+    }
+
+    [ReactiveCommand(CanExecute = nameof(_canEditFirmwareSymbols))]
+    private void RemoveSymbolFile(string path)
+    {
+        if (!CanChangeLayout()) return;
+        if (!string.IsNullOrEmpty(path))
+        {
+            ProjectSaveService.Instance.Settings.DeviceConfig.SymbolFilePaths.Remove(path);
+            FirmwareSymbolService.RemoveSnapshot(ProjectSaveService.Instance.Settings, path);
+        }
+        NotificationService.Show("文件已移除", $"移除文件: {path}", NotificationType.Success);
+    }
+
+    [ReactiveCommand]
     private void ShowSymbolFileInformation(string path)
     {
         var image = ProjectSaveService.Instance.Settings.DeviceConfig.FirmwareSnapshots.FirstOrDefault(f => f.SourcePath == path);
         NotificationService.Show("保存的固件信息", image == null ? "尚无解析快照，请主动更新固件" :
             $"{image.Target.Format} / {image.Target.Platform} / {image.Target.Abi}\n地址单位 {image.Target.AddressUnitBits} bit；{(image.Target.LittleEndian ? "小端" : "大端")}\n{image.Backend}\nSHA256: {image.Sha256}", NotificationType.Info);
     }
+
+    [ReactiveCommand]
+    private async Task CopySymbolFilePathAsync((Window window, string path) parameter)
+    {
+        var (window, path) = parameter;
+        if (!string.IsNullOrEmpty(path))
+        {
+            path = ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath);
+            var topLevel = TopLevel.GetTopLevel(window);
+            if (topLevel?.Clipboard != null)
+            {
+                await topLevel.Clipboard.SetTextAsync(path);
+            }
+        }
+        NotificationService.Show("文件路径已复制至剪贴板", path, NotificationType.Success);
+    }
+
+    [ReactiveCommand]
+    private void OpenSymbolFileFolder(string path)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(ProjectFilePathService.ResolvePath(path, ProjectSaveService.Instance.ProjectFilePath));
+            // 根据操作系统打开文件夹
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = directory,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            LogService.ForModule(LogModule.Symbols).Error(ex, "打开错误 {Reason}", ex.Message);
+            NotificationService.Show("打开错误", ex.Message, NotificationType.Error);
+        }
+    }
+
     [ReactiveCommand]
     private void ClearUserCommands()
     {
@@ -649,6 +671,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         }
     }
     // 刷新串口列表
+    [ReactiveCommand]
     private void RefreshPorts()
     {
         var current_selection = ProjectSaveService.Instance.Settings.SerialConfig.SelectedSerialPort;
@@ -685,7 +708,8 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         }
         return ipList;
     }
-    private void RefreshIPs()
+    [ReactiveCommand]
+    private void RefreshIP()
     {
         var current = ProjectSaveService.Instance.Settings.UdpConfig.LocalAddress;
 

@@ -3,7 +3,6 @@ using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Symbols;
 
@@ -13,20 +12,16 @@ public sealed partial class FirmwareImportCoordinator : ReactiveObject
 {
     public static FirmwareImportCoordinator Instance { get; } = new();
     [Reactive] private bool _isBusy;
-    private CancellationTokenSource? _cancellation;
-    public void Cancel() => _cancellation?.Cancel();
 
     public async Task ReloadAsync()
     {
         if (IsBusy || !GlobalStatus.Instance.CanEditFirmwareSymbols) return;
         IsBusy = true;
-        using var cancellation = new CancellationTokenSource();
-        _cancellation = cancellation;
         try
         {
             var settings = ProjectSaveService.Instance.Settings;
             var report = await FirmwareSymbolService.UpdateAsync(settings, ProjectSaveService.Instance.ProjectFilePath,
-                cancellation.Token, stillCurrent: () => ReferenceEquals(settings, ProjectSaveService.Instance.Settings));
+                stillCurrent: () => ReferenceEquals(settings, ProjectSaveService.Instance.Settings));
             ShowReport(report);
         }
         catch (OperationCanceledException) { NotificationService.Show("已取消固件解析", "保存的变量配置未改变", NotificationType.Info); }
@@ -34,37 +29,47 @@ public sealed partial class FirmwareImportCoordinator : ReactiveObject
         {
             LogService.ForModule(LogModule.Symbols).Error(ex, "主动更新固件失败");
         }
-        finally { _cancellation = null; IsBusy = false; }
+        finally { IsBusy = false; }
     }
 
-    public async Task ImportAsync(string path)
+    public async Task ImportAsync(string path, string? previousPath = null)
     {
         if (IsBusy || !GlobalStatus.Instance.CanEditFirmwareSymbols) return;
         IsBusy = true;
-        using var cancellation = new CancellationTokenSource();
-        _cancellation = cancellation;
         try
         {
             var settings = ProjectSaveService.Instance.Settings;
             var projectPath = ProjectSaveService.Instance.ProjectFilePath;
+            var paths = settings.DeviceConfig.SymbolFilePaths;
+            if (previousPath != null && !paths.Items.Contains(previousPath))
+                throw new InvalidOperationException("原固件路径已不在列表中，请重新选择");
             var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-            if (settings.DeviceConfig.SymbolFilePaths.Items.Any(p => comparer.Equals(ProjectFilePathService.ResolvePath(p, projectPath), path)))
-                throw new InvalidOperationException("文件已存在于列表中，请使用“更新符号表”");
+            path = ProjectFilePathService.ResolvePath(path, projectPath);
+            if (paths.Items.Any(p => p != previousPath && comparer.Equals(ProjectFilePathService.ResolvePath(p, projectPath), path)))
+                throw new InvalidOperationException(previousPath == null
+                    ? "文件已存在于列表中，请使用“更新符号表”"
+                    : "所选文件已在列表中，请选择其他文件");
             var storedPath = ProjectFilePathService.ToStoredPath(path, projectPath);
-            var image = (await new FirmwareParser().ParseAsync(path, cancellation.Token)) with { SourcePath = storedPath };
+            var image = (await new FirmwareParser().ParseAsync(path)) with { SourcePath = storedPath };
             FirmwareSymbolService.EnsureLayoutEditable();
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (!ReferenceEquals(settings, ProjectSaveService.Instance.Settings)) throw new OperationCanceledException("解析期间已切换工程");
-            settings.DeviceConfig.SymbolFilePaths.Add(storedPath);
-            ShowReport(FirmwareSymbolService.ApplySnapshots(settings, [image]));
+            if (!ReferenceEquals(settings, ProjectSaveService.Instance.Settings) || projectPath != ProjectSaveService.Instance.ProjectFilePath)
+                throw new OperationCanceledException("解析期间工程已变更");
+            if (previousPath != null)
+                ShowReport(FirmwareSymbolService.ReplaceSnapshot(settings, previousPath, image));
+            else
+            {
+                paths.Add(storedPath);
+                ShowReport(FirmwareSymbolService.ApplySnapshots(settings, [image]));
+            }
         }
         catch (OperationCanceledException) { NotificationService.Show("已取消固件解析", "未应用解析结果", NotificationType.Info); }
         catch (Exception ex)
         {
-            LogService.ForModule(LogModule.Symbols).Error(ex, "导入固件失败");
-            NotificationService.Show("导入失败", ex.Message, NotificationType.Error);
+            var title = previousPath == null ? "导入固件失败" : "更新路径失败";
+            LogService.ForModule(LogModule.Symbols).Error(ex, "{Operation}", title);
+            NotificationService.Show(title, ex.Message, NotificationType.Error);
         }
-        finally { _cancellation = null; IsBusy = false; }
+        finally { IsBusy = false; }
     }
 
     private static void ShowReport(FirmwareUpdateReport report)
