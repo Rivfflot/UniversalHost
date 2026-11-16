@@ -22,12 +22,18 @@ internal sealed class DwarfModelBuilder(RawImage raw, CancellationToken token = 
         {
             _token.ThrowIfCancellationRequested();
             RawNode? candidate = null;
-            int candidateCount = 0;
+            bool conflictingDefinitions = false;
             foreach (var n in byAddress[s.Address])
             {
                 if (LinkName(n) != s.Name && Text(n, Name) != s.Name) continue;
-                candidate = n;
-                if (++candidateCount > 1) break;
+                if (candidate == null)
+                    candidate = n;
+                else if (Text(candidate, Name) != Text(n, Name) ||
+                    !HaveEquivalentLayouts(Reference(candidate, Type), Reference(n, Type)))
+                {
+                    conflictingDefinitions = true;
+                    break;
+                }
             }
             var symbol = new FirmwareSymbol
             {
@@ -36,9 +42,9 @@ internal sealed class DwarfModelBuilder(RawImage raw, CancellationToken token = 
                 Address = s.Address,
                 SizeUnits = s.Size
             };
-            if (candidateCount > 1)
+            if (conflictingDefinitions)
                 symbol = symbol with { Status = AccessStatus.Conflict, Reason = "名称和地址匹配到多个 DWARF 定义" };
-            else if (candidateCount == 0 && byName[s.Name].Any())
+            else if (candidate == null && byName[s.Name].Any())
                 symbol = symbol with { Reason = "DWARF 位置表达式不是受支持的固定内存地址，或与符号地址不一致" };
             else if (candidate != null)
             {
@@ -168,6 +174,53 @@ internal sealed class DwarfModelBuilder(RawImage raw, CancellationToken token = 
         return reference.StartsWith("sig:") ? _raw.Signatures.GetValueOrDefault(reference[4..], reference) : reference;
     }
     private static ulong? NonNegative(long? value) => value is >= 0 ? (ulong)value.Value : null;
+
+    // Linkers can merge tentative definitions while retaining a separate type graph per compilation unit.
+    private bool HaveEquivalentLayouts(string firstId, string secondId)
+    {
+        BuildType(firstId);
+        BuildType(secondId);
+        HashSet<(string First, string Second)> matches = [];
+        return Compare(firstId, secondId, 0);
+
+        bool Compare(string leftId, string rightId, int depth)
+        {
+            _token.ThrowIfCancellationRequested();
+            if (matches.Contains((leftId, rightId))) return true;
+            if (depth >= 128 ||
+                !_types.TryGetValue(leftId, out var left) || !_types.TryGetValue(rightId, out var right) ||
+                !left.Complete || !right.Complete || left.SizeUnits == null ||
+                left.Kind != right.Kind || left.SizeUnits != right.SizeUnits)
+                return false;
+
+            bool equal = left.Kind switch
+            {
+                LayoutKind.Scalar or LayoutKind.Enumeration =>
+                    left.Scalar == right.Scalar && left.StorageBits == right.StorageBits,
+                LayoutKind.Array => left.Dimensions.SequenceEqual(right.Dimensions) &&
+                    Compare(left.ElementTypeId, right.ElementTypeId, depth + 1),
+                LayoutKind.Structure or LayoutKind.Union => CompareMembers(left.Members, right.Members, depth),
+                _ => false
+            };
+            if (equal) matches.Add((leftId, rightId));
+            return equal;
+        }
+
+        bool CompareMembers(List<MemberLayout> left, List<MemberLayout> right, int depth)
+        {
+            if (left.Count != right.Count) return false;
+            for (int i = 0; i < left.Count; i++)
+            {
+                var first = left[i];
+                var second = right[i];
+                if (first.Name != second.Name || first.OffsetUnits == null ||
+                    first.OffsetUnits != second.OffsetUnits || first.BitField || second.BitField ||
+                    !Compare(first.TypeId, second.TypeId, depth + 1))
+                    return false;
+            }
+            return true;
+        }
+    }
 
     private TypeLayout BuildType(string id)
     {
