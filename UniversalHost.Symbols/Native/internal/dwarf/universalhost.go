@@ -38,3 +38,13 @@ func (r *Reader) IndexedAddress(index uint64) (uint64, error) {
 }
 
 func (r *Reader) UnitVersion() int { return r.d.unit[r.unit].vers }
+
+func (d *Data) UnitCount() int { return len(d.unit) }
+
+// UnitReader shares the section data but gives the reader its own unit state,
+// including the DWARF 5 base offsets initialized by Reader.
+func (d *Data) UnitReader(index int) *Reader {
+	local := *d
+	local.unit = []unit{d.unit[index]}
+	return local.Reader()
+}

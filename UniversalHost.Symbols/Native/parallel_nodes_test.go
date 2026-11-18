@@ -32,13 +32,24 @@ func TestParallelNodesPreserveOrderAndReferences(t *testing.T) {
 	if err := addNodes(entries, "info", expected, locations, versions); err != nil {
 		t.Fatal(err)
 	}
-	want, _ := json.Marshal(expected.Nodes)
+	marshalNodes := func(r *result) []byte {
+		t.Helper()
+		for _, n := range r.Nodes {
+			n.materializeAttributes()
+		}
+		data, err := json.Marshal(r.Nodes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return data
+	}
+	want := marshalNodes(expected)
 	for _, workers := range []int{1, 2, 4, 8, 64} {
 		actual := &result{}
 		if err := addNodesParallel(entries, "info", actual, locations, versions, workers); err != nil {
 			t.Fatal(err)
 		}
-		got, _ := json.Marshal(actual.Nodes)
+		got := marshalNodes(actual)
 		if string(want) != string(got) {
 			t.Fatalf("%d workers changed node content or order", workers)
 		}
@@ -52,7 +63,7 @@ func TestParallelNodesPreserveOrderAndReferences(t *testing.T) {
 		if err := addModelNodes(entries, "info", actual, locations, versions); err != nil {
 			t.Fatal(err)
 		}
-		got, _ := json.Marshal(actual.Nodes)
+		got := marshalNodes(actual)
 		if string(want) != string(got) {
 			t.Fatalf("%d processors changed node content or order", processors)
 		}

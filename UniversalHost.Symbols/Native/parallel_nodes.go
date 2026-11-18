@@ -11,9 +11,8 @@ func addModelNodes(entries []*dwarf.Entry, prefix string, r *result, locations m
 	return addNodesParallel(entries, prefix, r, locations, versions, workers)
 }
 
-// Entry decoding stays serial: the reader has shared DWARF state and its
-// error order is observable. Only construction from immutable decoded entries
-// runs concurrently, with private stacks/results and an ordered merge.
+// Construct nodes from immutable decoded entries with private stacks and an
+// ordered merge. Chunk boundaries must reset the node construction stack.
 func addNodesParallel(entries []*dwarf.Entry, prefix string, r *result, locations map[dwarf.Offset]uint64, versions map[dwarf.Offset]int, workers int) error {
 	if len(entries) < 4096 || workers < 2 {
 		return addNodes(entries, prefix, r, locations, versions)

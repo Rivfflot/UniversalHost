@@ -72,3 +72,52 @@ func TestVariablePruningPromotesReferencesAndPreservesUnsupportedLocation(t *tes
 		t.Fatal("dependency declaration must be full; unsupported own location must block inheritance")
 	}
 }
+
+func TestPruningDropsTypesUnusedByModel(t *testing.T) {
+	addr := func(v uint64) *uint64 { return &v }
+	ref := func(id string) map[uint32]attribute { return map[uint32]attribute{73: {Ref: id}} }
+	public := &node{ID: "public", Tag: 0x34, Location: addr(1), Attributes: ref("pointer")}
+	private := &node{ID: "private", Tag: 0x34, Location: addr(2), Attributes: ref("private-type")}
+	dwarfOnly := &node{ID: "external", Tag: 0x34, Location: addr(3), Attributes: ref("external-type")}
+	external := int64(1)
+	dwarfOnly.Attributes[0x3f] = attribute{Number: &external}
+	derived := &node{ID: "derived", Tag: 0x34, Location: addr(4), Attributes: map[uint32]attribute{
+		3: {Text: "derived"}, 0x47: {Ref: "pointer-origin"},
+	}}
+	locationless := &node{ID: "locationless", Tag: 0x34, HasLocation: true, Attributes: ref("locationless-type")}
+	locationless.Attributes[3] = attribute{Text: "public"}
+	r := &result{
+		Symbols: []symbol{{Name: "public", Address: 1}, {Name: "derived", Address: 4}},
+		Nodes: []*node{
+			public, private, dwarfOnly, derived, locationless,
+			{ID: "pointer", Tag: 0x0f, Attributes: ref("pointee")},
+			{ID: "pointer-origin", Tag: 0x0f, Attributes: ref("inherited-type")},
+			{ID: "pointee", Tag: 0x13},
+			{ID: "private-type", Tag: 0x13},
+			{ID: "external-type", Tag: 0x24},
+			{ID: "inherited-type", Tag: 0x24},
+			{ID: "locationless-type", Tag: 0x24},
+		},
+	}
+	retainModelDependencies(r)
+	got := map[string]*node{}
+	for _, n := range r.Nodes {
+		got[n.ID] = n
+	}
+	for _, id := range []string{"public", "private", "external", "derived", "locationless", "pointer",
+		"pointer-origin", "external-type", "inherited-type"} {
+		if got[id] == nil {
+			t.Fatal("lost model dependency:", id)
+		}
+	}
+	for _, id := range []string{"pointee", "private-type", "locationless-type"} {
+		if got[id] != nil {
+			t.Fatal("retained unused type:", id)
+		}
+	}
+	for _, id := range []string{"pointer", "private", "locationless"} {
+		if _, exists := got[id].Attributes[73]; exists {
+			t.Fatal("retained unused type reference:", id)
+		}
+	}
+}

@@ -13,8 +13,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"universalhost/symbols/internal/dwarf"
 )
@@ -37,6 +39,9 @@ type node struct {
 	HasLocation       bool    `json:",omitempty"`
 	MemberOffset      *uint64 `json:",omitempty"`
 	HasMemberLocation bool    `json:",omitempty"`
+	// Keep decoded fields until dependency pruning selects the node for output.
+	entry  *dwarf.Entry
+	prefix string
 }
 type symbol struct {
 	Name          string
@@ -329,6 +334,10 @@ func cstr(b []byte) string {
 }
 
 func readDwarf(sections []section, r *result) error {
+	return readDwarfWithWorkers(sections, r, min(4, runtime.GOMAXPROCS(0)))
+}
+
+func readDwarfWithWorkers(sections []section, r *result, workers int) error {
 	parts := map[string][]byte{}
 	for _, s := range sections {
 		if s.name != ".debug_types" {
@@ -356,30 +365,42 @@ func readDwarf(sections []section, r *result) error {
 			return err
 		}
 	}
-	reader := d.Reader()
 	var entries []*dwarf.Entry
 	locations := map[dwarf.Offset]uint64{}
 	var versions = map[int]bool{}
 	entryVersions := map[dwarf.Offset]int{}
-	for {
-		e, err := reader.Next()
-		if err != nil {
-			return err
+	if units, ok := decodeUnits(d, workers); ok {
+		for _, unit := range units {
+			if len(unit.entries) == 0 {
+				continue
+			}
+			entries = append(entries, unit.entries...)
+			versions[unit.version] = true
+			for _, e := range unit.entries {
+				entryVersions[e.Offset] = unit.version
+			}
+			for offset, address := range unit.locations {
+				locations[offset] = address
+			}
 		}
-		if e == nil {
-			break
-		}
-		if len(entries) >= maxDies {
-			return errors.New("DIE count exceeds 500000")
-		}
-		entries = append(entries, e)
-		versions[reader.UnitVersion()] = true
-		entryVersions[e.Offset] = reader.UnitVersion()
-		if e.Tag == dwarf.TagVariable {
-			if expr, ok := e.Val(dwarf.AttrLocation).([]byte); ok {
-				if addr, ok := absolute(expr, reader.AddressSize(), reader.ByteOrder(), reader.IndexedAddress); ok {
-					locations[e.Offset] = addr
-				}
+	} else {
+		reader := d.Reader()
+		for {
+			e, err := reader.Next()
+			if err != nil {
+				return err
+			}
+			if e == nil {
+				break
+			}
+			if len(entries) >= maxDies {
+				return errors.New("DIE count exceeds 500000")
+			}
+			entries = append(entries, e)
+			versions[reader.UnitVersion()] = true
+			entryVersions[e.Offset] = reader.UnitVersion()
+			if address, ok := fixedVariableAddress(e, reader); ok {
+				locations[e.Offset] = address
 			}
 		}
 	}
@@ -407,6 +428,15 @@ func readDwarf(sections []section, r *result) error {
 	return nil
 }
 
+func fixedVariableAddress(e *dwarf.Entry, reader *dwarf.Reader) (uint64, bool) {
+	if e.Tag == dwarf.TagVariable {
+		if expr, ok := e.Val(dwarf.AttrLocation).([]byte); ok {
+			return absolute(expr, reader.AddressSize(), reader.ByteOrder(), reader.IndexedAddress)
+		}
+	}
+	return 0, false
+}
+
 func addNodes(entries []*dwarf.Entry, prefix string, r *result, locations map[dwarf.Offset]uint64, versions map[dwarf.Offset]int) error {
 	var stack []*node
 	for _, e := range entries {
@@ -416,45 +446,14 @@ func addNodes(entries []*dwarf.Entry, prefix string, r *result, locations map[dw
 			}
 			continue
 		}
-		id := fmt.Sprintf("%s:%x", prefix, e.Offset)
+		id := dwarfID(prefix, uint64(e.Offset))
 		if e.Tag == dwarf.TagCompileUnit || e.Tag == dwarf.TagPartialUnit || e.Tag == dwarf.TagTypeUnit {
 			stack = nil
 		}
-		n := &node{ID: id, Tag: uint32(e.Tag), Attributes: map[uint32]attribute{}, Children: []string{}}
+		n := &node{ID: id, Tag: uint32(e.Tag), Children: []string{}, entry: e, prefix: prefix}
 		n.Version = 4
 		if versions != nil {
 			n.Version = versions[e.Offset]
-		}
-		for _, f := range e.Field {
-			if !modelAttribute(f.Attr) {
-				continue
-			}
-			a := attribute{}
-			switch v := f.Val.(type) {
-			case dwarf.Offset:
-				a.Ref = fmt.Sprintf("%s:%x", prefix, v)
-			case string:
-				a.Text = v
-			case int64:
-				a.Number = &v
-			case uint64:
-				if f.Class == dwarf.ClassReferenceSig {
-					a.Ref = fmt.Sprintf("sig:%x", v)
-				} else if v <= 0x7fffffffffffffff {
-					x := int64(v)
-					a.Number = &x
-				}
-			case bool:
-				x := int64(0)
-				if v {
-					x = 1
-				}
-				a.Number = &x
-			default:
-				// Preserve attribute presence even when its value is a dynamic
-				// expression. The model must not mistake it for an omitted zero.
-			}
-			n.Attributes[uint32(f.Attr)] = a
 		}
 		if addr, ok := locations[e.Offset]; ok {
 			n.Location = &addr
@@ -489,6 +488,72 @@ func addNodes(entries []*dwarf.Entry, prefix string, r *result, locations map[dw
 	return nil
 }
 
+func dwarfID(prefix string, offset uint64) string {
+	var digits [16]byte
+	return prefix + ":" + string(strconv.AppendUint(digits[:0], offset, 16))
+}
+
+func wireAttribute(prefix string, field dwarf.Field) attribute {
+	switch value := field.Val.(type) {
+	case dwarf.Offset:
+		return attribute{Ref: dwarfID(prefix, uint64(value))}
+	case string:
+		return attribute{Text: value}
+	case int64:
+		return attribute{Number: &value}
+	case uint64:
+		if field.Class == dwarf.ClassReferenceSig {
+			return attribute{Ref: dwarfID("sig", value)}
+		}
+		if value <= 0x7fffffffffffffff {
+			number := int64(value)
+			return attribute{Number: &number}
+		}
+	case bool:
+		number := int64(0)
+		if value {
+			number = 1
+		}
+		return attribute{Number: &number}
+	}
+	// An unsupported expression must still appear as a present attribute.
+	return attribute{}
+}
+
+func (n *node) lookupAttribute(key uint32) (attribute, bool) {
+	if n.entry == nil {
+		value, ok := n.Attributes[key]
+		return value, ok
+	}
+	// Match the order of assignments when constructing the attribute map.
+	for i := len(n.entry.Field) - 1; i >= 0; i-- {
+		field := n.entry.Field[i]
+		if uint32(field.Attr) == key {
+			return wireAttribute(n.prefix, field), true
+		}
+	}
+	return attribute{}, false
+}
+
+func (n *node) reference(key dwarf.Attr) string {
+	value, _ := n.lookupAttribute(uint32(key))
+	return value.Ref
+}
+
+func (n *node) materializeAttributes() {
+	if n.entry == nil {
+		return
+	}
+	n.Attributes = make(map[uint32]attribute)
+	for _, field := range n.entry.Field {
+		if modelAttribute(field.Attr) {
+			n.Attributes[uint32(field.Attr)] = wireAttribute(n.prefix, field)
+		}
+	}
+	n.entry = nil
+	n.prefix = ""
+}
+
 // This is the wire contract consumed by DwarfModelBuilder.Attribute and
 // BuildTypeCore. Keep presence even for values the model cannot evaluate:
 // an unsupported expression is different from an omitted (default) value.
@@ -506,14 +571,23 @@ func modelAttribute(a dwarf.Attr) bool {
 	return false
 }
 
-// Seed variables that can affect C# matching, fallback imports or diagnostics.
-// Follow all retained references, signature targets and complete child lists.
-// Do not prune members, inheritance, unknown children or pointer targets based
-// on today's supported layouts. Preserve original order and dangling refs.
+// Keep the DWARF graph consumed by DwarfModelBuilder. A pointer's own
+// layout and a private variable's identity can matter without their type
+// references. Preserve attribute inheritance, child lists and node order.
 func retainModelDependencies(r *result) {
 	byID := make(map[string]*node, len(r.Nodes))
+	inherited := make(map[string]bool)
 	for _, n := range r.Nodes {
 		byID[n.ID] = n
+		for _, key := range [...]dwarf.Attr{dwarf.AttrSpecification, dwarf.AttrAbstractOrigin} {
+			if ref := n.reference(key); ref != "" {
+				inherited[ref] = true
+			}
+		}
+	}
+	symbolAddresses := make(map[uint64]bool, len(r.Symbols))
+	for _, s := range r.Symbols {
+		symbolAddresses[s.Address] = true
 	}
 	pending := modelVariableRoots(r, byID)
 	for _, id := range r.Signatures {
@@ -534,6 +608,10 @@ func retainModelDependencies(r *result) {
 			continue
 		}
 		retained[id] = true
+		n.materializeAttributes()
+		if !inherited[id] && !needsModelType(n, symbolAddresses) {
+			delete(n.Attributes, uint32(dwarf.AttrType))
+		}
 		pending = append(pending, n.Children...)
 		for _, a := range n.Attributes {
 			if a.Ref != "" {
@@ -544,11 +622,37 @@ func retainModelDependencies(r *result) {
 	nodes := r.Nodes[:0]
 	for _, n := range r.Nodes {
 		if retained[n.ID] {
+			n.materializeAttributes()
 			nodes = append(nodes, n)
 		}
 	}
 	clear(r.Nodes[len(nodes):])
 	r.Nodes = nodes
+}
+
+func needsModelType(n *node, symbolAddresses map[uint64]bool) bool {
+	switch dwarf.Tag(n.Tag) {
+	case dwarf.TagPointerType, dwarf.TagReferenceType, dwarf.TagRvalueReferenceType:
+		// BuildTypeCore reads the pointer size but never dereferences it.
+		return false
+	case dwarf.TagVariable:
+		if n.Location != nil && symbolAddresses[*n.Location] {
+			return true // It could match a symbol-table entry, even if private.
+		}
+		hasOrigin := n.Attributes[uint32(dwarf.AttrSpecification)].Ref != "" ||
+			n.Attributes[uint32(dwarf.AttrAbstractOrigin)].Ref != ""
+		if n.Location == nil {
+			// An explicit location expression blocks inheriting a fixed address.
+			return !n.HasLocation && hasOrigin
+		}
+		if external, exists := n.Attributes[uint32(dwarf.AttrExternal)]; exists {
+			return external.Number != nil && *external.Number == 1
+		}
+		// An inherited external flag can allow a DWARF-only import.
+		return hasOrigin
+	default:
+		return true
+	}
 }
 
 func uleb(b []byte) (uint64, int, bool) {

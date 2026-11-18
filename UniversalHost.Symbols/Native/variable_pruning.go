@@ -24,37 +24,41 @@ func modelVariableRoots(r *result, byID map[string]*node) []string {
 	for _, s := range r.Symbols {
 		names[wireText(s.Name)] = true
 	}
-	var attr func(*node, uint32, map[string]bool) *attribute
-	attr = func(n *node, key uint32, seen map[string]bool) *attribute {
+	origins := [...]dwarf.Attr{dwarf.AttrSpecification, dwarf.AttrAbstractOrigin}
+	hasOrigin := func(n *node) bool {
+		return byID[n.reference(origins[0])] != nil || byID[n.reference(origins[1])] != nil
+	}
+	var attr func(*node, uint32, map[string]bool) (attribute, bool)
+	attr = func(n *node, key uint32, seen map[string]bool) (attribute, bool) {
 		if seen[n.ID] {
-			return nil
+			return attribute{}, false
 		}
 		seen[n.ID] = true
 		if len(seen) > 128 {
-			return nil
+			return attribute{}, false
 		}
-		if a, ok := n.Attributes[key]; ok {
-			return &a
+		if a, ok := n.lookupAttribute(key); ok {
+			return a, true
 		}
-		for _, ref := range [...]uint32{uint32(dwarf.AttrSpecification), uint32(dwarf.AttrAbstractOrigin)} {
-			if target := byID[n.Attributes[ref].Ref]; target != nil {
-				if a := attr(target, key, seen); a != nil {
-					return a
+		for _, keyRef := range origins {
+			if target := byID[n.reference(keyRef)]; target != nil {
+				if a, ok := attr(target, key, seen); ok {
+					return a, true
 				}
 			}
 		}
-		return nil
+		return attribute{}, false
 	}
 	text := func(n *node, key uint32) string {
 		// Each text lookup starts with an empty visited set. Own presence and
 		// missing inheritance targets can be handled without allocating it.
-		if value, ok := n.Attributes[key]; ok {
+		if value, ok := n.lookupAttribute(key); ok {
 			return wireText(value.Text)
 		}
-		if byID[n.Attributes[uint32(dwarf.AttrSpecification)].Ref] == nil && byID[n.Attributes[uint32(dwarf.AttrAbstractOrigin)].Ref] == nil {
+		if !hasOrigin(n) {
 			return ""
 		}
-		if a := attr(n, key, map[string]bool{}); a != nil {
+		if a, ok := attr(n, key, map[string]bool{}); ok {
 			return wireText(a.Text)
 		}
 		return ""
@@ -78,8 +82,8 @@ func modelVariableRoots(r *result, byID map[string]*node) []string {
 		if loc != nil || n.HasLocation {
 			return loc
 		}
-		for _, ref := range [...]uint32{uint32(dwarf.AttrSpecification), uint32(dwarf.AttrAbstractOrigin)} {
-			if target := byID[n.Attributes[ref].Ref]; target != nil {
+		for _, key := range origins {
+			if target := byID[n.reference(key)]; target != nil {
 				if value := location(target, seen); value != nil {
 					return value
 				}
@@ -96,7 +100,7 @@ func modelVariableRoots(r *result, byID map[string]*node) []string {
 		if !visited {
 			loc = n.Location
 		}
-		if loc == nil && !n.HasLocation {
+		if loc == nil && !n.HasLocation && hasOrigin(n) {
 			loc = location(n, map[string]bool{})
 		}
 		locations[n.ID] = loc
@@ -119,7 +123,7 @@ func modelVariableRoots(r *result, byID map[string]*node) []string {
 		// Keep private fixed-location variables too: they determine exclusion
 		// names and TypesComplete. Location-less name matches determine the
 		// invalid-location diagnostic even when they cannot be imported.
-		if loc != nil || names[link] || names[name] {
+		if names[link] {
 			roots = append(roots, n.ID)
 		}
 	}

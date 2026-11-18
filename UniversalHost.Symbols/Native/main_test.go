@@ -53,6 +53,7 @@ func TestWireAttributesPreserveDynamicLayoutAndInheritedValues(t *testing.T) {
 		{Offset: 1, Tag: dwarf.TagVariable, Field: []dwarf.Field{
 			{Attr: dwarf.AttrName, Val: "global"}, {Attr: dwarf.AttrSpecification, Val: dwarf.Offset(2)},
 			{Attr: dwarf.AttrAbstractOrigin, Val: dwarf.Offset(3)}, {Attr: dwarf.AttrExternal, Val: true},
+			{Attr: dwarf.AttrType, Val: dwarf.Offset(99)}, // the last value wins
 			{Attr: dwarf.AttrType, Class: dwarf.ClassReferenceSig, Val: uint64(0xabc)},
 			{Attr: dwarf.AttrDeclFile, Val: int64(9)}, {Attr: dwarf.AttrProducer, Val: "unused"},
 		}},
@@ -69,6 +70,15 @@ func TestWireAttributesPreserveDynamicLayoutAndInheritedValues(t *testing.T) {
 	r := &result{}
 	if err := addNodes(entries, "info", r, map[dwarf.Offset]uint64{1: 4096}, map[dwarf.Offset]int{1: 5, 2: 3, 3: 4}); err != nil {
 		t.Fatal(err)
+	}
+	if ref := r.Nodes[0].reference(dwarf.AttrType); ref != "sig:abc" {
+		t.Fatalf("lazy lookup missed the last type reference: %q", ref)
+	}
+	if a, ok := r.Nodes[2].lookupAttribute(uint32(dwarf.AttrLowerBound)); !ok || a != (attribute{}) {
+		t.Fatal("lazy lookup lost unsupported array bound presence")
+	}
+	for _, n := range r.Nodes {
+		n.materializeAttributes()
 	}
 	v, m, dim := r.Nodes[0], r.Nodes[1], r.Nodes[2]
 	if v.Attributes[uint32(dwarf.AttrType)].Ref != "sig:abc" || v.Attributes[uint32(dwarf.AttrSpecification)].Ref != "info:2" || v.Location == nil || *v.Location != 4096 {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,6 +28,7 @@ func TestVariablePruningDifferentialFixtures(t *testing.T) {
 		v.Location = &addr
 		v.Attributes[73] = attribute{Ref: "base"}
 		r := &result{Schema: 1, Backend: "fixture", Format: "ELF", Platform: "ARM", ABI: "ARM ELF", AddressUnitBits: 8, AddressBits: 32, LittleEndian: true, Linked: true, SymbolsComplete: true, TypesComplete: true, Symbols: []symbol{{Name: "global", Address: addr, Size: 4}}, Nodes: []*node{v, base}, Signatures: map[string]string{}, Diagnostics: []string{}, DwarfVersions: []int{5}}
+		unusedVariableType := false
 		switch name {
 		case "conflict":
 			dup := n("duplicate", 0x34, "global")
@@ -36,11 +38,13 @@ func TestVariablePruningDifferentialFixtures(t *testing.T) {
 		case "name-only":
 			v.Location = nil
 			v.HasLocation = true
+			unusedVariableType = true
 		case "fallback":
 			r.Symbols = []symbol{}
 			v.Attributes[0x3f] = attribute{Number: num(1)}
 		case "private-only":
 			r.Symbols = []symbol{}
+			unusedVariableType = true
 		case "declaration":
 			decl := n("decl", 0x34, "global")
 			decl.Attributes[73] = attribute{Ref: "base"}
@@ -57,6 +61,7 @@ func TestVariablePruningDifferentialFixtures(t *testing.T) {
 			v.HasLocation = true
 			v.Attributes[0x47] = attribute{Ref: "origin"}
 			r.Nodes = append(r.Nodes, origin)
+			unusedVariableType = true
 		case "signature":
 			v.Attributes[73] = attribute{Ref: "sig:abc"}
 			r.Signatures["abc"] = "base"
@@ -96,19 +101,25 @@ func TestVariablePruningDifferentialFixtures(t *testing.T) {
 			r.Symbols[0].Name = "global\xfe"
 			v.Location = nil
 			v.HasLocation = true
+			unusedVariableType = true
 		}
 		// A disjoint stack variable and its type must never reach C#.
 		stack := n("unrelated-stack", 0x34, "unrelated-stack")
 		stack.HasLocation = true
 		stack.Attributes[73] = attribute{Ref: "unrelated-type"}
 		r.Nodes = append(r.Nodes, stack, n("unrelated-type", 0x24, "unused"))
-		original := make(map[string]string)
+		expected := make(map[string]string)
 		for _, entry := range r.Nodes {
-			b, err := json.Marshal(entry)
+			wire := *entry
+			if entry == v && unusedVariableType {
+				wire.Attributes = maps.Clone(entry.Attributes)
+				delete(wire.Attributes, 73)
+			}
+			b, err := json.Marshal(&wire)
 			if err != nil {
 				t.Fatal(err)
 			}
-			original[entry.ID] = string(b)
+			expected[entry.ID] = string(b)
 		}
 		write := func(suffix string) {
 			if dir == "" {
@@ -128,8 +139,8 @@ func TestVariablePruningDifferentialFixtures(t *testing.T) {
 		for _, entry := range r.Nodes {
 			found[entry.ID] = true
 			b, err := json.Marshal(entry)
-			if err != nil || string(b) != original[entry.ID] {
-				t.Fatalf("%s: retained node was modified: %s", name, entry.ID)
+			if err != nil || string(b) != expected[entry.ID] {
+				t.Fatalf("%s: unexpected retained node: %s", name, entry.ID)
 			}
 		}
 		if found[stack.ID] || found["unrelated-type"] {
