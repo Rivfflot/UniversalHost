@@ -111,25 +111,21 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             Dispatcher.UIThread.Post(() =>
             {
                 SettingWindowViewModel.Instance.SelectedSettingTab = tabIndex;
-                var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
                 if (_settingWindow == null)
                 {
                     _settingWindow = new SettingWindow
                     {
                         DataContext = SettingWindowViewModel.Instance
                     };
-                    WindowScreenSizing.FitAndCenter(_settingWindow, owner);
+                    WindowScreenSizing.FitAndCenter(_settingWindow, mainWindow);
                     _settingWindow.Closed += (_, _) => _settingWindow = null;
                 }
 
                 if (_settingWindow.WindowState == WindowState.Minimized)
                     _settingWindow.WindowState = WindowState.Normal;
 
-                // 所属窗口保持在主窗口上方，同时允许继续操作主窗口。
-                if (owner != null)
-                    _settingWindow.Show(owner);
-                else
-                    _settingWindow.Show();
+                _settingWindow.Show();
                 _settingWindow.Activate();
             }, DispatcherPriority.Background);
         }));

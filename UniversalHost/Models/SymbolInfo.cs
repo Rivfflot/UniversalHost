@@ -71,8 +71,6 @@ public partial class UserSymbolInfo : SymbolInfo
         : checked(Address + Offset);
     [Reactive] private AccessMode _mode = AccessMode.Manual;
     [Reactive] private string _memberPath = string.Empty;
-    [Reactive] private AccessStatus _verificationStatus = AccessStatus.Unverified;
-    [Reactive] private string _verificationReason = "手动配置，未经自动验证";
     [Reactive] private TargetInfo _target = new();
     [Reactive] private SymbolInputKind _inputKind;
     // One snapshot holds resolved address, bounds, scalar type and storage width.
@@ -88,7 +86,7 @@ public partial class UserSymbolInfo : SymbolInfo
             _ => 8
         };
     [JsonIgnore] public string RootName => Definition?.Name ?? Name;
-    [JsonIgnore] public bool CanEditType => Mode != AccessMode.Automatic || VerificationStatus != AccessStatus.Verified;
+    [JsonIgnore] public bool CanEditType => Mode == AccessMode.Manual;
     [JsonIgnore]
     public string ActualAddressHex
     {
@@ -96,7 +94,7 @@ public partial class UserSymbolInfo : SymbolInfo
         {
             try { return $"0x{ActualAddress:X8}"; }
             catch (OverflowException) { return "地址溢出"; }
-            catch (InvalidOperationException) { return "地址未验证"; }
+            catch (InvalidOperationException) { return "缺少解析地址"; }
         }
     }
 

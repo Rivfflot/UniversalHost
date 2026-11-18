@@ -142,10 +142,6 @@ internal sealed class Version1To2Migration : IProjectMigration
             _ = checked((uint)root.Address + offset);
             row["Offset"] = offset;
         }
-        row["VerificationStatus"] = automatic ? (int)AccessStatus.Verified : (int)AccessStatus.Unverified;
-        row["VerificationReason"] = automatic
-            ? "工程转换时已根据固件重新验证访问路径"
-            : $"工程转换时未能自动解析类型，请重新选择类型：{access.Reason}";
         return null;
     }
 

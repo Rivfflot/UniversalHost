@@ -20,16 +20,19 @@ public static class CalibrationPreflight
         if (granularityBytes is not (1 or 2 or 4)) throw new InvalidOperationException("未知 XCP 地址粒度");
         if (s.Mode == AccessMode.Automatic)
         {
-            if (s.VerificationStatus != AccessStatus.Verified || s.Definition == null || s.Access == null)
-                throw new InvalidOperationException($"{s.Name}: 自动访问未通过验证；{s.VerificationReason}");
+            if (s.Definition == null || s.Access == null)
+                throw new InvalidOperationException($"{s.Name}: 缺少自动变量的解析结果");
             var image = FirmwareSymbolService.FindImage(device, s) ?? throw new InvalidOperationException($"{s.Name}: 缺少保存的类型快照");
-            if (!image.Symbols.Contains(s.Definition)) throw new InvalidOperationException($"{s.Name}: 根变量身份已过期");
-            var actual = AccessPathResolver.Resolve(image, s.Definition, s.MemberPath);
-            if (actual.Status != AccessStatus.Verified || actual != s.Access ||
+            var (root, ambiguous) = FirmwareSymbolService.MatchRoot(image, s);
+            if (ambiguous) throw new InvalidOperationException($"{s.Name}: 同名根变量匹配不唯一");
+            if (root == null || root != s.Definition) throw new InvalidOperationException($"{s.Name}: 根变量身份已过期");
+            var actual = AccessPathResolver.Resolve(image, root, s.MemberPath);
+            if (actual.Status != AccessStatus.Verified) throw new InvalidOperationException($"{s.Name}: {actual.Reason}");
+            if (actual != s.Access ||
                 actual.StorageBits != s.StorageBits ||
                 actual.Scalar != s.DataType || s.Offset != 0 || s.Address != s.Definition.Address || s.Target != image.Target ||
                 runtime.ValueSizeInBytes * 8 != actual.StorageBits)
-                throw new InvalidOperationException($"{s.Name}: 自动路径的类型、位宽或地址与验证快照不一致");
+                throw new InvalidOperationException($"{s.Name}: 自动路径的类型、位宽或地址与符号表不一致");
             if (s.Target.AddressUnitBits != granularityBytes * 8 || s.Target.LittleEndian != littleEndian)
                 throw new InvalidOperationException($"{s.Name}: 固件地址单位或端序与 XCP 连接信息冲突");
         }

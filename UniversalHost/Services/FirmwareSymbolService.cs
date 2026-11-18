@@ -10,8 +10,11 @@ using UniversalHost.Symbols;
 
 namespace UniversalHost.Services;
 
-public sealed record RemovedAccess(Guid Id, string Path, string Reason);
-public sealed record FirmwareUpdateReport(List<RemovedAccess> Removed, List<string> Diagnostics, int ParsedSymbolCount, int SymbolCount);
+public sealed record RemovedAccess(Guid Id, string SourcePath, string Path, string Reason);
+public sealed record FirmwareFileUpdate(string SourcePath, int ParsedSymbolCount, int UpdatedCount, int RemovedCount);
+public sealed record FirmwareFileFailure(string Path, Exception Error);
+public sealed record FirmwareUpdateReport(List<FirmwareFileUpdate> UpdatedFiles, List<RemovedAccess> Removed,
+    List<string> Diagnostics, List<FirmwareFileFailure> Failures, int SymbolCount);
 
 /// <summary>Explicit import/update only. Project loading must never call this service.</summary>
 public static class FirmwareSymbolService
@@ -70,8 +73,6 @@ public static class FirmwareSymbolService
         if (item.Mode == AccessMode.Automatic && item.Access != null)
             item.Offset = checked((uint)item.Access.OffsetUnits);
         item.Mode = AccessMode.Manual;
-        item.VerificationStatus = AccessStatus.Unverified;
-        item.VerificationReason = "手动类型和目标地址单位偏移，未经自动验证";
         item.RefreshAccessDisplay();
     }
 
@@ -93,9 +94,6 @@ public static class FirmwareSymbolService
         settings.DeviceConfig.FirmwareSnapshots = settings.DeviceConfig.FirmwareSnapshots
             .Where(f => source != null && f.SourcePath != source).ToList();
         settings.DeviceConfig.Symbols.Edit(list => list.RemoveMany(list.Where(s => source == null || s.SourceKey == source).ToArray()));
-        foreach (var item in settings.MonitorConfig.MonitoredSymbols.Items.Concat(settings.CalibrateConfig.CalibratedSymbols.Items)
-            .Where(s => source == null || s.SourceKey == source))
-            Unverify(item, AccessStatus.Unverified, "符号快照已移除；保留配置，请重新导入或主动更新固件");
     }
 
     public static async Task<FirmwareUpdateReport> UpdateAsync(ProjectSettings settings, string projectPath,
@@ -104,26 +102,52 @@ public static class FirmwareSymbolService
         EnsureLayoutEditable();
         parser ??= new FirmwareParser();
         List<FirmwareImage> snapshots = [];
-        var failures = new Dictionary<string, string>();
+        List<FirmwareFileFailure> failures = [];
+        List<string> missingFiles = [];
         // Stage every file before mutating any saved configuration.
         foreach (var key in settings.DeviceConfig.SymbolFilePaths.Items.ToArray())
         {
             token.ThrowIfCancellationRequested();
+            var path = key;
             try
             {
-                snapshots.Add((await parser.ParseAsync(ProjectFilePathService.ResolvePath(key, projectPath), token)) with { SourcePath = key });
+                path = ProjectFilePathService.ResolvePath(key, projectPath);
+                try { File.GetAttributes(path); }
+                catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+                {
+                    missingFiles.Add($"{path}：找不到原固件文件，已跳过");
+                    continue;
+                }
+                var image = (await parser.ParseAsync(path, token)) with { SourcePath = key };
+                EnsureUsableImage(image);
+                snapshots.Add(image);
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { failures[key] = ex.Message; }
+            catch (Exception ex) { failures.Add(new(path, ex)); }
         }
         token.ThrowIfCancellationRequested();
         if (stillCurrent != null && !stillCurrent()) throw new OperationCanceledException("解析期间已切换工程");
         EnsureLayoutEditable();
-        return ApplySnapshots(settings, snapshots, failures);
+        var report = ApplySnapshots(settings, snapshots);
+        report.Diagnostics.AddRange(missingFiles);
+        report.Failures.AddRange(failures);
+        return report;
     }
 
-    public static FirmwareUpdateReport ApplySnapshots(ProjectSettings settings, IReadOnlyList<FirmwareImage> snapshots,
-        IReadOnlyDictionary<string, string>? failures = null) => ApplySnapshots(settings, snapshots, failures, null);
+    internal static void EnsureUsableImage(FirmwareImage image)
+    {
+        if (image.SymbolsComplete && image.TypesComplete && image.Target.Linked && image.Target.AddressUnitBits is 8 or 16 &&
+            image.Symbols.Any(symbol => AccessPathResolver.ResolveObject(image, symbol, "").Status == AccessStatus.Verified))
+            return;
+
+        var reason = "固件缺少完整符号表、变量类型信息或受支持的目标地址布局";
+        if (image.Diagnostics.Count > 0)
+            reason += $"：{string.Join(Environment.NewLine, image.Diagnostics)}";
+        throw new InvalidDataException(reason);
+    }
+
+    internal static FirmwareUpdateReport ApplySnapshots(ProjectSettings settings, IReadOnlyList<FirmwareImage> snapshots) =>
+        ApplySnapshots(settings, snapshots, null);
 
     internal static FirmwareUpdateReport ReplaceSnapshot(ProjectSettings settings, string previousPath, FirmwareImage image)
     {
@@ -133,29 +157,26 @@ public static class FirmwareSymbolService
         if (index < 0)
             throw new InvalidOperationException("原固件路径已不在列表中，请重新选择");
 
-        var report = ApplySnapshots(settings, [image], null, previousPath);
+        var report = ApplySnapshots(settings, [image], previousPath);
         if (previousPath != image.SourcePath)
             paths.Edit(list => list[index] = image.SourcePath);
         return report;
     }
 
     private static FirmwareUpdateReport ApplySnapshots(ProjectSettings settings, IReadOnlyList<FirmwareImage> snapshots,
-        IReadOnlyDictionary<string, string>? failures, string? previousPath)
+        string? previousPath)
     {
         EnsureLayoutEditable();
+        List<FirmwareFileUpdate> updatedFiles = [];
         List<RemovedAccess> removed = [];
         List<string> diagnostics = [];
         UserSymbolInfo[] all = [.. settings.MonitorConfig.MonitoredSymbols.Items, .. settings.CalibrateConfig.CalibratedSymbols.Items];
-        foreach (var parsed in snapshots)
+        foreach (var image in snapshots)
         {
-            var source = previousPath ?? parsed.SourcePath;
-            var oldImage = previousPath == null ? null :
-                settings.DeviceConfig.FirmwareSnapshots.FirstOrDefault(f => f.SourcePath == source);
-            // 文件内容一致时保留原快照，以便已保存的类型 ID 和访问结果继续对应同一份类型数据。
-            var image = oldImage != null && parsed.Sha256.Length > 0 && parsed.Sha256 == oldImage.Sha256
-                ? oldImage with { SourcePath = parsed.SourcePath }
-                : parsed;
-            diagnostics.AddRange(parsed.Diagnostics.Select(d => $"{image.SourcePath}: {d}"));
+            var source = previousPath ?? image.SourcePath;
+            var items = all.Where(item => item.SourceKey == source).ToArray();
+            int removedBefore = removed.Count;
+            diagnostics.AddRange(image.Diagnostics.Select(d => $"{image.SourcePath}: {d}"));
             var oldImages = settings.DeviceConfig.FirmwareSnapshots.Where(f => f.SourcePath != source).ToList();
             oldImages.Add(image);
             settings.DeviceConfig.FirmwareSnapshots = oldImages;
@@ -164,21 +185,12 @@ public static class FirmwareSymbolService
                 list.RemoveMany(list.Where(s => s.SourceKey == source).ToArray());
                 list.AddRange(image.Symbols.Where(s => s.Address <= uint.MaxValue).Select(s => ToSymbolInfo(image, s)));
             });
-            foreach (var item in all.Where(s => s.SourceKey == source))
+            foreach (var item in items)
             {
-                if (previousPath != null)
-                {
-                    item.SourceKey = image.SourcePath;
-                    item.SourceFileName = Path.GetFileName(image.SourcePath);
-                    if (!ReferenceEquals(image, parsed)) continue;
-                }
                 var (root, ambiguous) = MatchRoot(image, item);
                 if (root == null)
                 {
-                    if (!ambiguous && image.SymbolsComplete && image.TypesComplete && image.Target.Linked && image.Target.AddressUnitBits is 8 or 16)
-                        removed.Add(new(item.Id, item.Name, "根变量已不存在"));
-                    else Unverify(item, ambiguous ? AccessStatus.Conflict : AccessStatus.Unverified,
-                        ambiguous ? "同名根变量匹配不唯一" : "符号或类型信息不足，保留原配置");
+                    removed.Add(new(item.Id, image.SourcePath, item.Name, ambiguous ? "同名根变量匹配不唯一" : "根变量已不存在"));
                     continue;
                 }
                 string path = item.MemberPath;
@@ -187,68 +199,65 @@ public static class FirmwareSymbolService
                     if (item.InputKind == SymbolInputKind.ArrayIndex)
                     {
                         var element = AccessPathResolver.ResolveObject(image, root, path);
-                        if (element.IsDefinitivelyInvalid) removed.Add(new(item.Id, item.Name, element.Reason));
-                        else if (element.Status == AccessStatus.Verified)
+                        if (element.Status == AccessStatus.Verified)
                         {
                             UpdateRoot(item, image, root);
                             item.Offset = checked((uint)element.OffsetUnits);
                             item.Access = element;
-                            Unverify(item, AccessStatus.Unverified, "数组元素边界已检查，聚合类型按手动数值类型访问");
+                            item.RefreshAccessDisplay();
                         }
-                        else Unverify(item, element.Status, element.Reason);
+                        else removed.Add(new(item.Id, image.SourcePath, item.Name, element.Reason));
                         continue;
                     }
-                    if (image.Types.TryGetValue(root.TypeId, out var type) && type.Complete && type.SizeUnits.HasValue && item.Offset >= type.SizeUnits.Value)
+                    ulong size = image.Types.TryGetValue(root.TypeId, out var type) && type.Complete && type.SizeUnits.HasValue
+                        ? type.SizeUnits.Value : root.SizeUnits;
+                    if (size == 0 || item.Offset >= size || root.Address > uint.MaxValue || root.Address + item.Offset > uint.MaxValue)
                     {
-                        removed.Add(new(item.Id, item.Name, "手动偏移已越界"));
+                        string reason = size == 0 ? "缺少根变量大小，无法确定手动偏移范围" : "手动偏移或地址已越界";
+                        removed.Add(new(item.Id, image.SourcePath, item.Name, reason));
                         continue;
                     }
                     UpdateRoot(item, image, root);
-                    Unverify(item, AccessStatus.Unverified, "手动类型和目标地址单位偏移");
+                    item.RefreshAccessDisplay();
                     continue;
                 }
                 var access = AccessPathResolver.Resolve(image, root, path);
-                if (access.IsDefinitivelyInvalid)
-                    removed.Add(new(item.Id, item.Name, access.Reason));
-                else if (access.Status == AccessStatus.Verified)
+                if (access.Status == AccessStatus.Verified)
                     ApplyVerified(item, image, root, access);
                 else
-                {
-                    // Do not replace a saved automatic address with an unverified one.
-                    if (item.Mode == AccessMode.Manual) UpdateRoot(item, image, root);
-                    Unverify(item, access.Status, access.Reason);
-                }
+                    removed.Add(new(item.Id, image.SourcePath, item.Name, access.Reason));
             }
+            int removedCount = removed.Count - removedBefore;
+            updatedFiles.Add(new(image.SourcePath, image.Symbols.Count(symbol => symbol.Address <= uint.MaxValue),
+                items.Length - removedCount, removedCount));
         }
-        if (failures != null)
-            foreach (var failure in failures)
-            {
-                diagnostics.Add($"{failure.Key}: {failure.Value}；保留旧符号和配置");
-                foreach (var item in all.Where(s => s.SourceKey == failure.Key))
-                    Unverify(item, AccessStatus.Unverified, "固件解析失败：" + failure.Value);
-            }
         foreach (var item in removed)
         {
             settings.MonitorConfig.MonitoredSymbols.RemoveKey(item.Id);
             settings.CalibrateConfig.CalibratedSymbols.RemoveKey(item.Id);
         }
-        return new(removed, diagnostics,
-            snapshots.Sum(image => image.Symbols.Count(symbol => symbol.Address <= uint.MaxValue)),
-            SymbolSelectionService.BuildRows(settings.DeviceConfig).Count);
+        return new(updatedFiles, removed, diagnostics, [], SymbolSelectionService.BuildRows(settings.DeviceConfig).Count);
     }
 
-    private static (FirmwareSymbol? Symbol, bool Ambiguous) MatchRoot(FirmwareImage image, UserSymbolInfo item)
+    internal static (FirmwareSymbol? Symbol, bool Ambiguous) MatchRoot(FirmwareImage image, UserSymbolInfo item)
     {
         var old = item.Definition;
         string name = old?.LinkageName is { Length: > 0 } linkage ? linkage : old?.Name ?? item.Name;
-        var candidates = image.Symbols.Where(s => s.LinkageName == name || (old == null && s.Name == name)).ToList();
-        return candidates.Count == 1 ? (candidates[0], false) : (null, candidates.Count > 1);
+        FirmwareSymbol? match = null;
+        foreach (var candidate in image.Symbols)
+        {
+            if (candidate.LinkageName != name && ((old?.LinkageName.Length ?? 0) != 0 || candidate.Name != name)) continue;
+            if (match != null) return (null, true);
+            match = candidate;
+        }
+        return (match, false);
     }
 
     private static void UpdateRoot(UserSymbolInfo item, FirmwareImage image, FirmwareSymbol root)
     {
         if (root.Address > uint.MaxValue) return;
         item.SourceKey = image.SourcePath;
+        item.SourceFileName = Path.GetFileName(image.SourcePath);
         item.Definition = root;
         item.Target = image.Target;
         item.Address = (uint)root.Address;
@@ -265,15 +274,6 @@ public static class FirmwareSymbolService
         item.DataType = access.Scalar;
         item.Access = access;
         item.InputKind = access.Path.Contains('[') ? SymbolInputKind.ArrayIndex : SymbolInputKind.Offset;
-        item.VerificationStatus = AccessStatus.Verified;
-        item.VerificationReason = "使用与设备运行固件同次构建的符号文件";
-        item.RefreshAccessDisplay();
-    }
-
-    private static void Unverify(UserSymbolInfo item, AccessStatus status, string reason)
-    {
-        item.VerificationStatus = status;
-        item.VerificationReason = reason;
         item.RefreshAccessDisplay();
     }
 }
