@@ -1,5 +1,6 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;

@@ -1,4 +1,5 @@
 ﻿using Dock.Model.Controls;
+using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;

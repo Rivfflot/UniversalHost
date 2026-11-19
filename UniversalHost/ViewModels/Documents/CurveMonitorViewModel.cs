@@ -2,6 +2,7 @@
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using DynamicData;
+using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;

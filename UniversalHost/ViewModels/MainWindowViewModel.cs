@@ -6,6 +6,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;

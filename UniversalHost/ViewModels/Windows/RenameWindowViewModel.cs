@@ -1,5 +1,6 @@
 ﻿using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
+using ReactiveUI.Binding.Reactive;
 using System.Reactive;
 
 

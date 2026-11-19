@@ -3,6 +3,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using DynamicData;
 using DynamicData.Binding;
+using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
@@ -86,7 +87,11 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                 return;
             }
             if (calibrate) settings.CalibrateConfig.CalibratedSymbols.AddOrUpdate(access);
-            else settings.MonitorConfig.MonitoredSymbols.AddOrUpdate(access);
+            else
+            {
+                access.IsMonitored = true;
+                settings.MonitorConfig.MonitoredSymbols.AddOrUpdate(access);
+            }
             NotificationService.Show(calibrate ? "符号已添加至标定列表" : "符号已添加至监控列表",
                 $"{access.SourceFileName} : {access.Name}", NotificationType.Success);
         }

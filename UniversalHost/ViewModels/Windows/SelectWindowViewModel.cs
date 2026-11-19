@@ -1,6 +1,7 @@
 ﻿using Avalonia.Data.Converters;
 using DynamicData;
 using DynamicData.Binding;
+using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Primitives.Reactive.Concurrency;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
