@@ -449,16 +449,16 @@ public static class CalibrateParametersSaveService
 
 public static class DataSaveService
 {
-    private static string EscapeCsvField(string field)
+    private static string GetCsvVariableName(string name)
     {
-        if (string.IsNullOrEmpty(field)) return string.Empty;
-
-        // 如果字段中包含逗号、双引号，需使用双引号包裹，并将原双引号转义为两个双引号
-        if (field.Contains(',') || field.Contains('"'))
+        var builder = new StringBuilder(name.Length);
+        foreach (char character in name)
         {
-            return $"\"{field.Replace("\"", "\"\"")}\"";
+            builder.Append(character is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_'
+                ? character
+                : '_');
         }
-        return field;
+        return builder.ToString();
     }
     public static string SaveToCsv(IReadOnlyList<SymbolRuntime> runtimes, string fileName)
     {
@@ -476,21 +476,14 @@ public static class DataSaveService
                                     bufferSize: 131072,
                                     useAsync: true);
 
-        using var writer = new StreamWriter(fs, Encoding.UTF8, 131072);
+        using var writer = new StreamWriter(fs, new UTF8Encoding(false), 131072);
 
         List<string> names = [];
 
         int maxLen = 0;
         foreach (var item in runtimes)
         {
-            if (item.Symbol.Alias != "")
-            {
-                names.Add(EscapeCsvField($"{item.Symbol.Name}({item.Symbol.Alias})"));
-            }
-            else
-            {
-                names.Add(item.Symbol.Name);
-            }
+            names.Add(GetCsvVariableName(item.Symbol.Name));
 
             if (item.PlotHistory.Count > maxLen)
             {
@@ -510,9 +503,10 @@ public static class DataSaveService
         {
             rowBuilder.Clear();
 
-            foreach (var item in runtimes)
+            for (int j = 0; j < runtimes.Count; j++)
             {
-                rowBuilder.Append(item.GetValueHistoryIndexString(i)).Append(',');
+                if (j > 0) rowBuilder.Append(',');
+                rowBuilder.Append(runtimes[j].GetValueHistoryIndexString(i));
             }
 
             writer.WriteLine(rowBuilder.ToString());
