@@ -598,9 +598,17 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             var path = files[0].Path.LocalPath;
             try
             {
-                await CalibrateParametersSaveService.LoadAsync(path);
-                NotificationService.Show("参数已读取", path, NotificationType.Success);
-                LogService.ForModule(LogModule.Calibration).Information("标定参数读取, {Path}", path);
+                var result = await CalibrateParametersSaveService.LoadAsync(path);
+                string summary = $"已填入 {result.LoadedCount} 个标定变量，跳过 {result.SkippedCount} 项参数。";
+                if (result.Messages.Count > 0)
+                    summary += "\n" + string.Join("\n", result.Messages.Take(5))
+                        + (result.Messages.Count > 5 ? "\n其余原因请查看日志。" : "");
+                NotificationService.Show("参数读取结果", summary,
+                    result.SkippedCount > 0 ? NotificationType.Warning : NotificationType.Success);
+                var logger = LogService.ForModule(LogModule.Calibration);
+                logger.Information("标定参数读取, {Path}, 已填入 {LoadedCount} 个变量, 跳过 {SkippedCount} 项参数",
+                    path, result.LoadedCount, result.SkippedCount);
+                foreach (var message in result.Messages) logger.Warning("标定参数跳过: {Reason}", message);
             }
             catch (Exception ex)
             {
