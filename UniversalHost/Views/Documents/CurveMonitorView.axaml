@@ -41,7 +41,7 @@
             <KeyBinding.CommandParameter><x:Int32>9</x:Int32></KeyBinding.CommandParameter>
         </KeyBinding>
         <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedSymbolCommand}" />
-        <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisiableCommand}" />
+        <KeyBinding Gesture="Space" Command="{Binding ToggleCurveItemVisibleCommand}" />
         <KeyBinding Gesture="E" Command="{Binding ToggleYAxisAutoScaleCommand}" />
         <KeyBinding Gesture="X" Command="{Binding ToggleMouseCoordinatesCommand}" />
         <KeyBinding Gesture="C" Command="{Binding ToggleNearestPointCommand}" />
@@ -297,7 +297,7 @@
                     <ContextMenu>
                         <MenuItem
                             Header="切换显示"
-                            Command="{Binding ToggleCurveItemVisiableCommand}"
+                            Command="{Binding ToggleCurveItemVisibleCommand}"
                             InputGesture="Space"
                             />
                         <MenuItem

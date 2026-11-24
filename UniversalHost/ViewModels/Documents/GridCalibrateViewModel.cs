@@ -21,10 +21,10 @@ namespace UniversalHost.ViewModels.Documents;
 
 public record struct GridCalibrateLayoutSave(
     Guid[] DisplaySymbols,
-    bool IsNameVisiable,
-    bool IsAliasVisiable,
-    bool IsValueVisiable,
-    bool IsUnitVisiable);
+    bool IsNameVisible,
+    bool IsAliasVisible,
+    bool IsValueVisible,
+    bool IsUnitVisible);
 public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
 {
     private readonly CompositeDisposable _disposables = [];
@@ -53,10 +53,10 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
     {
         Id = id;
 
-        _isNameColumnVisible = save.IsNameVisiable;
-        _isAliasColumnVisible = save.IsAliasVisiable;
-        _isValueColumnVisible = save.IsValueVisiable;
-        _isUnitColumnVisible = save.IsUnitVisiable;
+        _isNameColumnVisible = save.IsNameVisible;
+        _isAliasColumnVisible = save.IsAliasVisible;
+        _isValueColumnVisible = save.IsValueVisible;
+        _isUnitColumnVisible = save.IsUnitVisible;
 
         //只添加列表中有的变量
         _keysSourceList.AddRange(
@@ -163,7 +163,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         if (unknownItems.Count > 0)
         {
             var errorDetails = string.Join(", ", unknownItems.Select(i => $"{i.Symbol.Name}({i.Symbol.Alias})"));
-            NotificationService.Show("标定错误", $"变量 {errorDetails} 类型为 Unkown", NotificationType.Warning);
+            NotificationService.Show("标定错误", $"变量 {errorDetails} 类型为 Unknown", NotificationType.Warning);
             return;
         }
         try
@@ -186,7 +186,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
         if (unknownItems.Count > 0)
         {
             var errorDetails = string.Join(", ", unknownItems.Select(i => $"{i.Symbol.Name}({i.Symbol.Alias})"));
-            NotificationService.Show("上传标定变量错误", $"变量 {errorDetails} 类型为 Unkown", NotificationType.Warning);
+            NotificationService.Show("上传标定变量错误", $"变量 {errorDetails} 类型为 Unknown", NotificationType.Warning);
             return;
         }
         try

@@ -18,8 +18,8 @@ namespace UniversalHost.ViewModels.Documents;
 
 public record struct UserCommandLayoutSave(
     byte[] DisplayUserCommands,
-    bool IsIdVisiable,
-    bool IsNameVisiable
+    bool IsIdVisible,
+    bool IsNameVisible
     );
 
 public partial class UserCommandViewModel : ReactiveObject, IDisposable
@@ -28,14 +28,14 @@ public partial class UserCommandViewModel : ReactiveObject, IDisposable
     private readonly SourceList<byte> _keysSourceList = new();
     public ISourceList<byte> KeysSource => _keysSourceList;
 
-    public UserCommandLayoutSave Save => new(_keysSourceList.Items.ToArray(), IsIdVisiable, IsNameVisiable);
+    public UserCommandLayoutSave Save => new(_keysSourceList.Items.ToArray(), IsIdVisible, IsNameVisible);
     // 绑定到 DataGrid 的数据源
     private readonly ReadOnlyObservableCollection<UserCommand> _displayUserCommands;
     public ReadOnlyObservableCollection<UserCommand> DisplayUserCommands => _displayUserCommands;
 
     [Reactive] private UserCommand? _selectedUserCommand;
-    [Reactive] private bool _isIdVisiable;
-    [Reactive] private bool _isNameVisiable;
+    [Reactive] private bool _isIdVisible;
+    [Reactive] private bool _isNameVisible;
 
     // 保存和恢复布局使用 Document Id
     public readonly string Id;
@@ -46,8 +46,8 @@ public partial class UserCommandViewModel : ReactiveObject, IDisposable
     {
         Id = id;
 
-        _isIdVisiable = save.IsIdVisiable;
-        _isNameVisiable = save.IsNameVisiable;
+        _isIdVisible = save.IsIdVisible;
+        _isNameVisible = save.IsNameVisible;
         _keysSourceList.AddRange(save.DisplayUserCommands);
         _keysSourceList.Connect()
                 .Transform(key =>

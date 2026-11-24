@@ -12,10 +12,11 @@ compiler or system runtime. The Windows amd64 SDK archive was obtained from
 https://go.dev/dl/go1.26.8.windows-amd64.zip and verified with SHA-256
 `b92c3b2adae85a11ba71fe7216daf0d84e82af4c8ab6c5625807f28622043a59`.
 
-The upstream DWARF files are unmodified; `upstream-sha256.json` records their
-hashes. `internal/dwarf/universalhost.go` is an additional MIT-licensed adapter
-exposing raw DWARF 4 type-unit entries and indexed address resolution. Container
-adaptation, the worker JSON protocol and UniversalHost C# code are MIT-licensed.
+The local snapshot corrects one comment in `open.go`. `upstream-sha256.json`
+records the original upstream file hashes. `internal/dwarf/universalhost.go`
+is an additional MIT-licensed adapter exposing raw DWARF 4 type-unit entries
+and indexed address resolution. Container adaptation, the worker JSON protocol
+and UniversalHost C# code are MIT-licensed.
 
 The Go toolchain is needed only by maintainers rebuilding the parser with
 `build/Build-SymbolWorkers.ps1`. Application builds and publishes use the versioned

@@ -138,11 +138,11 @@ public static class SymbolRuntimeService
 
     private static void UpdateMonitoredSymbolsValueString()
     {
-        if (_monitorSymbolRuntimesSource.Items is IList<SymbolRuntime> monitorSymbolRumtimesList)
+        if (_monitorSymbolRuntimesSource.Items is IList<SymbolRuntime> monitorSymbolRuntimesList)
         {
-            for (int i = 0; i < monitorSymbolRumtimesList.Count; i++)
+            for (int i = 0; i < monitorSymbolRuntimesList.Count; i++)
             {
-                monitorSymbolRumtimesList[i].ValueToString();
+                monitorSymbolRuntimesList[i].ValueToString();
             }
         }
     }

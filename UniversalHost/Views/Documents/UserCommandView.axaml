@@ -27,8 +27,8 @@
 		<!--  顶部菜单栏  -->
 		<Menu Padding="0" Height="25" HorizontalAlignment="Left">
 			<MenuItem Header="🔽" Padding="1" ToolTip.Tip="选择显示列">
-				<CheckBox Content="指令码" IsChecked="{Binding IsIdVisiable}"/>
-				<CheckBox Content="名称" IsChecked="{Binding IsNameVisiable}"/>
+				<CheckBox Content="指令码" IsChecked="{Binding IsIdVisible}"/>
+				<CheckBox Content="名称" IsChecked="{Binding IsNameVisible}"/>
 			</MenuItem>
 			<MenuItem
 			Header="➕"
@@ -102,7 +102,7 @@
 				Header="指令"
 				Binding="{Binding IdHex}"
 				Width="Auto"
-				IsVisible="{Binding IsIdVisiable}"
+				IsVisible="{Binding IsIdVisible}"
 				CellStyleClasses="draggable-column"
 				/>
 				<DataGridTextColumn
@@ -110,7 +110,7 @@
 				Header="名称"
 				Binding="{Binding Name}"
 				Width="Auto"
-				IsVisible="{Binding IsNameVisiable}"
+				IsVisible="{Binding IsNameVisible}"
 				CellStyleClasses="draggable-column"/>
 			</DataGrid.Columns>
 		</DataGrid>

@@ -48,7 +48,7 @@ public class IapService
         var config = settings.IapConfig;
         _config = new IapConfig
         {
-            WaitForHandShakeTimeoutSeconds = config.WaitForHandShakeTimeoutSeconds,
+            WaitForHandshakeTimeoutSeconds = config.WaitForHandshakeTimeoutSeconds,
             WaitForEraseTimeoutSeconds = config.WaitForEraseTimeoutSeconds,
             WaitForWriteTimeoutSeconds = config.WaitForWriteTimeoutSeconds,
             WaitForCheckTimeoutSeconds = config.WaitForCheckTimeoutSeconds,
@@ -98,7 +98,7 @@ public class IapService
         // 空 BIN 等文件错误在建立通信前拒绝。
         await using var comm = _createCommService();
         Report("等待就绪", 2);
-        await RunRequestAsync(comm, Stage.Handshake, _config.WaitForHandShakeTimeoutSeconds, ct);
+        await RunRequestAsync(comm, Stage.Handshake, _config.WaitForHandshakeTimeoutSeconds, ct);
         _progress.Report(4);
 
         Report("发送信息", 4);
@@ -154,7 +154,7 @@ public class IapService
     private void ValidateTimeouts()
     {
         if (_receiveTimeout <= TimeSpan.Zero ||
-            _config.WaitForHandShakeTimeoutSeconds == 0 ||
+            _config.WaitForHandshakeTimeoutSeconds == 0 ||
             _config.WaitForEraseTimeoutSeconds == 0 ||
             _config.WaitForWriteTimeoutSeconds == 0 ||
             _config.WaitForCheckTimeoutSeconds == 0 ||

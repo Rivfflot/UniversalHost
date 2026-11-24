@@ -1088,7 +1088,7 @@
 								Minimum="1"
 								ParsingNumberStyle="Integer"
 								ShowButtonSpinner="False"
-								Value="{Binding WaitForHandShakeTimeoutSecondsTemp}" />
+								Value="{Binding WaitForHandshakeTimeoutSecondsTemp}" />
 						</Grid>
 						<Grid>
 							<Grid.ColumnDefinitions>
@@ -1225,7 +1225,7 @@
 							Text="记录等级" />
 						<ComboBox
 							Grid.Column="1"
-							ItemsSource="{Binding AvaliableLogEventLevel}"
+							ItemsSource="{Binding AvailableLogEventLevel}"
 							SelectedItem="{Binding ProjectSaveServiceInstance.Settings.LogConfig.LogEventLevelSetting}" />
 					</Grid>
 				</StackPanel>

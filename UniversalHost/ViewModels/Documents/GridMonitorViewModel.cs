@@ -19,10 +19,10 @@ namespace UniversalHost.ViewModels.Documents;
 
 public record struct GridMonitorLayoutSave(
     Guid[] DisplaySymbols,
-    bool IsNameVisiable,
-    bool IsAliasVisiable,
-    bool IsValueVisiable,
-    bool IsUnitVisiable);
+    bool IsNameVisible,
+    bool IsAliasVisible,
+    bool IsValueVisible,
+    bool IsUnitVisible);
 
 public partial class GridMonitorViewModel : ReactiveObject, IDisposable
 {
@@ -56,10 +56,10 @@ public partial class GridMonitorViewModel : ReactiveObject, IDisposable
         Id = id;
 
 
-        _isNameColumnVisible = save.IsNameVisiable;
-        _isAliasColumnVisible = save.IsAliasVisiable;
-        _isValueColumnVisible = save.IsValueVisiable;
-        _isUnitColumnVisible = save.IsUnitVisiable;
+        _isNameColumnVisible = save.IsNameVisible;
+        _isAliasColumnVisible = save.IsAliasVisible;
+        _isValueColumnVisible = save.IsValueVisible;
+        _isUnitColumnVisible = save.IsUnitVisible;
 
         //只添加列表中有的变量
         _keysSourceList.AddRange(

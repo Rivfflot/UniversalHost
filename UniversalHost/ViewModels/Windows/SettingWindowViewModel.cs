@@ -177,14 +177,14 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     // IAP设置
     [Reactive] private string? _iapFilePathTemp;
     [Reactive] private string? _iapFilePathError;
-    [Reactive] private UInt16? _waitForHandShakeTimeoutSecondsTemp;
+    [Reactive] private UInt16? _waitForHandshakeTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForEraseTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForWriteTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForCheckTimeoutSecondsTemp;
     [Reactive] private UInt16? _waitForRebootTimeoutSecondsTemp;
 
     //日志设置
-    public static IEnumerable<Serilog.Events.LogEventLevel> AvaliableLogEventLevel => Enum.GetValues<Serilog.Events.LogEventLevel>();
+    public static IEnumerable<Serilog.Events.LogEventLevel> AvailableLogEventLevel => Enum.GetValues<Serilog.Events.LogEventLevel>();
 
 
     public SettingWindowViewModel()
@@ -287,7 +287,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                                 SelectAllMonitorSymbolsBox = state;
                             }).DisposeWith(_disposables);
         //CAL
-        var clibrateSymbolFilter = this.WhenValueChanged(x => x.CalibrateSymbolSearchText)
+        var calibrateSymbolFilter = this.WhenValueChanged(x => x.CalibrateSymbolSearchText)
                                      .Throttle(TimeSpan.FromMilliseconds(100))
                                      .Select(UserSymbolInfo.CreateUserSymbolInfoSearchFilter);
 
@@ -296,7 +296,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                           .Switch()
                           .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                           .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
-                          .Filter(clibrateSymbolFilter)
+                          .Filter(calibrateSymbolFilter)
                           .ObserveOn(AvaloniaScheduler.Instance)
                           .Bind(out _filteredCalibrateSymbols)
                           .Subscribe().DisposeWith(_disposables);
@@ -422,13 +422,13 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
             }
         }).DisposeWith(_projectSubscriptions);
 
-        WaitForHandShakeTimeoutSecondsTemp = settings.IapConfig.WaitForHandShakeTimeoutSeconds;
+        WaitForHandshakeTimeoutSecondsTemp = settings.IapConfig.WaitForHandshakeTimeoutSeconds;
         WaitForEraseTimeoutSecondsTemp = settings.IapConfig.WaitForEraseTimeoutSeconds;
         WaitForWriteTimeoutSecondsTemp = settings.IapConfig.WaitForWriteTimeoutSeconds;
         WaitForCheckTimeoutSecondsTemp = settings.IapConfig.WaitForCheckTimeoutSeconds;
         WaitForRebootTimeoutSecondsTemp = settings.IapConfig.WaitForRebootTimeoutSeconds;
 
-        this.BindWithDefault(x => x.WaitForHandShakeTimeoutSecondsTemp, v => settings.IapConfig.WaitForHandShakeTimeoutSeconds = v, (UInt16)5).DisposeWith(_projectSubscriptions);
+        this.BindWithDefault(x => x.WaitForHandshakeTimeoutSecondsTemp, v => settings.IapConfig.WaitForHandshakeTimeoutSeconds = v, (UInt16)5).DisposeWith(_projectSubscriptions);
 
         this.BindWithDefault(x => x.WaitForEraseTimeoutSecondsTemp, v => settings.IapConfig.WaitForEraseTimeoutSeconds = v, (UInt16)10).DisposeWith(_projectSubscriptions);
 

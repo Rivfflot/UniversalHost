@@ -157,7 +157,7 @@ internal sealed class Version1To2Migration : IProjectMigration
             // 曲线列表的历史 JSON 字段名同样为 BitsMonitorSymbols。
             ("CurveMonitorIdLayoutPairs", "BitsMonitorSymbols", true, monitorIds),
             ("BitsMonitorIdLayoutPairs", "BitsMonitorSymbols", true, monitorIds),
-            ("GridClibrateIdLayoutPairs", "DisplaySymbols", false, calibrateIds)
+            ("GridCalibrateIdLayoutPairs", "DisplaySymbols", false, calibrateIds)
         })
         {
             if (removedIds.Count == 0 || context[mapName] is not JsonObject layouts) continue;

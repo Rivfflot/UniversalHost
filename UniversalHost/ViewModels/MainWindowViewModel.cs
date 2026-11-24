@@ -386,7 +386,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     }
 
     [ReactiveCommand]
-    private void ShowDeviceInfomation()
+    private void ShowDeviceInformation()
     {
         if (XcpService.Client == null) return;
 
@@ -548,7 +548,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         if (unknownItems.Count > 0)
         {
             var errorDetails = string.Join(", ", unknownItems.Select(i => $"{i.Symbol.Name}({i.Symbol.Alias})"));
-            NotificationService.Show("上传标定变量错误", $"{unknownItems.Count}个变量: {errorDetails} 类型为 Unkown", NotificationType.Warning);
+            NotificationService.Show("上传标定变量错误", $"{unknownItems.Count}个变量: {errorDetails} 类型为 Unknown", NotificationType.Warning);
             return;
         }
         try

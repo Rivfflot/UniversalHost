@@ -308,7 +308,7 @@ public class XcpClient : IAsyncDisposable
                 await _heartbeatTask;
             if (Volatile.Read(ref _acceptDaqFrames) || DeviceStatus.GetStatusRes.DaqRunning)
                 await StopDaq();
-            await Std.DisonnectAsync();
+            await Std.DisconnectAsync();
         }
         finally
         {
@@ -783,11 +783,11 @@ public class XcpClient : IAsyncDisposable
                     break;
                 }
             }
-            catch (Exception unkownEx)
+            catch (Exception unknownEx)
             {
-                NotificationService.Show("设备断开", $"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}", NotificationType.Error);
-                Debug.WriteLine($"[心跳未知错误] 通信组件发生异常: {unkownEx.Message}");
-                LogService.ForModule(LogModule.Xcp).Debug(unkownEx, "[心跳未知错误] 通信组件发生异常: {Reason}", unkownEx.Message);
+                NotificationService.Show("设备断开", $"[心跳未知错误] 通信组件发生异常: {unknownEx.Message}", NotificationType.Error);
+                Debug.WriteLine($"[心跳未知错误] 通信组件发生异常: {unknownEx.Message}");
+                LogService.ForModule(LogModule.Xcp).Debug(unknownEx, "[心跳未知错误] 通信组件发生异常: {Reason}", unknownEx.Message);
                 GlobalStatus.Instance.IsConnected = false;
                 break;
             }
@@ -875,7 +875,7 @@ public class XcpClient : IAsyncDisposable
         {
             return _client.SendCtoAsync<Std.GetStatusCommand, EmptyParam, Std.GetStatusResponse>(new EmptyParam());
         }
-        public Task<bool> DisonnectAsync()
+        public Task<bool> DisconnectAsync()
         {
             return _client.SendCtoAsync<Std.DisconnectCommand, EmptyParam, bool>(new EmptyParam());
         }

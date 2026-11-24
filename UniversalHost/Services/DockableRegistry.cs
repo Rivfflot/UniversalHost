@@ -18,14 +18,14 @@ public static class DockableRegistry
         public Dictionary<string, GridMonitorLayoutSave> GridMonitorIdLayoutPairs { get; set; } = [];
         public Dictionary<string, CurveMonitorLayout> CurveMonitorIdLayoutPairs { get; set; } = [];
         public Dictionary<string, BitsMonitorLayout> BitsMonitorIdLayoutPairs { get; set; } = [];
-        public Dictionary<string, GridCalibrateLayoutSave> GridClibrateIdLayoutPairs { get; set; } = [];
+        public Dictionary<string, GridCalibrateLayoutSave> GridCalibrateIdLayoutPairs { get; set; } = [];
         public Dictionary<string, UserCommandLayoutSave> UserCommandIdLayoutPairs { get; set; } = [];
         public void ClearAll()
         {
             GridMonitorIdLayoutPairs.Clear();
             CurveMonitorIdLayoutPairs.Clear();
             BitsMonitorIdLayoutPairs.Clear();
-            GridClibrateIdLayoutPairs.Clear();
+            GridCalibrateIdLayoutPairs.Clear();
             UserCommandIdLayoutPairs.Clear();
         }
     }
@@ -125,7 +125,7 @@ public static class DockableRegistry
         //更新表格标定窗口
         foreach (var item in GridCalibrateDocuments)
         {
-            ContextSave.GridClibrateIdLayoutPairs.Add(item.Key, item.Value.Save);
+            ContextSave.GridCalibrateIdLayoutPairs.Add(item.Key, item.Value.Save);
         }
         //更新指令窗口
         foreach (var item in UserCommandDocuments)
@@ -179,13 +179,13 @@ public static class DockableRegistry
             BitsMonitorDocuments.Add(item.Key, vm);
         }
         //重建表格标定窗口
-        ContextSave.GridClibrateIdLayoutPairs = context.GridClibrateIdLayoutPairs;
+        ContextSave.GridCalibrateIdLayoutPairs = context.GridCalibrateIdLayoutPairs;
         foreach (var item in GridCalibrateDocuments.Values)
         {
             item.Dispose();
         }
         GridCalibrateDocuments.Clear();
-        foreach (var item in ContextSave.GridClibrateIdLayoutPairs)
+        foreach (var item in ContextSave.GridCalibrateIdLayoutPairs)
         {
             var vm = new GridCalibrateViewModel(item.Key, item.Value);
             GridCalibrateDocuments.Add(item.Key, vm);

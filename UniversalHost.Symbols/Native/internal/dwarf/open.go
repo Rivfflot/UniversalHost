@@ -77,7 +77,7 @@ func New(abbrev, aranges, frame, info, line, pubnames, ranges, str []byte) (*Dat
 
 	// Sniff .debug_info to figure out byte order.
 	// 32-bit DWARF: 4 byte length, 2 byte version.
-	// 64-bit DWARf: 4 bytes of 0xff, 8 byte length, 2 byte version.
+	// 64-bit DWARF: 4 bytes of 0xff, 8 byte length, 2 byte version.
 	if len(d.info) < 6 {
 		return nil, DecodeError{"info", Offset(len(d.info)), "too short"}
 	}

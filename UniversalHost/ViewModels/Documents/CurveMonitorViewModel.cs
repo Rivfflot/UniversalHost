@@ -42,7 +42,7 @@ public partial class CurveMonitorLayout : ReactiveObject
         public ScottPlot.Plottables.Signal? Signal;
         public ScottPlot.AxisPanels.LeftAxis? YAxis;
         public CurveAxisRange? YAxisRange { get; set; }
-        #region Curve Sytle
+        #region Curve Style
         private bool _isVisible = true;
         public bool IsVisible
         {
@@ -325,7 +325,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
         CurvesLayout.IsYAxisAutoScaleEnabled = !CurvesLayout.IsYAxisAutoScaleEnabled;
     }
     [ReactiveCommand]
-    private void ToggleCurveItemVisiable()
+    private void ToggleCurveItemVisible()
     {
         if (_selectedCurveItem == null)
         {

@@ -92,7 +92,7 @@
 			</MenuItem>
 			<MenuItem Header="设备" IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
 				<MenuItem
-					Command="{Binding ShowDeviceInfomationCommand}"
+					Command="{Binding ShowDeviceInformationCommand}"
 					Header="设备信息"
 					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsConnected}" />
 				<MenuItem

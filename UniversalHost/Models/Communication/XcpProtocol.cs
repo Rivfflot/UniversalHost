@@ -92,7 +92,7 @@ public static class XcpProtocol
         ///<summary>指令未执行，PGM正在运行</summary>
         PgmActive = 0x12,
         ///<summary>未知/未实现指令</summary>
-        CmdUnkown = 0x20,
+        CmdUnknown = 0x20,
         ///<summary>指令格式错误</summary>
         CmdSyntax = 0x21,
         ///<summary>格式正确，指令参数超出范围</summary>
@@ -105,7 +105,7 @@ public static class XcpProtocol
         AccessLocked = 0x25,
         ///<summary>选中页无效</summary>
         PageNotValid = 0x26,
-        ///<summary>选中页模式无效</summar>
+        ///<summary>选中页模式无效</summary>
         ModeNotValid = 0x27,
         ///<summary>选中区无效</summary>
         SegmentNotValid = 0x28,
@@ -149,7 +149,7 @@ public static class XcpProtocol
         /// <summary>传输层特定事件</summary>
         Transport = 0xFF,
     }
-    public enum CtoResponcePid : byte
+    public enum CtoResponsePid : byte
     {
         Positive = 0xFF,
         Error = 0xFE,
@@ -162,16 +162,16 @@ public static class XcpProtocol
         {
             throw new Exception($"[XCP 协议错误] 命令 {cmd} 收到空的网络载荷。");
         }
-        CtoResponcePid pid = (CtoResponcePid)response[0];
+        CtoResponsePid pid = (CtoResponsePid)response[0];
         // 正常的肯定响应
-        if (pid == CtoResponcePid.Positive)
+        if (pid == CtoResponsePid.Positive)
         {
             // 验证通过，不做任何动作
             return;
         }
 
         // 下位机返回错误响应 (ERR)
-        if (pid == CtoResponcePid.Error)
+        if (pid == CtoResponsePid.Error)
         {
             // response[1] Error Code
             byte rawErrCode = response.Length > 1 ? response[1] : (byte)0x00;
@@ -241,7 +241,7 @@ public static class XcpProtocol
     /// <param name="src"></param>
     /// <param name="des"></param>
     /// <returns></returns>
-    public static int CopyWithPedding(bool isLittleEndian, Std.AddressGranularity ag, ReadOnlySpan<byte> src, Span<byte> des)
+    public static int CopyWithPadding(bool isLittleEndian, Std.AddressGranularity ag, ReadOnlySpan<byte> src, Span<byte> des)
     {
         byte lenInByte = CalculateByteLenOfValue(ag, (byte)src.Length);
 
@@ -572,7 +572,7 @@ public static class XcpProtocol
                     _ => Math.Max((byte)(p.Data.Length / 4), (byte)1),
                 };
 
-                return 2 + CopyWithPedding(p.IsLittleEndian, p.Ag, p.Data.Span, buffer[2..]);
+                return 2 + CopyWithPadding(p.IsLittleEndian, p.Ag, p.Data.Span, buffer[2..]);
             }
             public static bool Decode(ReadOnlySpan<byte> response, bool _)
             {
@@ -610,7 +610,7 @@ public static class XcpProtocol
                 {
                     BinaryPrimitives.WriteUInt32BigEndian(buffer[4..8], p.Address);
                 }
-                return 8 + CopyWithPedding(p.IsLittleEndian, p.Ag, p.Data.Span, buffer[8..]);
+                return 8 + CopyWithPadding(p.IsLittleEndian, p.Ag, p.Data.Span, buffer[8..]);
             }
             public static bool Decode(ReadOnlySpan<byte> response, bool _)
             {
