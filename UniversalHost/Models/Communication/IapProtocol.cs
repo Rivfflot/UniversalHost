@@ -34,7 +34,7 @@ public class IapProtocol
         InvalidProgress
     }
 
-    public const int MaxBytesPerFrame = 1372;
+    public const int MaxBytesPerFrame = 1400;
     private const byte IAP_FUNCTION_CODE = 0x01;
     private readonly string _iapFilePath;
     private readonly byte _deviceID;

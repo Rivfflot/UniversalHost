@@ -68,7 +68,7 @@ public class IapService
         _createCommService = createCommService ?? (() => _mode switch
         {
             // 连接的 UDP socket 只接收配置的远端 IP/端口，隔离其他发送端。
-            CommunicationMode.UDP => new UdpService(localAddress, localPort, remoteAddress, remotePort, timeoutMilliseconds),
+            CommunicationMode.UDP => new UdpService(localAddress, localPort, remoteAddress, remotePort),
             CommunicationMode.Serial => new SerialTransportService(_serialOptions!, SerialProtocol.Iap),
             _ => throw new NotSupportedException("不支持该 IAP 通信模式")
         });
@@ -268,7 +268,7 @@ public class IapService
             {
                 receivedLength = await comm.ReceiveAsync(_receiveBuffer, receiveCts.Token);
             }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested && receiveCts.IsCancellationRequested)
+            catch (OperationCanceledException) when (receiveCts.IsCancellationRequested)
             {
                 receivedLength = 0;
             }

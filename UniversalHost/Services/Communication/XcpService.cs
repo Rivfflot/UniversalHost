@@ -257,7 +257,7 @@ public class XcpClient : IAsyncDisposable
             _comm = createCommService?.Invoke() ?? (mode switch
             {
                 CommunicationMode.UDP => new UdpService(settings.UdpConfig.LocalAddress, settings.UdpConfig.XcpLocalPort,
-                    settings.UdpConfig.RemoteAddress, settings.UdpConfig.XcpRemotePort, _timeoutMs * 10,
+                    settings.UdpConfig.RemoteAddress, settings.UdpConfig.XcpRemotePort,
                     receiveBufferSize: 4 * 1024 * 1024),
                 CommunicationMode.Serial => new SerialTransportService(_serialOptions!, SerialProtocol.Xcp,
                     ReceiveStatistics.RecordMalformedDatagram),

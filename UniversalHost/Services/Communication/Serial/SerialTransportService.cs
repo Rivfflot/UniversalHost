@@ -105,16 +105,11 @@ public sealed class SerialTransportService : ICommService
     public byte[]? Receive()
     {
         byte[] buffer = new byte[SerialTransportProtocol.GetMaxRawLength(_protocol)];
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
-        try
-        {
-            int length = ReceiveAsync(buffer, timeout.Token).GetAwaiter().GetResult();
-            return buffer.AsSpan(0, length).ToArray();
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested) { return null; }
+        int length = ReceiveAsync(buffer, CancellationToken.None).AsTask().GetAwaiter().GetResult();
+        return buffer.AsSpan(0, length).ToArray();
     }
 
-    public async Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)
+    public async ValueTask<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _shutdown.Token);
         await _receiveGate.WaitAsync(linked.Token).ConfigureAwait(false);

@@ -128,17 +128,19 @@ public sealed class SerialPortService : ICommService
     public byte[]? Receive()
     {
         byte[] buffer = new byte[4096];
-        int length = ReceiveAsync(buffer, CancellationToken.None).GetAwaiter().GetResult();
+        int length = ReceiveAsync(buffer, CancellationToken.None).AsTask().GetAwaiter().GetResult();
         return length > 0 ? buffer.AsSpan(0, length).ToArray() : null;
     }
 
-    public async Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)
+    public async ValueTask<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _shutdown.Token);
         await _receiveGate.WaitAsync(linked.Token).ConfigureAwait(false);
         try
         {
-            long start = Stopwatch.GetTimestamp();
+            if (buffer.IsEmpty)
+                return 0;
+
             while (true)
             {
                 linked.Token.ThrowIfCancellationRequested();
@@ -158,8 +160,6 @@ public sealed class SerialPortService : ICommService
                     catch (TimeoutException) { }
                 }
                 // 无数据时可取消地轮询，避免 Windows 上挂起的 ReadAsync 阻碍会话清理。
-                if (Stopwatch.GetElapsedTime(start) >= TimeSpan.FromMilliseconds(50))
-                    return 0;
                 await Task.Delay(2, linked.Token).ConfigureAwait(false);
             }
         }

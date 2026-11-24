@@ -26,6 +26,12 @@
 			<Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForeground}"/>
 			<Setter Property="Opacity" Value="0.8"/>
 		</Style>
+		<Style Selector="MenuItem.path-icon Viewbox">
+			<Setter Property="Width" Value="22"/>
+			<Setter Property="Height" Value="22"/>
+			<Setter Property="Margin" Value="0,0.25,0,0"/>
+			<Setter Property="RenderTransform" Value="translate(0px, 0.75px)"/>
+		</Style>
 		<Style Selector="MenuItem.path-icon:disabled Viewbox">
 			<Setter Property="Opacity" Value="0.35"/>
 		</Style>
@@ -286,7 +292,7 @@
 				ToolTip.ShowOnDisabled="True"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
 				<MenuItem.Header>
-					<Viewbox Width="22" Height="22" Margin="0,1,0,0" Stretch="Uniform" RenderTransform="translate(0px, 0.5px)">
+					<Viewbox Stretch="Uniform">
 						<Canvas Width="36" Height="36">
 							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V30 A2,2 0 0 1 30,32 H6 A2,2 0 0 1 4,30 V6 A2,2 0 0 1 6,4 Z"
 								Fill="#DCECF4" Stroke="#7993AD" StrokeThickness="1"/>
@@ -348,7 +354,7 @@
 				ToolTip.ShowOnDisabled="True"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
 				<MenuItem.Header>
-					<Viewbox Width="22" Height="22" Margin="0,1,0,0" Stretch="Uniform" RenderTransform="translate(0px, 0.5px)">
+					<Viewbox Stretch="Uniform">
 						<Canvas Width="36" Height="36">
 							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V30 A2,2 0 0 1 30,32 H6 A2,2 0 0 1 4,30 V6 A2,2 0 0 1 6,4 Z"
 								Fill="#DCECF4" Stroke="#7993AD" StrokeThickness="1"/>
@@ -427,7 +433,7 @@
 				ToolTip.ShowOnDisabled="True"
 				IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}">
 				<MenuItem.Header>
-					<Viewbox Width="22" Height="22" Margin="0,1,0,0" Stretch="Uniform" RenderTransform="translate(0px, 0.5px)">
+					<Viewbox Stretch="Uniform">
 						<Canvas Width="36" Height="36">
 							<Path Data="M6,4 H30 A2,2 0 0 1 32,6 V30 A2,2 0 0 1 30,32 H6 A2,2 0 0 1 4,30 V6 A2,2 0 0 1 6,4 Z"
 								Fill="#E1EAF5" Stroke="#99AEC8" StrokeThickness="1"/>
