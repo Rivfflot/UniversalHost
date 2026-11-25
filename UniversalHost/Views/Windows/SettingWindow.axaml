@@ -5,12 +5,32 @@
 	xmlns:models="using:UniversalHost.Models"
 	xmlns:vm="using:UniversalHost.ViewModels.Windows"
 	xmlns:controls="using:UniversalHost.Views.Controls"
+	xmlns:views="using:UniversalHost.Views.Windows"
 	Title="设置"
 	Width="900"
 	Height="750"
 	x:DataType="vm:SettingWindowViewModel">
 
 
+
+	<Window.Resources>
+		<ContextMenu x:Key="SymbolTableCopyMenu" x:DataType="models:SymbolTableEntry">
+			<MenuItem Header="复制变量名" CommandParameter="{Binding Name}" Click="CopySymbolTextClick" />
+			<MenuItem Header="复制变量地址" CommandParameter="{Binding AddressHex}" Click="CopySymbolTextClick"
+					  IsEnabled="{Binding AddressHex, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+		</ContextMenu>
+		<ContextMenu x:Key="UserSymbolCopyMenu" x:DataType="models:UserSymbolInfo">
+			<MenuItem Header="复制变量名" CommandParameter="{Binding Name}" Click="CopySymbolTextClick" />
+			<MenuItem Header="复制变量根地址" CommandParameter="{Binding AddressHex}" Click="CopySymbolTextClick" />
+			<MenuItem Header="复制实际地址" CommandParameter="{Binding ActualAddressHex}" Click="CopySymbolTextClick"
+					  IsEnabled="{Binding ActualAddressHex, Converter={x:Static views:SettingWindow.IsHexAddress}}" />
+		</ContextMenu>
+		<DataTemplate x:Key="BitAliasControls" x:DataType="models:UserSymbolInfo">
+			<Button Content="清除位别名" IsEnabled="{Binding HasBitAliases}"
+					Command="{Binding $parent[Window].DataContext.ClearBitAliasesCommand}"
+					CommandParameter="{Binding}" />
+		</DataTemplate>
+	</Window.Resources>
 
 	<Window.Styles>
 		<Style Selector="DataGrid">
@@ -143,8 +163,8 @@
 											 HorizontalAlignment="Left"
 											 Text="{Binding SymbolSearchText,UpdateSourceTrigger=PropertyChanged}" />
 									<DataGrid
-										IsEnabled="{Binding GlobalStatusInstance.CanEditCommunicationSettings}"
 										ItemsSource="{Binding FilteredSymbols}"
+										ContextRequested="ShowSymbolCopyMenu"
 										CanUserResizeColumns="True"
 										AutoGenerateColumns="False"
 										CanUserSortColumns="True"
@@ -648,7 +668,8 @@
 										HorizontalAlignment="Left"
 										Text="{Binding SymbolSearchText, UpdateSourceTrigger=PropertyChanged}"/>
 									<DataGrid
-										IsEnabled="{Binding GlobalStatusInstance.CanEditMonitorSymbol}" ItemsSource="{Binding FilteredSymbols}"
+										ItemsSource="{Binding FilteredSymbols}"
+										ContextRequested="ShowSymbolCopyMenu"
 										AutoGenerateColumns="False"
 										CanUserResizeColumns="True"
 										CanUserSortColumns="True"
@@ -667,8 +688,14 @@
 															Padding="1"
 															Content="➕"
 															ToolTip.Tip="添加至监控变量"
-															Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}" IsEnabled="{Binding CanAdd}"
+															Command="{Binding $parent[Window].DataContext.AddMonitorSymbolCommand}"
 															CommandParameter="{Binding}">
+															<Button.IsEnabled>
+																<MultiBinding Converter="{x:Static BoolConverters.And}">
+																	<Binding Path="CanAdd" />
+																	<Binding Path="$parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol" />
+																</MultiBinding>
+															</Button.IsEnabled>
 														</Button>
 													</DataTemplate>
 												</DataGridTemplateColumn.CellTemplate>
@@ -693,6 +720,7 @@
 									</StackPanel>
 									<DataGrid
 										ItemsSource="{Binding FilteredMonitorSymbols}"
+										ContextRequested="ShowSymbolCopyMenu"
 										Classes="symbol-settings"
 										x:Name="MonitorVariablesGrid"
 										Classes.symbol-properties-open="{Binding #MonitorVariableProperties.IsVisible}"
@@ -803,6 +831,7 @@
 																	</MultiBinding>
 																</ComboBox.IsEnabled>
 															</ComboBox>
+														<ContentControl Content="{Binding}" ContentTemplate="{StaticResource BitAliasControls}" />
 														</StackPanel>
 														<controls:SymbolInputCell Symbol="{Binding}"
 																				  IsEnabled="{Binding $parent[Window].DataContext.GlobalStatusInstance.CanEditMonitorSymbol}" />
@@ -862,6 +891,7 @@
 									<DataGrid
 										IsEnabled="{Binding !ImportCoordinator.IsBusy}"
 										ItemsSource="{Binding FilteredSymbols}"
+										ContextRequested="ShowSymbolCopyMenu"
 										AutoGenerateColumns="False"
 										CanUserSortColumns="True"
 										IsReadOnly="True"
@@ -907,6 +937,7 @@
 									<DataGrid
 										IsEnabled="{Binding !ImportCoordinator.IsBusy}"
 										ItemsSource="{Binding FilteredCalibrateSymbols}"
+										ContextRequested="ShowSymbolCopyMenu"
 										Classes="symbol-settings"
 										x:Name="CalibrateVariablesGrid"
 										Classes.symbol-properties-open="{Binding #CalibrateVariableProperties.IsVisible}"
@@ -991,6 +1022,7 @@
 																	</MultiBinding>
 																</ComboBox.IsEnabled>
 															</ComboBox>
+														<ContentControl Content="{Binding}" ContentTemplate="{StaticResource BitAliasControls}" />
 														</StackPanel>
 														<StackPanel Orientation="Horizontal" Spacing="8">
 															<TextBlock Text="最小值" VerticalAlignment="Center" />

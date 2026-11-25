@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "发布 win-x64",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "UniversalHost/UniversalHost.csproj",
+                "--configuration",
+                "Release",
+                "--runtime",
+                "win-x64",
+                "--output",
+                "publish/win-x64",
+                "--self-contained",
+                "false",
+                "-p:PublishSingleFile=true"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        }
+    ]
+}

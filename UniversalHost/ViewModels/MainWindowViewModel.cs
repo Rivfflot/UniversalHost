@@ -422,6 +422,30 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     private Task OpenUserManualAsync() => OpenDocumentationAsync("使用说明");
 
     [ReactiveCommand]
+    private async Task OpenProjectDirectoryAsync(Window window)
+    {
+        var projectPath = ProjectSaveService.Instance.ProjectFilePath;
+        if (!GlobalStatus.Instance.IsProjectOpened || string.IsNullOrWhiteSpace(projectPath)) return;
+
+        try
+        {
+            var folder = Path.GetDirectoryName(Path.GetFullPath(projectPath));
+            if (folder is null || !Directory.Exists(folder))
+            {
+                NotificationService.Show("打开工程目录失败", $"目录不存在或无法访问：{folder}", NotificationType.Warning);
+                return;
+            }
+
+            if (!await window.Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(folder)))
+                NotificationService.Show("打开工程目录失败", $"系统无法打开目录：{folder}", NotificationType.Warning);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Show("打开工程目录失败", ex.Message, NotificationType.Warning);
+        }
+    }
+
+    [ReactiveCommand]
     private void OpenGitHubRepository()
     {
         try

@@ -152,6 +152,16 @@ public partial class UserSymbolInfo : SymbolInfo
     private readonly Dictionary<int, SymbolBitAlias> _bitAliases = [];
     private readonly Lock _bitAliasesGate = new();
 
+    [JsonIgnore]
+    public bool HasBitAliases
+    {
+        get
+        {
+            lock (_bitAliasesGate)
+                return _bitAliases.Values.Any(bitAlias => !string.IsNullOrWhiteSpace(bitAlias.Alias));
+        }
+    }
+
     // 只保存非空别名；没有位别名的变量不输出此属性。
     [JsonPropertyName("BitAliases")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -198,8 +208,11 @@ public partial class UserSymbolInfo : SymbolInfo
         {
             if (!_bitAliases.TryGetValue(index, out var bitAlias))
             {
-                bitAlias = new SymbolBitAlias(index,
-                    () => this.RaisePropertyChanged(nameof(BitAliasesStorage)));
+                bitAlias = new SymbolBitAlias(index, () =>
+                {
+                    this.RaisePropertyChanged(nameof(BitAliasesStorage));
+                    this.RaisePropertyChanged(nameof(HasBitAliases));
+                });
                 _bitAliases.Add(index, bitAlias);
             }
             return bitAlias;

@@ -194,7 +194,10 @@
 						</DataTemplate>
 					</MenuItem.HeaderTemplate>
 					<MenuItem.Items>
-						<MenuItem Header="{Binding Source={x:Static services:ProjectSaveService.Instance},Path=ProjectFilePath}"/>
+						<MenuItem Header="{Binding Source={x:Static services:ProjectSaveService.Instance},Path=ProjectFilePath}"
+								  Command="{Binding OpenProjectDirectoryCommand}"
+								  CommandParameter="{Binding $parent[Window]}"
+								  IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=IsProjectOpened}" />
 					</MenuItem.Items>
 				</MenuItem>
 				<MenuItem Header="重置窗口布局"

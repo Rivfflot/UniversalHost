@@ -532,6 +532,9 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     #endregion
 
     [ReactiveCommand]
+    private void ClearBitAliases(UserSymbolInfo symbol) => symbol.BitAliasesStorage = null;
+
+    [ReactiveCommand]
     private void ClearAllBitAliases()
     {
         var settings = ProjectSaveService.Instance.Settings;
