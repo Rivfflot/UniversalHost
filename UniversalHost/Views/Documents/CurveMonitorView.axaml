@@ -134,7 +134,11 @@
                     Header="⚙️"
                     Classes="toolbar-icon-button"
                     ToolTip.Tip="设置"
-                    Cursor="Hand"/>
+                    Cursor="Hand">
+                    <MenuItem Header="重置曲线颜色"
+                              Command="{Binding ResetCurveColorsCommand}"
+                              CommandParameter="{Binding #CurvePlot.Plot.Add.Palette}"/>
+                </MenuItem>
             </Menu>
 
             <Border Grid.Row="1" Height="0.5" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" />

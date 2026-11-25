@@ -140,8 +140,6 @@
 					Command="{Binding SaveMonitorDataCommand}"
 					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=CanEditMonitorSymbol}"/>
 				<MenuItem
-					Header="读取监控数据"/>
-				<MenuItem
 					Header="新建表格监控窗口"
 					Command="{Binding AddGridMonitorPanelCommand}"/>
 				<MenuItem

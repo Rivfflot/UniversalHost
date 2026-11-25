@@ -62,6 +62,8 @@ public partial class CurveMonitorLayout : ReactiveObject
             set
             {
                 HasColor = true;
+                if (Signal is { } signal)
+                    signal.Color = new ScottPlot.Color(value.R, value.G, value.B, value.A);
                 this.RaiseAndSetIfChanged(ref _color, value);
                 Brush = Avalonia.Media.Brush.Parse(Color.ToString());
                 this.RaisePropertyChanged(nameof(Brush));
@@ -311,6 +313,16 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
             CurvesLayout.CurvesSource.Add(newItem);
             AddCurve?.Invoke(newItem);
         }
+    }
+    [ReactiveCommand]
+    private void ResetCurveColors(IPalette? palette)
+    {
+        if (palette == null || DisplayCurves.Count == 0) return;
+
+        for (int i = 0; i < DisplayCurves.Count; i++)
+            DisplayCurves[i].Color = Avalonia.Media.Color.FromUInt32(palette.GetColor(i).ARGB);
+
+        RefreshCurve?.Invoke();
     }
     [ReactiveCommand]
     private void SelectCurveItem(int number)
