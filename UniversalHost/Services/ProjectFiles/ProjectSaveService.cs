@@ -1,4 +1,4 @@
-﻿using Dock.Model.Controls;
+using Dock.Model.Controls;
 using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
@@ -14,6 +14,7 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
 
@@ -119,6 +120,7 @@ public class ProjectSaveService : ReactiveObject
 
     private readonly CompositeDisposable _disposables = [];
     private static readonly Dock.Serializer.SystemTextJson.DockSerializer _dockSerializer = new();
+    private static readonly SemaphoreSlim _saveGate = new(1, 1);
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true
@@ -132,100 +134,88 @@ public class ProjectSaveService : ReactiveObject
     private static async Task SaveSettingsAsync(string path, ProjectSettings settings)
     {
         var settingsSnapshot = CreateSettingsSnapshot(settings, path, path);
-        await using var fileStream = new FileStream(
-            path,
-            FileMode.OpenOrCreate,
-            FileAccess.ReadWrite,
-            FileShare.None,
-            65536,
-            true);
-
-        using var archive =
-            new ZipArchive(fileStream, ZipArchiveMode.Update);
-
-        // 更新前检查格式版本，避免覆盖当前程序无法读取的工程。
-        ProjectMetadataService.Read(archive);
-
-        //删除旧 ProjectSaveService.Instance.Settings.json
-        archive.GetEntry(SettingsEntryName)?.Delete();
-
-        var settingsEntry =
-            archive.CreateEntry(
-                SettingsEntryName,
-                CompressionLevel.Optimal);
-
-        await using (var stream = settingsEntry.Open())
+        await SaveArchiveAsync(path, ZipArchiveMode.Update, async archive =>
         {
-            await JsonSerializer.SerializeAsync(
-                stream,
-                settingsSnapshot,
-                _jsonOptions);
-        }
-        await ProjectMetadataService.SaveAsync(archive);
+            // 更新前检查格式版本，避免覆盖当前程序无法读取的工程。
+            ProjectMetadataService.Read(archive);
+            archive.GetEntry(SettingsEntryName)?.Delete();
+            await WriteJsonEntryAsync(archive, SettingsEntryName, settingsSnapshot);
+            await ProjectMetadataService.SaveAsync(archive);
+        });
     }
+
     public static async Task SaveProjectAsync(string path, IRootDock layout)
     {
         var settingsSnapshot = CreateSettingsSnapshot(Instance.Settings, Instance.ProjectFilePath, path);
-        var options = new JsonSerializerOptions
+        await SaveArchiveAsync(path, ZipArchiveMode.Create, async archive =>
         {
-            WriteIndented = true
-        };
+            await ProjectMetadataService.SaveAsync(archive);
+            await WriteJsonEntryAsync(archive, SettingsEntryName, settingsSnapshot);
 
-        await using var fileStream = new FileStream(
-            path,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            65536,
-            true);
+            var layoutEntry = archive.CreateEntry(LayoutEntryName, CompressionLevel.Optimal);
+            await using (var stream = await layoutEntry.OpenAsync())
+            await using (var writer = new StreamWriter(stream))
+                await writer.WriteAsync(_dockSerializer.Serialize(layout));
 
-        using var archive =
-            new ZipArchive(fileStream, ZipArchiveMode.Create);
-
-        await ProjectMetadataService.SaveAsync(archive);
-
-        // settings.json
-        var settingsEntry =
-            archive.CreateEntry(
-                SettingsEntryName,
-                CompressionLevel.Optimal);
-
-        await using (var stream = settingsEntry.Open())
-        {
-            await JsonSerializer.SerializeAsync(
-                stream,
-                settingsSnapshot,
-                options);
-        }
-
-        // layout.json
-        var layoutEntry =
-            archive.CreateEntry(
-                LayoutEntryName,
-                CompressionLevel.Optimal);
-        await using (var stream = layoutEntry.Open())
-        await using (var writer = new StreamWriter(stream))
-        {
-            await writer.WriteAsync(
-                _dockSerializer.Serialize(layout));
-
-        }
-
-        // context.json
-        var contextEntry =
-            archive.CreateEntry(
-                ContextEntryName,
-                CompressionLevel.Optimal);
-
-        await using (var stream = contextEntry.Open())
-        {
             DockableRegistry.UpdateContextSave();
-            await JsonSerializer.SerializeAsync(
-                stream,
-                DockableRegistry.ContextSave,
-                options);
+            await WriteJsonEntryAsync(archive, ContextEntryName, DockableRegistry.ContextSave);
+        });
+    }
+
+    private static async Task SaveArchiveAsync(string path, ZipArchiveMode mode, Func<ZipArchive, Task> writeEntries)
+    {
+        path = Path.GetFullPath(path);
+        var temporaryPath = Path.Combine(Path.GetDirectoryName(path)!, $".uhprj-{Guid.NewGuid():N}.tmp");
+        bool temporaryCreated = false;
+        // 自动保存和手动保存依次进行，设置更新始终基于上次提交的归档。
+        await _saveGate.WaitAsync();
+        try
+        {
+            await using (var temporary = new FileStream(temporaryPath, FileMode.CreateNew,
+                FileAccess.ReadWrite, FileShare.None, 65536, useAsync: true))
+            {
+                temporaryCreated = true;
+                if (mode == ZipArchiveMode.Update)
+                {
+                    await using var original = new FileStream(path, FileMode.Open,
+                        FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+                    await original.CopyToAsync(temporary);
+                    temporary.Position = 0;
+                }
+
+                await using (var archive = await ZipArchive.CreateAsync(temporary, mode, leaveOpen: true, entryNameEncoding: null))
+                    await writeEntries(archive);
+
+                await Task.Run(() => temporary.Flush(flushToDisk: true));
+            }
+
+            if (mode == ZipArchiveMode.Update || File.Exists(path))
+                File.Replace(temporaryPath, path, destinationBackupFileName: null);
+            else
+                File.Move(temporaryPath, path);
+            temporaryCreated = false;
+        }
+        finally
+        {
+            _saveGate.Release();
+            if (temporaryCreated)
+            {
+                try { File.Delete(temporaryPath); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    LogService.ForModule(LogModule.Project).Warning(ex, "清理工程临时文件失败: {TemporaryPath}", temporaryPath);
+                }
+            }
         }
     }
+
+    private static async Task WriteJsonEntryAsync<T>(ZipArchive archive, string name, T value)
+    {
+        var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+        await using var stream = await entry.OpenAsync();
+        await JsonSerializer.SerializeAsync(stream, value, _jsonOptions);
+    }
+
 
     // 仅调整保存快照：另存为到其他目录时继续指向原文件，不修改当前工程设置。
     private static JsonNode CreateSettingsSnapshot(ProjectSettings settings, string sourcePath, string targetPath)

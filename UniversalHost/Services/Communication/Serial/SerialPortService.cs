@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
@@ -58,8 +59,9 @@ public sealed class SerialPortService : ICommService
         try
         {
             linked.Token.ThrowIfCancellationRequested();
-            byte[] bytes = data.ToArray();
-            TimeSpan wireTime = _options.GetTransmissionTime(bytes.Length);
+            if (!MemoryMarshal.TryGetArray(data, out var bytes))
+                bytes = new ArraySegment<byte>(data.ToArray());
+            TimeSpan wireTime = _options.GetTransmissionTime(bytes.Count);
             TimeSpan writeBudget = wireTime + TimeSpan.FromMilliseconds(
                 Math.Max(1000, _options.TimeoutMilliseconds * 2) + _options.TurnaroundDelayMilliseconds * 2);
             using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(linked.Token);
@@ -80,7 +82,7 @@ public sealed class SerialPortService : ICommService
                 await Task.Run(() =>
                 {
                     writeCts.Token.ThrowIfCancellationRequested();
-                    _serialPort.Write(bytes, 0, bytes.Length);
+                    _serialPort.Write(bytes.Array!, bytes.Offset, bytes.Count);
                     _serialPort.BaseStream.Flush();
                 }).ConfigureAwait(false);
                 writeCts.Token.ThrowIfCancellationRequested();
