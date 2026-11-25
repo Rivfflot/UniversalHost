@@ -36,9 +36,7 @@ public partial class DeviceConfig : ReactiveObject, IJsonOnDeserialized
         Symbols.Edit(list =>
         {
             list.Clear();
-            list.AddRange(FirmwareSnapshots.SelectMany(image => image.Symbols
-                .Where(symbol => symbol.Address <= uint.MaxValue)
-                .Select(symbol => FirmwareSymbolService.ToSymbolInfo(image, symbol))));
+            list.AddRange(FirmwareSnapshots.SelectMany(FirmwareSymbolService.CreateRootSymbols));
         });
     }
 }

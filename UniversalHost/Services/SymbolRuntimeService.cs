@@ -72,14 +72,7 @@ public static class SymbolRuntimeService
         //DataType改变时重建改变的符号
         ProjectSaveService.Instance.Settings.MonitorConfig.MonitoredSymbols
                     .Connect()
-                    .AutoRefresh(x => x.DataType)
-                   .AutoRefresh(x => x.Address)
-                   .AutoRefresh(x => x.Offset)
-                   .AutoRefresh(x => x.Mode)
-                   .AutoRefresh(x => x.Access)
-                   .AutoRefresh(x => x.MemberPath)
-                   .AutoRefresh(x => x.Definition)
-                   .AutoRefresh(x => x.Target)
+                    .AutoRefreshOnObservable(ObserveLayoutChanges)
                     .WhereReasonsAre(ChangeReason.Refresh)
                     .Subscribe(changes =>
                     {
@@ -92,14 +85,7 @@ public static class SymbolRuntimeService
 
         ProjectSaveService.Instance.Settings.CalibrateConfig.CalibratedSymbols
                    .Connect()
-                   .AutoRefresh(x => x.DataType)
-                   .AutoRefresh(x => x.Address)
-                   .AutoRefresh(x => x.Offset)
-                   .AutoRefresh(x => x.Mode)
-                   .AutoRefresh(x => x.Access)
-                   .AutoRefresh(x => x.MemberPath)
-                   .AutoRefresh(x => x.Definition)
-                   .AutoRefresh(x => x.Target)
+                   .AutoRefreshOnObservable(ObserveLayoutChanges)
                    .WhereReasonsAre(ChangeReason.Refresh)
                    .Subscribe(changes =>
                    {
@@ -135,6 +121,12 @@ public static class SymbolRuntimeService
                    })
                    .DisposeWith(_disposables);
     }
+
+    private static IObservable<string?> ObserveLayoutChanges(UserSymbolInfo symbol) =>
+        symbol.Changed.Select(change => change.PropertyName).Where(name => name is
+            nameof(UserSymbolInfo.DataType) or nameof(UserSymbolInfo.Address) or nameof(UserSymbolInfo.Offset) or
+            nameof(UserSymbolInfo.Mode) or nameof(UserSymbolInfo.Access) or nameof(UserSymbolInfo.MemberPath) or
+            nameof(UserSymbolInfo.Definition) or nameof(UserSymbolInfo.Target));
 
     private static void UpdateMonitoredSymbolsValueString()
     {

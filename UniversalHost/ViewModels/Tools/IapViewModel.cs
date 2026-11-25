@@ -4,7 +4,6 @@ using ReactiveUI.Binding.Reactive;
 using ReactiveUI.Reactive;
 using ReactiveUI.SourceGenerators;
 using System;
-using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;

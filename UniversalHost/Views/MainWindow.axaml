@@ -71,13 +71,25 @@
 				<MenuItem
 					Header="新建"
 					Command="{Binding NewProjectFileCommand}"
-					CommandParameter="{Binding $parent[Window]}"
-					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
+					CommandParameter="{Binding $parent[Window]}">
+					<MenuItem.IsEnabled>
+						<MultiBinding Converter="{x:Static BoolConverters.And}">
+							<Binding Source="{x:Static services:GlobalStatus.Instance}" Path="!IsConnected" />
+							<Binding Source="{x:Static services:GlobalStatus.Instance}" Path="!IsIapRunning" />
+						</MultiBinding>
+					</MenuItem.IsEnabled>
+				</MenuItem>
 				<MenuItem
 					Header="打开"
 					Command="{Binding OpenProjectFileCommand}"
-					CommandParameter="{Binding $parent[Window]}"
-					IsEnabled="{Binding Source={x:Static services:GlobalStatus.Instance}, Path=!IsConnected}"/>
+					CommandParameter="{Binding $parent[Window]}">
+					<MenuItem.IsEnabled>
+						<MultiBinding Converter="{x:Static BoolConverters.And}">
+							<Binding Source="{x:Static services:GlobalStatus.Instance}" Path="!IsConnected" />
+							<Binding Source="{x:Static services:GlobalStatus.Instance}" Path="!IsIapRunning" />
+						</MultiBinding>
+					</MenuItem.IsEnabled>
+				</MenuItem>
 				<MenuItem
 					Command="{Binding SaveProjectCommand}"
 					Header="保存"

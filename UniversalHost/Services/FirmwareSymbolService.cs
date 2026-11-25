@@ -22,15 +22,24 @@ public static class FirmwareSymbolService
     public static FirmwareImage? FindImage(DeviceConfig device, SymbolInfo symbol) =>
         device.FirmwareSnapshots.SingleOrDefault(f => f.SourcePath == symbol.SourceKey);
 
-    public static SymbolInfo ToSymbolInfo(FirmwareImage image, FirmwareSymbol symbol) => new()
+    internal static IEnumerable<SymbolInfo> CreateRootSymbols(FirmwareImage image)
     {
-        SourceFileName = Path.GetFileName(image.SourcePath),
-        SourceKey = image.SourcePath,
-        Name = symbol.Name,
-        Address = checked((uint)symbol.Address),
-        Size = checked((uint)Math.Min(symbol.SizeUnits, uint.MaxValue)),
-        Definition = symbol
-    };
+        var fileName = Path.GetFileName(image.SourcePath);
+        foreach (var symbol in image.Symbols)
+        {
+            if (symbol.Address > uint.MaxValue)
+                continue;
+            yield return new SymbolInfo
+            {
+                SourceFileName = fileName,
+                SourceKey = image.SourcePath,
+                Name = symbol.Name,
+                Address = (uint)symbol.Address,
+                Size = (uint)Math.Min(symbol.SizeUnits, uint.MaxValue),
+                Definition = symbol
+            };
+        }
+    }
 
     public static UserSymbolInfo CreateAccess(DeviceConfig device, SymbolInfo root, string path, bool manual)
     {
@@ -183,7 +192,7 @@ public static class FirmwareSymbolService
             settings.DeviceConfig.Symbols.Edit(list =>
             {
                 list.RemoveMany(list.Where(s => s.SourceKey == source).ToArray());
-                list.AddRange(image.Symbols.Where(s => s.Address <= uint.MaxValue).Select(s => ToSymbolInfo(image, s)));
+                list.AddRange(CreateRootSymbols(image));
             });
             foreach (var item in items)
             {

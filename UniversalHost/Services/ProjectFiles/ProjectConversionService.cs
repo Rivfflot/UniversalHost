@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -15,13 +14,8 @@ namespace UniversalHost.Services;
 // 主程序只识别版本并调用独立工具；所有历史结构和转换步骤均属于转换器。
 internal static class ProjectConversionService
 {
-    public static async Task<ProjectConversionResult?> EnsureCurrentAsync(string path, CancellationToken token = default)
+    public static async Task<ProjectConversionResult> ConvertAsync(string path, int fromVersion, CancellationToken token = default)
     {
-        ProjectMetadata metadata;
-        using (var archive = ZipFile.OpenRead(path))
-            metadata = ProjectMetadataService.Read(archive, allowOlderVersion: true);
-        if (metadata.FormatVersion == ProjectMetadata.CurrentFormatVersion) return null;
-
         var executable = Path.Combine(AppContext.BaseDirectory, "dependencies",
             OperatingSystem.IsWindows() ? "UniversalHost.ProjectConverter.exe" : "UniversalHost.ProjectConverter");
         if (!File.Exists(executable))
@@ -43,7 +37,7 @@ internal static class ProjectConversionService
         timeout.CancelAfter(TimeSpan.FromMinutes(10));
         using var process = new Process { StartInfo = start };
         LogService.ForModule(LogModule.Project).Information("开始转换工程格式 {FromVersion} → {ToVersion}: {ProjectPath}",
-            metadata.FormatVersion, ProjectMetadata.CurrentFormatVersion, path);
+            fromVersion, ProjectMetadata.CurrentFormatVersion, path);
         try
         {
             timeout.Token.ThrowIfCancellationRequested();
@@ -56,10 +50,6 @@ internal static class ProjectConversionService
                 throw new InvalidDataException($"工程转换失败，原文件已保留: {(await error).Trim()}");
             var result = JsonSerializer.Deserialize<ProjectConversionResult>(await output)
                 ?? throw new InvalidDataException("转换器未返回结果。");
-            if (result.ToVersion != ProjectMetadata.CurrentFormatVersion)
-                throw new InvalidDataException("转换器返回的格式版本与主程序不一致。");
-            using (var archive = ZipFile.OpenRead(path))
-                ProjectMetadataService.Read(archive);
             LogService.ForModule(LogModule.Project).Information("工程转换完成，原文件备份: {BackupPath}", result.BackupPath);
             if (result.RemovedSymbols.Count > 0)
                 LogService.ForModule(LogModule.Project).Warning("工程转换删除 {Count} 个无法匹配的变量: {RemovedSymbols}",

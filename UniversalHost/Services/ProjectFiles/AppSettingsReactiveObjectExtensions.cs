@@ -51,19 +51,6 @@ public static class AppSettingsReactiveObjectExtensions
             yield return reactiveObj.Changed.Select(_ => Unit.Default);
         }
 
-        //添加SourceList
-        if (obj is ISourceList<UserSymbolInfo> userSymbols)
-            yield return Observable.Merge(
-            userSymbols.Connect().Select(_ => Unit.Default),
-            userSymbols.Connect().MergeMany(item => item.Changed.Select(_ => Unit.Default))
-        );
-
-        if (obj is ISourceList<SymbolInfo> symbols)
-            yield return Observable.Merge(
-            symbols.Connect().Select(_ => Unit.Default),
-            symbols.Connect().MergeMany(item => item.Changed.Select(_ => Unit.Default))
-        );
-
         if (obj is ISourceList<string> paths)
             yield return paths.Connect().Select(_ => Unit.Default);
 
@@ -91,6 +78,9 @@ public static class AppSettingsReactiveObjectExtensions
 
         foreach (var prop in properties)
         {
+            // 根符号列表由已持久化的固件快照派生，不应为每个根符号建立自动保存订阅。
+            if (obj is DeviceConfig && prop.Name == nameof(DeviceConfig.Symbols))
+                continue;
             if (prop.GetIndexParameters().Length > 0)
                 continue;
 

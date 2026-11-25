@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
@@ -242,78 +241,63 @@ public class ProjectSaveService : ReactiveObject
         return snapshot;
     }
 
-    // 先完整读取工程，再释放旧文档、切换设置和运行时，最后重建文档。
-    public static IRootDock? LoadProject(string path)
+    internal sealed record LoadedProject(ProjectSettings Settings, DockableRegistry.ContextSaveClass? Context, IRootDock? Layout);
+
+    internal static Task<(LoadedProject Project, ProjectConversionResult? Conversion)> ReadProjectAsync(string path) =>
+        Task.Run<(LoadedProject, ProjectConversionResult?)>(async () =>
+        {
+            int formatVersion;
+            using (var stream = OpenProjectFile(path))
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
+            {
+                formatVersion = ProjectMetadataService.Read(archive, allowOlderVersion: true).FormatVersion;
+                if (formatVersion == ProjectMetadata.CurrentFormatVersion)
+                    return (ReadProjectEntries(archive), null);
+            }
+
+            var conversion = await ProjectConversionService.ConvertAsync(path, formatVersion);
+            using var convertedStream = OpenProjectFile(path);
+            using var convertedArchive = new ZipArchive(convertedStream, ZipArchiveMode.Read);
+            ProjectMetadataService.Read(convertedArchive);
+            return (ReadProjectEntries(convertedArchive), conversion);
+        });
+
+    private static FileStream OpenProjectFile(string path) =>
+        new(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+
+    private static LoadedProject ReadProjectEntries(ZipArchive archive)
     {
-        using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var settings = ReadJsonEntry<ProjectSettings>(archive.GetEntry(SettingsEntryName))
+            ?? throw new InvalidDataException("读取设置错误");
+        var context = ReadJsonEntry<DockableRegistry.ContextSaveClass>(archive.GetEntry(ContextEntryName));
 
-        using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
-
-        // 在反序列化业务模型前拒绝不支持的工程格式。
-        ProjectMetadataService.Read(archive);
-
-        // 读取 settings.json
-        ProjectSettings? settings = null;
-        var settingsEntry =
-            archive.GetEntry(SettingsEntryName);
-
-        if (settingsEntry != null)
-        {
-            string settingsJson;
-
-            using (var reader = new StreamReader(
-                       settingsEntry.Open()))
-            {
-                settingsJson = reader.ReadToEnd();
-            }
-
-            settings = JsonSerializer.Deserialize<ProjectSettings>(settingsJson);
-        }
-        if (settings == null)
-        {
-            throw new System.Exception("读取设置错误");
-        }
-        // 读取 context.json
         IRootDock? layout = null;
-        DockableRegistry.ContextSaveClass? context = null;
-        var contextEntry =
-            archive.GetEntry(ContextEntryName);
-
-        if (contextEntry != null)
+        if (context != null && archive.GetEntry(LayoutEntryName) is { } layoutEntry)
         {
-            string contextJson;
-
-            using (var reader = new StreamReader(
-                       contextEntry.Open()))
-            {
-                contextJson = reader.ReadToEnd();
-            }
-            // 此阶段只读取显示项 Id 和布局数据；运行时关联由 VM 重建时完成。
-            context = JsonSerializer.Deserialize<DockableRegistry.ContextSaveClass>(contextJson);
+            using var reader = new StreamReader(layoutEntry.Open());
+            layout = _dockSerializer.Deserialize<IRootDock>(reader.ReadToEnd());
         }
-        if (context != null)
-        {
-            // 读取 layout.json
-            var layoutEntry = archive.GetEntry(LayoutEntryName);
-            if (layoutEntry != null)
-            {
 
-                string layoutJson;
-
-                using (var reader = new StreamReader(layoutEntry.Open()))
-                {
-                    layoutJson = reader.ReadToEnd();
-                }
-
-                layout = _dockSerializer.Deserialize<IRootDock>(layoutJson);
-            }
-        }
-        DockableRegistry.ClearAllDocuments();
-        Update(path, settings);
-        // Update 已建立新工程运行时，现在才能恢复各文档的变量引用。
-        DockableRegistry.RebuildViewModels(context ?? new DockableRegistry.ContextSaveClass());
-        return layout;
+        return new LoadedProject(settings, context, layout);
     }
+
+    private static T? ReadJsonEntry<T>(ZipArchiveEntry? entry) where T : class
+    {
+        if (entry == null)
+            return null;
+
+        using var stream = entry.Open();
+        return JsonSerializer.Deserialize<T>(stream);
+    }
+
+    internal static void ApplyProject(string path, LoadedProject project)
+    {
+        // 数据已完整读取，再切换当前工程并恢复引用新运行时的窗口。
+        DockableRegistry.ClearAllDocuments();
+        Update(path, project.Settings);
+        DockableRegistry.RebuildViewModels(project.Context ?? new DockableRegistry.ContextSaveClass());
+    }
+
     public static void Update(string path, ProjectSettings? settings = null)
     {
         Instance._disposables.Clear();

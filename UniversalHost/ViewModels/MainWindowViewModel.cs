@@ -269,12 +269,13 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         try
         {
             var path = Path.GetFullPath(projectPath);
-            var conversion = await ProjectConversionService.EnsureCurrentAsync(path);
+            var (project, conversion) = await ProjectSaveService.ReadProjectAsync(path);
             if (conversion is { RemovedSymbols.Count: > 0 })
                 NotificationService.Show($"工程转换完成：已删除 {conversion.RemovedSymbols.Count} 个无法匹配的变量",
                     string.Join(Environment.NewLine, conversion.RemovedSymbols.Select(
                         item => $"{item.Group}: {item.Name} ({item.Source})，{item.Reason}")), NotificationType.Warning);
-            var layout = ProjectSaveService.LoadProject(path);
+            ProjectSaveService.ApplyProject(path, project);
+            var layout = project.Layout;
             _disposables.Clear();
             if (layout == null)
             {
@@ -296,6 +297,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             NotificationService.Show("读取错误", ex.Message, NotificationType.Error);
         }
     }
+
     [ReactiveCommand]
     private async Task SaveAsProjectFileAsync(Window window)
     {
