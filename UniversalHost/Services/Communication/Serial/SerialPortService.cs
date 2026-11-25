@@ -51,9 +51,7 @@ public sealed class SerialPortService : ICommService
     private void OnErrorReceived(object sender, SerialErrorReceivedEventArgs args) =>
         Interlocked.Exchange(ref _receiveError, 1);
 
-    public void Send(ReadOnlySpan<byte> data) => SendAsync(data.ToArray()).GetAwaiter().GetResult();
-
-    public async Task<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+    public async ValueTask<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _shutdown.Token);
         await _sendGate.WaitAsync(linked.Token).ConfigureAwait(false);
@@ -123,13 +121,6 @@ public sealed class SerialPortService : ICommService
                 _serialPort.DiscardOutBuffer();
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException) { }
-    }
-
-    public byte[]? Receive()
-    {
-        byte[] buffer = new byte[4096];
-        int length = ReceiveAsync(buffer, CancellationToken.None).AsTask().GetAwaiter().GetResult();
-        return length > 0 ? buffer.AsSpan(0, length).ToArray() : null;
     }
 
     public async ValueTask<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)

@@ -6,8 +6,6 @@ namespace UniversalHost.Services.Communication;
 
 public interface ICommService : IAsyncDisposable
 {
-    void Send(ReadOnlySpan<byte> data);
-    Task<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default);
-    byte[]? Receive();
+    ValueTask<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default);
     ValueTask<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct);
 }

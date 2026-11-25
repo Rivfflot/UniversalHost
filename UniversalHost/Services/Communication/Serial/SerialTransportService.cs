@@ -60,9 +60,7 @@ public sealed class SerialTransportService : ICommService
         _wireSendBuffer = new byte[SerialTransportProtocol.GetMaxWireLength(_rawSendBuffer.Length) + 1];
     }
 
-    public void Send(ReadOnlySpan<byte> data) => SendAsync(data.ToArray()).GetAwaiter().GetResult();
-
-    public async Task<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+    public async ValueTask<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _shutdown.Token);
         await _sendGate.WaitAsync(linked.Token).ConfigureAwait(false);
@@ -100,13 +98,6 @@ public sealed class SerialTransportService : ICommService
         {
             _sendGate.Release();
         }
-    }
-
-    public byte[]? Receive()
-    {
-        byte[] buffer = new byte[SerialTransportProtocol.GetMaxRawLength(_protocol)];
-        int length = ReceiveAsync(buffer, CancellationToken.None).AsTask().GetAwaiter().GetResult();
-        return buffer.AsSpan(0, length).ToArray();
     }
 
     public async ValueTask<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)

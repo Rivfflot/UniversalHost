@@ -25,19 +25,9 @@ public class UdpService : ICommService
             null);
         _udpClient.Connect(new IPEndPoint(IPAddress.Parse(remoteAddr), remotePort));
     }
-    public void Send(ReadOnlySpan<byte> data)
-    {
-        _udpClient.Client.Send(data, SocketFlags.None);
-    }
-    public async Task<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
-    {
-        return await _udpClient.SendAsync(data, ct);
-    }
-    public byte[]? Receive()
-    {
-        var ep = new IPEndPoint(IPAddress.Any, 0);
-        return _udpClient.Receive(ref ep);
-    }
+
+    public ValueTask<int> SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+        _udpClient.Client.SendAsync(data, SocketFlags.None, ct);
 
     public ValueTask<int> ReceiveAsync(Memory<byte> buffer, CancellationToken ct) =>
         _udpClient.Client.ReceiveAsync(buffer, SocketFlags.None, ct);
