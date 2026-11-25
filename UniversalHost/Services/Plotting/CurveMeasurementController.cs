@@ -2,11 +2,12 @@ using ScottPlot;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using UniversalHost.Models;
 using UniversalHost.Models.Plotting;
 
 namespace UniversalHost.Services.Plotting;
 
-internal sealed record CurveMeasurementTarget(CurvePlotBuffer History, IYAxis YAxis, string Label, bool IsVisible);
+internal sealed record CurveMeasurementTarget(SampleHistoryBuffer History, IYAxis YAxis, string Label, bool IsVisible);
 
 /// <summary>管理临时测量位置和读数，鼠标捕获与控件输入路由由视图处理。</summary>
 internal sealed class CurveMeasurementController : IDisposable

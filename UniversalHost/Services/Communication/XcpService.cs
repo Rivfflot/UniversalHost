@@ -111,32 +111,23 @@ public static class XcpService
 
 public class XcpClient : IAsyncDisposable
 {
-    public readonly struct DaqFrame : IDisposable
+    // 接收线程顺序填充内存，队列中的帧持有切片。最后一个使用者归还数组。
+    private sealed class ReceiveSlab
     {
-        public readonly byte Pid;
-        public readonly long Timestamp;
-
-        public readonly IMemoryOwner<byte> Owner;
-        public readonly int Length;
-
-        public ReadOnlyMemory<byte> Data
-            => Owner.Memory[..Length];
-
-        public DaqFrame(
-            byte pid,
-            long timestamp,
-            IMemoryOwner<byte> owner,
-            int length)
+        public readonly byte[] Buffer = ArrayPool<byte>.Shared.Rent(128 * 1024);
+        private int _references = 1;
+        public void Retain() => Interlocked.Increment(ref _references);
+        public void Release()
         {
-            Pid = pid;
-            Timestamp = timestamp;
-            Owner = owner;
-            Length = length;
+            if (Interlocked.Decrement(ref _references) == 0)
+                ArrayPool<byte>.Shared.Return(Buffer);
         }
-        public void Dispose()
-        {
-            Owner.Dispose();
-        }
+    }
+
+    private readonly record struct DaqFrame(ReadOnlyMemory<byte> Data, ReceiveSlab Slab) : IDisposable
+    {
+        public byte Pid => Data.Span[4];
+        public void Dispose() => Slab.Release();
     }
     public struct DaqEntry
     {
@@ -585,50 +576,70 @@ public class XcpClient : IAsyncDisposable
     }
     private async Task ReceiverLoop()
     {
-        using IMemoryOwner<byte> owner = _pool.Rent(ushort.MaxValue + 4);
-        while (!_cts.IsCancellationRequested)
+        const int maxDatagram = ushort.MaxValue + 4;
+        var slab = new ReceiveSlab();
+        int used = 0;
+        try
         {
-            int len = await _comm.ReceiveAsync(owner.Memory, _cts.Token);
-            if (len <= 0)
-                continue;
-            ReceiveStatistics.RecordDatagram();
-
-            // 下位机会将多个带 LEN/CTR 的 XCP 帧合并在同一个 UDP 数据报中。
-            int offset = 0;
-            while (offset < len)
+            while (!_cts.IsCancellationRequested)
             {
-                if (len - offset < 5)
+                if (slab.Buffer.Length - used < maxDatagram)
                 {
-                    ReceiveStatistics.RecordMalformedDatagram();
-                    LogService.ForModule(LogModule.Xcp).Warning("XCP 数据报帧头不完整：长度 {Length}，偏移 {Offset}", len, offset);
-                    break;
+                    var next = new ReceiveSlab();
+                    slab.Release();
+                    slab = next;
+                    used = 0;
                 }
-
-                int payloadLength = BinaryPrimitives.ReadUInt16LittleEndian(owner.Memory.Span.Slice(offset, 2));
-                if (payloadLength == 0 || payloadLength > len - offset - 4)
-                {
-                    ReceiveStatistics.RecordMalformedDatagram();
-                    LogService.ForModule(LogModule.Xcp).Warning("XCP 数据报帧长度无效：LEN={PayloadLength}，长度 {Length}，偏移 {Offset}", payloadLength, len, offset);
-                    break;
-                }
-
-                int frameLength = payloadLength + 4;
-                ReadOnlyMemory<byte> frame = owner.Memory.Slice(offset, frameLength);
-                // One counter per XCP message, including CRM/EV/SERV and every
-                // message inside an accumulated UDP datagram. ushort wraps normally.
-                ReceiveStatistics.RecordCounter(BinaryPrimitives.ReadUInt16LittleEndian(frame.Span[2..]));
-                byte pid = frame.Span[4];
-                ResetHeartbeatTimer();
-
-                if (pid == 0xFF || pid == 0xFE)
-                    HandleCto(frame[4..]);
-                else if (pid < 0xFC)
-                    HandleDaq(frame);
-                // EV (0xFD) 和 SERV (0xFC) 是异步消息，不能完成正在等待的命令。
-
-                // 此下位机的对齐填充已包含在 LEN 中，不再额外补齐。
-                offset += frameLength;
+                var destination = slab.Buffer.AsMemory(used, maxDatagram);
+                int len = await _comm.ReceiveAsync(destination, _cts.Token);
+                if (len <= 0) continue;
+                used += len;
+                DispatchDatagram(destination[..len], slab);
             }
+        }
+        finally { slab.Release(); }
+    }
+
+    private void DispatchDatagram(ReadOnlyMemory<byte> datagram, ReceiveSlab slab)
+    {
+        int len = datagram.Length;
+        ReceiveStatistics.RecordDatagram();
+
+        // 下位机会将多个带 LEN/CTR 的 XCP 帧合并在同一个 UDP 数据报中。
+        int offset = 0;
+        while (offset < len)
+        {
+            if (len - offset < 5)
+            {
+                ReceiveStatistics.RecordMalformedDatagram();
+                LogService.ForModule(LogModule.Xcp).Warning("XCP 数据报帧头不完整：长度 {Length}，偏移 {Offset}", len, offset);
+                break;
+            }
+
+            int payloadLength = BinaryPrimitives.ReadUInt16LittleEndian(datagram.Span.Slice(offset, 2));
+            if (payloadLength == 0 || payloadLength > len - offset - 4)
+            {
+                ReceiveStatistics.RecordMalformedDatagram();
+                LogService.ForModule(LogModule.Xcp).Warning("XCP 数据报帧长度无效：LEN={PayloadLength}，长度 {Length}，偏移 {Offset}", payloadLength, len, offset);
+                break;
+            }
+
+            int frameLength = payloadLength + 4;
+            ReadOnlyMemory<byte> frame = datagram.Slice(offset, frameLength);
+            // One counter per XCP message, including CRM/EV/SERV and every
+            // message inside an accumulated UDP datagram. ushort wraps normally.
+            ReceiveStatistics.RecordCounter(BinaryPrimitives.ReadUInt16LittleEndian(frame.Span[2..]));
+            byte pid = frame.Span[4];
+            ResetHeartbeatTimer();
+
+            if (pid == 0xFF || pid == 0xFE)
+                HandleCto(frame[4..]);
+            else if (pid < 0xFC)
+                HandleDaq(frame, slab);
+            // EV (0xFD) 和 SERV (0xFC) 是异步消息，不能完成正在等待的命令。
+
+            // 此下位机的对齐填充已包含在 LEN 中，不再额外补齐。
+            offset += frameLength;
         }
     }
     private void HandleCto(ReadOnlyMemory<byte> data)
@@ -636,7 +647,7 @@ public class XcpClient : IAsyncDisposable
         var tcs = Interlocked.Exchange(ref _ctoTcs, null);
         tcs?.TrySetResult(data.ToArray());
     }
-    private void HandleDaq(ReadOnlyMemory<byte> data)
+    private void HandleDaq(ReadOnlyMemory<byte> data, ReceiveSlab slab)
     {
         // CONNECT 期间或 DAQ 停止后到达的 DTO 不属于本轮监控。
         if (!Volatile.Read(ref _acceptDaqFrames))
@@ -646,10 +657,8 @@ public class XcpClient : IAsyncDisposable
         }
 
         ReceiveStatistics.RecordDaqReceived();
-        // 每帧持有独立内存，接收缓冲区可立即复用。
-        IMemoryOwner<byte> owner = _pool.Rent(data.Length);
-        data.CopyTo(owner.Memory);
-        var frame = new DaqFrame(data.Span[4], Stopwatch.GetTimestamp(), owner, data.Length);
+        slab.Retain();
+        var frame = new DaqFrame(data, slab);
 
         if (!_daqChannel.Writer.TryWrite(frame))
         {
@@ -691,7 +700,7 @@ public class XcpClient : IAsyncDisposable
             }
             finally
             {
-                frame.Dispose(); // 安全释放内存所有权归还 MemoryPool
+                frame.Dispose();
             }
         }
     }

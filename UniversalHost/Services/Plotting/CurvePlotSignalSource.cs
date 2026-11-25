@@ -3,12 +3,12 @@ using ScottPlot.DataSources;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UniversalHost.Models.Plotting;
+using UniversalHost.Models;
 
 namespace UniversalHost.Services.Plotting;
 
 /// <summary>把环形缓冲区的极值索引接入 Signal 的逐像素绘制和自动缩放。</summary>
-internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
+internal sealed class CurvePlotSignalSource(SampleHistoryBuffer history) :
     SignalSourceBase, ISignalSource, IDataSource, IReadOnlyList<double>
 {
     public override int Length => history.Count;
@@ -29,7 +29,7 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
 
     public override SignalRangeY GetLimitsY(int firstIndex, int lastIndex)
     {
-        CurvePlotRange range = history.GetRange(firstIndex, lastIndex);
+        SampleHistoryRange range = history.GetRange(firstIndex, lastIndex);
         return range.HasValues ? new(range.Minimum, range.Maximum) : new(double.NaN, double.NaN);
     }
 
@@ -38,7 +38,7 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
         int first = MinRenderIndex;
         int last = MaxRenderIndex;
         if (first > last) return AxisLimits.NoLimits;
-        CurvePlotRange range = history.GetRange(first, last);
+        SampleHistoryRange range = history.GetRange(first, last);
         if (!range.HasValues) return AxisLimits.HorizontalOnly(GetX(first), GetX(last));
         double y1 = range.Minimum * YScale + YOffset;
         double y2 = range.Maximum * YScale + YOffset;
@@ -72,7 +72,7 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
             return CurvePixelColumn.Empty;
         int i1 = GetIndex(left, true);
         int i2 = GetIndex(right, true);
-        CurvePlotRange range = history.GetRange(i1, i2);
+        SampleHistoryRange range = history.GetRange(i1, i2);
         if (!range.HasValues) return CurvePixelColumn.Empty;
 
         double enter = history.GetPhysicalValue(i1);
@@ -102,7 +102,7 @@ internal sealed class CurvePlotSignalSource(CurvePlotBuffer history) :
 /// <summary>无锁读取历史的屏幕数据，保留逐像素包络与原始点绘制。</summary>
 internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal, IDisposable
 {
-    private readonly CurvePlotBuffer _history;
+    private readonly SampleHistoryBuffer _history;
     private readonly CurvePixelColumnCache _columnCache;
     private PixelColumn[] _columns = [];
     private readonly List<Pixel> _markers = [];
@@ -117,7 +117,7 @@ internal sealed class CurvePlotSignal : ScottPlot.Plottables.Signal, IDisposable
         bool LowDensity, bool Envelope, long Revision);
     private SkiaSharp.SKPath Path => _path ??= new();
 
-    public CurvePlotSignal(CurvePlotBuffer history) : base(new CurvePlotSignalSource(history) { Period = 1 })
+    public CurvePlotSignal(SampleHistoryBuffer history) : base(new CurvePlotSignalSource(history) { Period = 1 })
     {
         _history = history;
         _columnCache = new(history);

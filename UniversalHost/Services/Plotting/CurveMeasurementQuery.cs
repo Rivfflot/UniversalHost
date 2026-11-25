@@ -1,12 +1,12 @@
 using System;
-using UniversalHost.Models.Plotting;
+using UniversalHost.Models;
 
 namespace UniversalHost.Services.Plotting;
 
 /// <summary>按绘图使用的物理采样索引查询，避免误用最新值为零的历史索引。</summary>
 internal static class CurveMeasurementQuery
 {
-    public static bool TryGetIntersection(CurvePlotBuffer history, double x, out double y)
+    public static bool TryGetIntersection(SampleHistoryBuffer history, double x, out double y)
     {
         y = double.NaN;
         int count = history.Count;
@@ -29,7 +29,7 @@ internal static class CurveMeasurementQuery
         return double.IsFinite(y);
     }
 
-    public static bool TryGetNearestPoint(CurvePlotBuffer history, double mouseX, double mouseY,
+    public static bool TryGetNearestPoint(SampleHistoryBuffer history, double mouseX, double mouseY,
         double xUnitsPerPixel, double yUnitsPerPixel, double radius,
         out int index, out double value)
     {
@@ -65,7 +65,7 @@ internal static class CurveMeasurementQuery
 
         double GetDistanceBound(int start, int end)
         {
-            CurvePlotRange range = history.GetRange(start, end);
+            SampleHistoryRange range = history.GetRange(start, end);
             if (!range.HasValues) return double.PositiveInfinity;
             double dx = (Math.Clamp(mouseX, start, end) - mouseX) / xUnitsPerPixel;
             double dy = (Math.Clamp(mouseY, range.Minimum, range.Maximum) - mouseY) / yUnitsPerPixel;

@@ -1,18 +1,18 @@
 using System;
 using System.Threading;
 
-namespace UniversalHost.Models.Plotting;
+namespace UniversalHost.Models;
 
 /// <summary>
-/// 曲线专用环形缓冲区。索引和导出仍按最新到最旧排列；绘图查询使用物理索引，
+/// 采样历史环形缓冲区。曲线索引从最新到最旧排列，范围查询使用物理索引，
 /// 保持扫描线从左到右、填满后环形覆盖的显示方式。
 /// 无锁读取允许跨越相邻采样更新，不保证数据与极值索引的整段快照一致。
 /// </summary>
-public sealed class CurvePlotBuffer
+public abstract class SampleHistoryBuffer
 {
     private const int BlockSize = 32;
-    private readonly double[] _buffer;
-    private readonly CurvePlotRange[] _ranges;
+    protected abstract double ReadPhysical(int index);
+    private readonly SampleHistoryRange[] _ranges;
     private readonly int _leafCount;
     private int _writeIndex;
     private int _count;
@@ -21,24 +21,24 @@ public sealed class CurvePlotBuffer
     private int _mutationVersion;
 
     internal double GetPhysicalValue(int index) => index >= 0 && index < _count
-        ? _buffer[index] : double.NaN;
+        ? ReadPhysical(index) : double.NaN;
 
-    public int Capacity => _buffer.Length;
+    public int Capacity { get; }
     public int Count => _count;
     public int WriteIndex => _writeIndex;
     public long Version => _version;
     internal long LastClearVersion => _lastClearVersion;
 
-    public CurvePlotBuffer(int capacity)
+    protected SampleHistoryBuffer(int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
-        _buffer = new double[capacity];
+        Capacity = capacity;
         int blockCount = (capacity - 1) / BlockSize + 1;
         _leafCount = 1;
         while (_leafCount < blockCount) _leafCount <<= 1;
         // 叶节点汇总 32 点，父节点逐级汇总，不为每个原始点重复保存 min/max。
-        _ranges = new CurvePlotRange[_leafCount * 2];
-        Array.Fill(_ranges, CurvePlotRange.Empty);
+        _ranges = new SampleHistoryRange[_leafCount * 2];
+        Array.Fill(_ranges, SampleHistoryRange.Empty);
     }
 
     public (int Count, int WriteIndex, long Version) GetState() => (_count, _writeIndex, _version);
@@ -54,8 +54,7 @@ public sealed class CurvePlotBuffer
     public void Clear()
     {
         Interlocked.Increment(ref _mutationVersion);
-        Array.Clear(_buffer);
-        Array.Fill(_ranges, CurvePlotRange.Empty);
+        Array.Fill(_ranges, SampleHistoryRange.Empty);
         _writeIndex = 0;
         _count = 0;
         _version++;
@@ -63,13 +62,11 @@ public sealed class CurvePlotBuffer
         Interlocked.Increment(ref _mutationVersion);
     }
 
-    public void Add(double value)
+    protected void BeginWrite() => Interlocked.Increment(ref _mutationVersion);
+
+    protected void CompleteWrite(int index, double previousValue, double value)
     {
-        Interlocked.Increment(ref _mutationVersion);
-        int index = _writeIndex;
-        double previousValue = _buffer[index];
         bool overwriting = _count == Capacity;
-        _buffer[index] = value;
         if (_count < Capacity) _count++;
         _writeIndex = index + 1 == Capacity ? 0 : index + 1;
         if (overwriting && value.Equals(previousValue))
@@ -80,8 +77,8 @@ public sealed class CurvePlotBuffer
         }
 
         int node = _leafCount + index / BlockSize;
-        CurvePlotRange previousRange = _ranges[node];
-        CurvePlotRange range;
+        SampleHistoryRange previousRange = _ranges[node];
+        SampleHistoryRange range;
         if (overwriting && double.IsFinite(previousValue) &&
             (previousValue == previousRange.Minimum || previousValue == previousRange.Maximum))
         {
@@ -114,7 +111,7 @@ public sealed class CurvePlotBuffer
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _count);
             int physicalIndex = _writeIndex - 1 - index;
             if (physicalIndex < 0) physicalIndex += Capacity;
-            return _buffer[physicalIndex];
+            return ReadPhysical(physicalIndex);
         }
     }
 
@@ -133,7 +130,7 @@ public sealed class CurvePlotBuffer
         for (int i = 0; i < count; i++)
         {
             if (--index < 0) index = Capacity - 1;
-            destination[i] = _buffer[index];
+            destination[i] = ReadPhysical(index);
         }
     }
 
@@ -146,21 +143,21 @@ public sealed class CurvePlotBuffer
     }
 
     /// <summary>查询物理索引闭区间的精确极值，自动裁剪到已写入区域。</summary>
-    public CurvePlotRange GetRange(int firstIndex, int lastIndex)
+    public SampleHistoryRange GetRange(int firstIndex, int lastIndex)
     {
         int count = _count;
         firstIndex = Math.Max(0, firstIndex);
         lastIndex = Math.Min(count - 1, lastIndex);
-        if (firstIndex > lastIndex) return CurvePlotRange.Empty;
+        if (firstIndex > lastIndex) return SampleHistoryRange.Empty;
         // 自动缩放通常查询全部数据，直接使用根节点，复杂度 O(1)。
         if (firstIndex == 0 && lastIndex == count - 1) return _ranges[1];
 
         int end = lastIndex + 1;
-        CurvePlotRange result = CurvePlotRange.Empty;
+        SampleHistoryRange result = SampleHistoryRange.Empty;
         while (firstIndex < end && firstIndex % BlockSize != 0)
-            result = result.Include(_buffer[firstIndex++]);
+            result = result.Include(ReadPhysical(firstIndex++));
         while (firstIndex < end && end % BlockSize != 0)
-            result = result.Include(_buffer[--end]);
+            result = result.Include(ReadPhysical(--end));
 
         // 区间内部只读取已经维护好的多级 LOD，两端最多扫描 62 个原始点。
         int left = _leafCount + firstIndex / BlockSize;
@@ -175,22 +172,46 @@ public sealed class CurvePlotBuffer
         return result;
     }
 
-    private CurvePlotRange ScanRange(int first, int end)
+    private SampleHistoryRange ScanRange(int first, int end)
     {
-        CurvePlotRange range = CurvePlotRange.Empty;
-        for (int i = first; i < end; i++) range = range.Include(_buffer[i]);
+        SampleHistoryRange range = SampleHistoryRange.Empty;
+        for (int i = first; i < end; i++) range = range.Include(ReadPhysical(i));
         return range;
     }
 }
 
-public readonly record struct CurvePlotRange(double Minimum, double Maximum)
+/// <summary>保存原始采样类型，并提供供绘图使用的 double 视图。</summary>
+internal sealed class SampleHistoryBuffer<T>(int capacity) : SampleHistoryBuffer(capacity) where T : struct
 {
-    public static CurvePlotRange Empty => new(double.PositiveInfinity, double.NegativeInfinity);
+    private readonly T[] _samples = new T[capacity];
+    protected override double ReadPhysical(int index) => SymbolRuntime<T>.ConvertToDouble(_samples[index]);
+
+    public void Add(T sample)
+    {
+        BeginWrite();
+        int index = WriteIndex;
+        double previous = ReadPhysical(index);
+        _samples[index] = sample;
+        CompleteWrite(index, previous, SymbolRuntime<T>.ConvertToDouble(sample));
+    }
+
+    public T GetChronologicalValue(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        int first = Count == Capacity ? WriteIndex : 0;
+        int untilWrap = Capacity - first;
+        return _samples[index < untilWrap ? first + index : index - untilWrap];
+    }
+}
+
+public readonly record struct SampleHistoryRange(double Minimum, double Maximum)
+{
+    public static SampleHistoryRange Empty => new(double.PositiveInfinity, double.NegativeInfinity);
     public bool HasValues => Minimum <= Maximum;
 
-    internal CurvePlotRange Include(double value) => double.IsFinite(value)
+    internal SampleHistoryRange Include(double value) => double.IsFinite(value)
         ? new(Math.Min(Minimum, value), Math.Max(Maximum, value)) : this;
 
-    internal CurvePlotRange Combine(CurvePlotRange other) =>
+    internal SampleHistoryRange Combine(SampleHistoryRange other) =>
         new(Math.Min(Minimum, other.Minimum), Math.Max(Maximum, other.Maximum));
 }

@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using DynamicData;
@@ -50,7 +50,7 @@ public partial class CurveMonitorLayout : ReactiveObject
             set
             {
                 this.RaiseAndSetIfChanged(ref _isVisible, value);
-                Signal?.IsVisible = value && Runtime.PlotHistory.Count > 0;
+                Signal?.IsVisible = value && Runtime.SampleHistory.Count > 0;
             }
         }
         private Avalonia.Media.Color _color;

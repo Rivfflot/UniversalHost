@@ -1,12 +1,12 @@
 using ScottPlot;
 using System;
-using UniversalHost.Models.Plotting;
+using UniversalHost.Models;
 
 namespace UniversalHost.Services.Plotting;
 
-internal readonly record struct CurvePixelColumn(CurvePlotRange Range, double Enter, double Exit)
+internal readonly record struct CurvePixelColumn(SampleHistoryRange Range, double Enter, double Exit)
 {
-    public static CurvePixelColumn Empty => new(CurvePlotRange.Empty, double.NaN, double.NaN);
+    public static CurvePixelColumn Empty => new(SampleHistoryRange.Empty, double.NaN, double.NaN);
 }
 
 /// <summary>
@@ -14,7 +14,7 @@ internal readonly record struct CurvePixelColumn(CurvePlotRange Range, double En
 /// Y 轴缩放复用极值；X 范围、分辨率或历史重置变化时重新查询。
 /// 每条绘图对象独立保存视野，多个窗口的缩放互不影响。
 /// </summary>
-internal sealed class CurvePixelColumnCache(CurvePlotBuffer history)
+internal sealed class CurvePixelColumnCache(SampleHistoryBuffer history)
 {
     private CurvePixelColumn[] _columns = [];
     private double _left, _right, _period, _offset;

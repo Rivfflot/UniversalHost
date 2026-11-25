@@ -141,9 +141,9 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                     if (measurements.Update()) CurvePlot.Refresh();
                     return;
                 }
-                if (viewModel.DisplayCurves.FirstOrDefault(x => x.IsVisible && x.Runtime.PlotHistory.Count > 0) is { } first)
+                if (viewModel.DisplayCurves.FirstOrDefault(x => x.IsVisible && x.Runtime.SampleHistory.Count > 0) is { } first)
                 {
-                    var history = first.Runtime.PlotHistory;
+                    var history = first.Runtime.SampleHistory;
                     var state = history.GetState();
                     scanLine.IsVisible = state.Count > 0;
                     scanLine.X = (state.WriteIndex + history.Capacity - 1) % history.Capacity;
@@ -313,7 +313,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         if (item == null || !_curves.TryGetValue(item, out var curve)) return null;
         string label = item.Runtime.Symbol.Name;
         if (!string.IsNullOrWhiteSpace(item.Runtime.Symbol.Unit)) label += $" [{item.Runtime.Symbol.Unit}]";
-        return new(item.Runtime.PlotHistory, curve.Signal.Axes.YAxis, label, item.IsVisible);
+        return new(item.Runtime.SampleHistory, curve.Signal.Axes.YAxis, label, item.IsVisible);
     }
 
     private void CurvePlot_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -487,7 +487,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         bool changed = false;
         foreach (var (item, curve) in _curves)
         {
-            var state = item.Runtime.PlotHistory.GetState();
+            var state = item.Runtime.SampleHistory.GetState();
             bool visible = item.IsVisible && state.Count > 0;
             changed |= curve.LastVisible != visible || (visible && curve.LastVersion != state.Version);
             curve.LastVisible = visible;
@@ -532,7 +532,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         ScottPlot.Color? color = item.HasColor
             ? new ScottPlot.Color(item.Color.R, item.Color.G, item.Color.B, item.Color.A)
             : null;
-        item.Signal = new CurvePlotSignal(item.Runtime.PlotHistory)
+        item.Signal = new CurvePlotSignal(item.Runtime.SampleHistory)
         {
             Color = color ?? CurvePlot.Plot.Add.GetNextColor(),
         };
@@ -550,7 +550,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
         if (item.YAxisRange is { IsValid: true } range)
         {
             item.YAxis.Range.Set(range.Min, range.Max);
-            renderState.LastAutoScaleVersion = item.Runtime.PlotHistory.Version;
+            renderState.LastAutoScaleVersion = item.Runtime.SampleHistory.Version;
         }
         _curves.Add(item, renderState);
         _sharedYAxisDirty = true;

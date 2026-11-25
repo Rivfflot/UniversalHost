@@ -399,9 +399,9 @@ public static class DataSaveService
         {
             names.Add(GetCsvVariableName(item.Symbol.Name));
 
-            if (item.PlotHistory.Count > maxLen)
+            if (item.SampleHistory.Count > maxLen)
             {
-                maxLen = item.PlotHistory.Count;
+                maxLen = item.SampleHistory.Count;
             }
         }
 

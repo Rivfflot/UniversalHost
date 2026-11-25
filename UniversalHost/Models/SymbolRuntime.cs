@@ -7,7 +7,6 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
-using UniversalHost.Models.Plotting;
 using UniversalHost.Symbols;
 
 namespace UniversalHost.Models;
@@ -24,8 +23,8 @@ public abstract partial class SymbolRuntime : ReactiveObject
     [Reactive] protected string _valueString = "";
     // 提供给外部的非泛型只读属性
     public abstract byte ValueSizeInBytes { get; }
-    //画曲线图用
-    public abstract CurvePlotBuffer PlotHistory { get; }
+    /// <summary>供采样历史查询、CSV 导出和绘图共用。</summary>
+    public abstract SampleHistoryBuffer SampleHistory { get; }
     protected SymbolRuntime(UserSymbolInfo symbol)
     {
         Symbol = symbol;
@@ -68,9 +67,8 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
 {
     public T Value { get; private set; }
     private int _valueUpdated;
-    private readonly CircularBuffer.CircularBuffer<T> _valuesHistory;
-    private readonly CurvePlotBuffer _plotHistory;
-    public override CurvePlotBuffer PlotHistory => _plotHistory;
+    private readonly SampleHistoryBuffer<T> _sampleHistory;
+    public override SampleHistoryBuffer SampleHistory => _sampleHistory;
     public override byte ValueSizeInBytes => typeof(T) == typeof(bool)
         ? (byte)(Symbol.StorageBits / 8)
         : (byte)Unsafe.SizeOf<T>();
@@ -78,13 +76,11 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     public SymbolRuntime(UserSymbolInfo symbol, int maxSaveLen)
                                      : base(symbol)
     {
-        _valuesHistory = new CircularBuffer.CircularBuffer<T>(maxSaveLen);
-        _plotHistory = new CurvePlotBuffer(maxSaveLen);
+        _sampleHistory = new SampleHistoryBuffer<T>(maxSaveLen);
     }
     public override void ClearHistory()
     {
-        _valuesHistory.Clear();
-        _plotHistory.Clear();
+        _sampleHistory.Clear();
     }
     /// <summary>
     /// 获取指定位置的String。保存CSV使用。
@@ -93,9 +89,9 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     /// <returns></returns>
     public override string? GetValueHistoryIndexString(int index)
     {
-        if (index < _valuesHistory.Size)
+        if (index < _sampleHistory.Count)
         {
-            return _valuesHistory[index].ToString();
+            return _sampleHistory.GetChronologicalValue(index).ToString();
         }
         else
         {
@@ -144,9 +140,8 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
             // 需要翻转端序时，调用泛型安全的翻转读取方法
             Value = ReadWithByteSwap(data);
         }
-        _valuesHistory.PushBack(Value);
 
-        _plotHistory.Add(ConvertToDouble(Value));
+        _sampleHistory.Add(Value);
         Volatile.Write(ref _valueUpdated, 1);
         return true;
     }
@@ -285,7 +280,7 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
 
     public override bool MatchesDeviceValue(ReadOnlySpan<byte> encoded)
     {
-        if (_valuesHistory.IsEmpty) return false;
+        if (_sampleHistory.Count == 0) return false;
         Span<byte> current = stackalloc byte[ValueSizeInBytes];
         WriteValue(Value, current);
         return encoded.SequenceEqual(current);
@@ -293,7 +288,7 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
 
     public override string ValueToString()
     {
-        if (_valuesHistory.IsEmpty) return "";
+        if (_sampleHistory.Count == 0) return "";
         if (Volatile.Read(ref _valueUpdated) == 0 || Interlocked.Exchange(ref _valueUpdated, 0) == 0)
             return ValueString;
 
@@ -305,7 +300,7 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
     }
     public override string ValueToStringWithoutUpdate()
     {
-        if (_valuesHistory.IsEmpty) return "";
+        if (_sampleHistory.Count == 0) return "";
 
         return Value.ToString() ?? "";
     }
@@ -360,14 +355,13 @@ public partial class SymbolRuntime<T> : SymbolRuntime where T : struct
         {
             Value = (T)(object)(d += r);
         }
-        _valuesHistory.PushBack(Value);
-        _plotHistory.Add(ConvertToDouble(Value));
+        _sampleHistory.Add(Value);
         Volatile.Write(ref _valueUpdated, 1);
     }
 
     public override void GetBitsValue(Span<byte> data)
     {
-        if (_valuesHistory.Size == 0) return;
+        if (_sampleHistory.Count == 0) return;
         if (typeof(T) == typeof(bool))
         {
             data.Clear();
