@@ -48,9 +48,6 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     private LogViewerWindow? _logViewerWindow;
     public ReactiveCommand<Unit, Unit> StartMonitorCommand { get; }
     public ReactiveCommand<Unit, Unit> StopMonitorCommand { get; }
-    //-------------在线升级----------------
-    public ReactiveCommand<Unit, Unit> OpenIapWindowCommand { get; }
-
     public Interaction<string, string?> ShowRenameDialog { get; } = new Interaction<string, string?>();
     public Interaction<Documentation, Unit> ShowDocumentationWindow { get; } = new();
 
@@ -173,11 +170,6 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
             }
         });
         #endregion
-        //开启IAP窗口            
-        OpenIapWindowCommand = ReactiveCommand.Create(() =>
-        {
-            Factory.ShowOrCreateTool(Layout, DockableRegistry.IapToolId);
-        });
     }
     [ReactiveCommand]
     private void ToggleAllCurveYAxisAutoScale()
@@ -484,37 +476,38 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         Factory.InitLayout(Layout!);
     }
     #region 新建各种窗口
-    private void AddPanelToTab(IDockable panel)
+    private void AddPanelToTab(IDockable panel, Point? position = null)
     {
         var tab = Factory.FirstOrDefaultActiveTab(Layout);
         if (tab == null) return;
+        DockFactory.SetMdiPosition(panel, position);
         Factory.AddDockable(tab, panel);
         Factory.SetActiveDockable(panel);
     }
     [ReactiveCommand]
-    private void AddGridMonitorPanel()
+    private void AddGridMonitorPanel(Point? position)
     {
         var panel = Factory.GetOrCreateGridMonitorDocument(Guid.NewGuid().ToString());
-        AddPanelToTab(panel);
+        AddPanelToTab(panel, position);
     }
 
     [ReactiveCommand]
-    private void AddCurveMonitorPanel()
+    private void AddCurveMonitorPanel(Point? position)
     {
         var panel = Factory.GetOrCreateCurveMonitorDocument(Guid.NewGuid().ToString());
-        AddPanelToTab(panel);
+        AddPanelToTab(panel, position);
     }
     [ReactiveCommand]
-    private void AddBitsMonitorPanel()
+    private void AddBitsMonitorPanel(Point? position)
     {
         var panel = Factory.GetOrCreateBitsMonitorDocument(Guid.NewGuid().ToString());
-        AddPanelToTab(panel);
+        AddPanelToTab(panel, position);
     }
     [ReactiveCommand]
-    private void AddGridCalibratePanel()
+    private void AddGridCalibratePanel(Point? position)
     {
         var panel = Factory.GetOrCreateGridCalibrateDocument(Guid.NewGuid().ToString());
-        AddPanelToTab(panel);
+        AddPanelToTab(panel, position);
     }
     [ReactiveCommand]
     private void AddCommandPanel()
@@ -642,9 +635,15 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     }
     #endregion
     [ReactiveCommand]
-    private async Task OpenFaultRecordTool()
+    private void OpenIapWindow(Point? position)
     {
-        Factory.ShowOrCreateTool(Layout, DockableRegistry.FaultRecordToolId);
+        Factory.ShowOrCreateTool(Layout, DockableRegistry.IapToolId, position);
+    }
+
+    [ReactiveCommand]
+    private void OpenFaultRecordTool(Point? position)
+    {
+        Factory.ShowOrCreateTool(Layout, DockableRegistry.FaultRecordToolId, position);
     }
 
 #if DEBUG

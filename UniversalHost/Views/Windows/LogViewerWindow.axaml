@@ -37,11 +37,11 @@
             <WrapPanel Orientation="Horizontal">
                 <Button Content="打开目录" Command="{Binding OpenDirectoryCommand}" Margin="0,0,8,0" />
                 <Button Content="打开文件" Command="{Binding OpenFileCommand}" Margin="0,0,16,0" />
-                <CheckBox x:Name="AutoRefreshCheckBox" Content="自动刷新" IsChecked="{Binding AutoRefresh}" Margin="0,0,16,0"
+                <CheckBox Content="自动刷新" IsChecked="{Binding AutoRefresh}" Margin="0,0,16,0"
                           ToolTip.Tip="关闭时同时取消跟随最新；仍可手动刷新和筛选。" />
-                <CheckBox x:Name="FollowLatestCheckBox" Content="跟随最新" IsChecked="{Binding FollowLatest}" Margin="0,0,16,0"
+                <CheckBox Content="跟随最新" IsChecked="{Binding FollowLatest}" Margin="0,0,16,0"
                           ToolTip.Tip="开启时同时开启自动刷新，并跟随目录最新分片。关闭自动刷新或浏览历史会取消勾选，再次勾选可恢复。" />
-                <Button x:Name="ManualRefreshButton" Content="手动刷新" Command="{Binding ManualRefreshCommand}" Margin="0,0,8,0" />
+                <Button Content="手动刷新" Command="{Binding ManualRefreshCommand}" Margin="0,0,8,0" />
             </WrapPanel>
             <SelectableTextBlock Text="{Binding Location}" TextWrapping="NoWrap" />
         </StackPanel>
@@ -49,16 +49,16 @@
             <WrapPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6" IsEnabled="{Binding HasLogTime}" Margin="0,0,12,4">
                     <CheckBox Content="开始时间" IsChecked="{Binding UseStartTime}" />
-                    <controls:LogDatePicker x:Name="StartDatePicker" SelectedDate="{Binding StartDate}" IsEnabled="{Binding UseStartTime}"
+                    <controls:LogDatePicker SelectedDate="{Binding StartDate}" IsEnabled="{Binding UseStartTime}"
                                            Width="154" MinWidth="0" YearFormat="yyyy" MonthFormat="MM" DayFormat="dd" />
-                    <TimePicker x:Name="StartTimePicker" SelectedTime="{Binding StartClock}" IsEnabled="{Binding UseStartTime}"
+                    <TimePicker SelectedTime="{Binding StartClock}" IsEnabled="{Binding UseStartTime}"
                                 Width="160" MinWidth="0" ClockIdentifier="24HourClock" UseSeconds="True" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6" IsEnabled="{Binding HasLogTime}" Margin="0,0,12,4">
                     <CheckBox Content="结束时间" IsChecked="{Binding UseEndTime}" />
-                    <controls:LogDatePicker x:Name="EndDatePicker" SelectedDate="{Binding EndDate}" IsEnabled="{Binding UseEndTime}"
+                    <controls:LogDatePicker SelectedDate="{Binding EndDate}" IsEnabled="{Binding UseEndTime}"
                                            Width="154" MinWidth="0" YearFormat="yyyy" MonthFormat="MM" DayFormat="dd" />
-                    <TimePicker x:Name="EndTimePicker" SelectedTime="{Binding EndClock}" IsEnabled="{Binding UseEndTime}"
+                    <TimePicker SelectedTime="{Binding EndClock}" IsEnabled="{Binding UseEndTime}"
                                 Width="160" MinWidth="0" ClockIdentifier="24HourClock" UseSeconds="True" />
                 </StackPanel>
                 <Button Content="清空筛选" Command="{Binding ClearFiltersCommand}" />
@@ -77,7 +77,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
                 <TextBlock Grid.Row="2" Text="最低日志等级（含所选等级）" FontWeight="SemiBold" />
-                <ComboBox x:Name="LevelPicker" Grid.Row="3" ItemsSource="{Binding Levels}" SelectedItem="{Binding MinimumLevel}" HorizontalAlignment="Stretch">
+                <ComboBox Grid.Row="3" ItemsSource="{Binding Levels}" SelectedItem="{Binding MinimumLevel}" HorizontalAlignment="Stretch">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="models:LogLevelOption">
                             <TextBlock Text="{Binding Name}" />
@@ -124,14 +124,14 @@
                         <Button Content="复制完整内容" Command="{Binding CopyDetailsCommand}" />
                         <Button Content="复制原始 JSON" Command="{Binding CopyJsonCommand}" />
                     </StackPanel>
-                    <TextBox x:Name="DetailsBox" Grid.Row="1" Text="{Binding Details, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
+                    <TextBox Grid.Row="1" Text="{Binding Details, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
                              ContextFlyout="{x:Null}" ContextMenu="{x:Null}"
                              TextWrapping="NoWrap" FontFamily="Consolas, Microsoft YaHei"
                              ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
                 </Grid>
             </Grid>
         </Grid>
-        <StackPanel x:Name="StatusPanel" Grid.Row="3" Spacing="3">
+        <StackPanel Grid.Row="3" Spacing="3">
             <TextBlock Text="{Binding CountsText}" />
             <TextBlock Text="{Binding RetentionText}" Classes="label" FontSize="12" TextWrapping="Wrap" />
             <StackPanel Orientation="Horizontal" Spacing="18">

@@ -1,3 +1,9 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using Dock.Avalonia.Controls;
 using ReactiveUI.Reactive;
 using ReactiveUI.Avalonia.Reactive;
 using System.Reactive;
@@ -7,10 +13,7 @@ using UniversalHost.ViewModels;
 using UniversalHost.ViewModels.Windows;
 using UniversalHost.Views.Windows;
 #if DEBUG
-using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Data;
-using Avalonia.Input;
 using Avalonia.Media;
 #endif
 
@@ -21,6 +24,7 @@ namespace UniversalHost.Views
         public MainWindow()
         {
             InitializeComponent();
+            AddHandler(PointerReleasedEvent, OpenMdiContextMenu, RoutingStrategies.Tunnel);
 
 #if DEBUG
             // 调试菜单在代码中创建，避免 Release XAML 引用已被条件编译移除的命令。
@@ -69,6 +73,23 @@ namespace UniversalHost.Views
                     })
                    .DisposeWith(disposables);
             });
+        }
+
+        private void OpenMdiContextMenu(object? sender, PointerReleasedEventArgs e)
+        {
+            if (e.InitialPressMouseButton != MouseButton.Right ||
+                e.Source is not Visual source || source.FindAncestorOfType<MdiDocumentWindow>(includeSelf: true) != null ||
+                source.FindAncestorOfType<MdiDocumentControl>(includeSelf: true) is not { } workspace) return;
+
+            // 空标签页显示占位内容，布局面板要等第一个窗口加入后才会生成。
+            Control surface = source.FindAncestorOfType<MdiLayoutPanel>(includeSelf: true) ?? (Control)workspace;
+            var position = e.GetPosition(surface);
+            if (!new Rect(surface.Bounds.Size).Contains(position)) return;
+
+            var menu = (ContextMenu)Resources["MdiWorkspaceContextMenu"]!;
+            menu.Tag = position;
+            menu.Open(surface);
+            e.Handled = true;
         }
     }
 }

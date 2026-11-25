@@ -1,5 +1,6 @@
 ﻿using Dock.Avalonia.Controls;
 using Dock.Model.Controls;
+using Avalonia;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI;
 using Dock.Model.ReactiveUI.Controls;
@@ -286,7 +287,16 @@ public class DockFactory : Factory
         base.OnDockableClosed(dockable);
     }
 
-    public void ShowOrCreateTool(IRootDock layout, string id)
+    internal static void SetMdiPosition(IDockable dockable, Point? position)
+    {
+        if (dockable is IMdiDocument document && position is { } point)
+        {
+            var bounds = document.MdiBounds;
+            document.MdiBounds = new DockRect(point.X, point.Y, bounds.Width, bounds.Height);
+        }
+    }
+
+    public void ShowOrCreateTool(IRootDock layout, string id, Point? position = null)
     {
         var tool = base.FindDockable(layout, x => x.Id == id);
 
@@ -320,35 +330,29 @@ public class DockFactory : Factory
                 default:
                     return;
             }
-            AddDockable(activeTab, tool);
-            SetActiveDockable(tool);
+        }
+        else if (tool.Owner is IDock parentDock && parentDock.VisibleDockables?.Contains(tool) == true)
+        {
+            if (position == null)
+            {
+                HideDockable(tool);
+                return;
+            }
         }
         else
         {
-            ApplyToolSize(tool);
-            if (tool.Owner is IDock parentDock)
-            {
-                var visibleList = parentDock.VisibleDockables;
-
-                if (visibleList!.Contains(tool))
-                {
-                    HideDockable(tool);
-
-                }
-                else
-                {
-                    RestoreDockable(tool);
-                    if (tool.Owner == null)
-                    {
-                        AddDockable(activeTab, tool);
-                    }
-                    else
-                    {
-                        MoveDockable((IDock)tool.Owner, activeTab, tool, null);
-                    }
-                    SetActiveDockable(tool);
-                }
-            }
+            RestoreDockable(tool);
         }
+
+        ApplyToolSize(tool);
+        if (position != null && tool is IMdiDocument { MdiState: not MdiWindowState.Normal } document)
+            document.MdiState = MdiWindowState.Normal;
+        SetMdiPosition(tool, position);
+
+        if (tool.Owner is not IDock owner || owner.VisibleDockables?.Contains(tool) != true)
+            AddDockable(activeTab, tool);
+        else if (owner != activeTab)
+            MoveDockable(owner, activeTab, tool, null);
+        SetActiveDockable(tool);
     }
 }

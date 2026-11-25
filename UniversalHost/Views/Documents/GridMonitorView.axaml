@@ -4,7 +4,6 @@
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:vm="using:UniversalHost.ViewModels.Documents"
 			 x:DataType="vm:GridMonitorViewModel"
-			 x:Name="PanelRootControl"
 			 mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="200"
 			 x:Class="UniversalHost.Views.Documents.GridMonitorView">
 	<UserControl.KeyBindings>
