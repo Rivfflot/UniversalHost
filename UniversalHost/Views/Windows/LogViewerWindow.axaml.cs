@@ -9,7 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System;
 using System.Linq;
-using System.Reactive;
+using ReactiveUI.Primitives;
 using System.Reactive.Disposables;
 using UniversalHost.Models.Logging;
 using UniversalHost.Services;
@@ -57,7 +57,7 @@ public partial class LogViewerWindow : Window
         {
             if (Clipboard == null) throw new InvalidOperationException("当前窗口无法访问剪贴板。");
             await Clipboard.SetTextAsync(interaction.Input);
-            interaction.SetOutput(Unit.Default);
+            interaction.SetOutput(RxVoid.Default);
         }));
         viewModel.EntriesChanging += CaptureAnchor;
         viewModel.EntriesChanged += EntriesChanged;

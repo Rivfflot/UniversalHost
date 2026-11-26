@@ -3,9 +3,9 @@ using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using DynamicData;
 using DynamicData.Binding;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -111,7 +111,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
     public ReadOnlyObservableCollection<string> SymbolFilePaths => _symbolFilePaths;
     private readonly IObservable<bool> _canEditFirmwareSymbols = GlobalStatus.Instance
         .WhenAnyValue(x => x.CanEditFirmwareSymbols)
-        .ObserveOn(AvaloniaScheduler.Instance);
+        .WitnessOn(RxSchedulers.MainThreadScheduler);
 
     // 符号表过滤
     [Reactive] private string _symbolSearchText = string.Empty;
@@ -208,12 +208,12 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
         _symbolRows.DisposeWith(_disposables);
         Observable.Switch(ProjectSaveService.Instance.WhenAnyValue(x => x.Settings.DeviceConfig)
                     .Select(device => device.Symbols.Connect().QueryWhenChanged(_ => SymbolSelectionService.BuildRows(device))))
-                    .ObserveOn(AvaloniaScheduler.Instance)
+                    .WitnessOn(RxSchedulers.MainThreadScheduler)
                     .Subscribe(rows => _symbolRows.Edit(list => { list.Clear(); list.AddRange(rows); }))
                     .DisposeWith(_disposables);
         _symbolRows.Connect()
                     .Filter(symbolFilter)
-                    .ObserveOn(AvaloniaScheduler.Instance)
+                    .WitnessOn(RxSchedulers.MainThreadScheduler)
                     .Bind(out _filteredSymbols)
                     .Subscribe().DisposeWith(_disposables);
         // 监控符号过滤逻辑
@@ -227,7 +227,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                            .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .Filter(monitorSymbolFilter)
-                           .ObserveOn(AvaloniaScheduler.Instance)
+                           .WitnessOn(RxSchedulers.MainThreadScheduler)
                            .Bind(out _filteredMonitorSymbols)
                            .Subscribe().DisposeWith(_disposables);
 
@@ -248,7 +248,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                                 ScalarType.Boolean => symbol.StorageBits / 8L,
                                 _ => 1L, // Int8、Uint8、Boolean，以及运行时按 byte 处理的 Unknown。
                             })))
-                            .ObserveOn(AvaloniaScheduler.Instance)
+                            .WitnessOn(RxSchedulers.MainThreadScheduler)
                             .Subscribe(statistics =>
                             {
                                 MonitoredSymbolCount = statistics.Count;
@@ -281,7 +281,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                                     return (bool?)null; // 部分选择（第三态）
                                 }
                             })
-                            .ObserveOn(AvaloniaScheduler.Instance)
+                            .WitnessOn(RxSchedulers.MainThreadScheduler)
                             .Subscribe(state =>
                             {
                                 SelectAllMonitorSymbolsBox = state;
@@ -297,7 +297,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                           .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                           .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                           .Filter(calibrateSymbolFilter)
-                          .ObserveOn(AvaloniaScheduler.Instance)
+                          .WitnessOn(RxSchedulers.MainThreadScheduler)
                           .Bind(out _filteredCalibrateSymbols)
                           .Subscribe().DisposeWith(_disposables);
 
@@ -326,7 +326,7 @@ public partial class SettingWindowViewModel : ReactiveObject, IDisposable
                            .AutoRefresh(c => c.Name, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .AutoRefresh(c => c.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .Filter(userCommandFilter)
-                           .ObserveOn(AvaloniaScheduler.Instance)
+                           .WitnessOn(RxSchedulers.MainThreadScheduler)
                            .Bind(out _filteredUserCommands)
                            .Subscribe().DisposeWith(_disposables);
         ProjectSaveService.Instance.WhenAnyValue(x => x.Settings)

@@ -1,7 +1,7 @@
-﻿using ReactiveUI.Reactive;
+﻿using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives;
 using ReactiveUI.SourceGenerators;
-using ReactiveUI.Binding.Reactive;
-using System.Reactive;
 
 
 namespace UniversalHost.ViewModels.Windows;
@@ -10,8 +10,8 @@ public partial class RenameWindowViewModel : ReactiveObject
 {
     [Reactive] private string _newName;
 
-    public ReactiveCommand<Unit, string?> ConfirmCommand { get; }
-    public ReactiveCommand<Unit, string?> CancelCommand { get; }
+    public ReactiveCommand<RxVoid, string?> ConfirmCommand { get; }
+    public ReactiveCommand<RxVoid, string?> CancelCommand { get; }
 
     public RenameWindowViewModel(string currentName)
     {

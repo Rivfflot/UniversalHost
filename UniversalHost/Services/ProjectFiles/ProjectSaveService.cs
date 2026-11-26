@@ -1,6 +1,6 @@
 using Dock.Model.Controls;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;

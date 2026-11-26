@@ -1,4 +1,4 @@
-using ReactiveUI.Reactive;
+using ReactiveUI;
 using System;
 
 namespace UniversalHost.Models;

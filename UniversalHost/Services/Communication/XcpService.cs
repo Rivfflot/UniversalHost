@@ -1,5 +1,5 @@
 using System;
-using ReactiveUI.Binding.Reactive;
+using ReactiveUI.Binding;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;

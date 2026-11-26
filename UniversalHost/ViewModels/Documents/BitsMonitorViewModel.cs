@@ -1,8 +1,8 @@
 ﻿using Avalonia.Media;
 using DynamicData;
 using DynamicData.Kernel;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -159,7 +159,7 @@ public partial class BitsMonitorViewModel : ReactiveObject, IDisposable
                   .DisposeWith(_disposables);
 
         Observable.Interval(TimeSpan.FromMilliseconds(200))
-                    .ObserveOn(AvaloniaScheduler.Instance)
+                    .WitnessOn(RxSchedulers.MainThreadScheduler)
                     .Subscribe(_ => RefreshAllBits())
                     .DisposeWith(_disposables);
     }

@@ -4,10 +4,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Dock.Avalonia.Controls;
-using ReactiveUI.Reactive;
-using ReactiveUI.Avalonia.Reactive;
-using System.Reactive;
-using System.Reactive.Disposables.Fluent;
+using ReactiveUI;
+using ReactiveUI.Avalonia;
+using ReactiveUI.Primitives;
 using UniversalHost.Services;
 using UniversalHost.ViewModels;
 using UniversalHost.ViewModels.Windows;
@@ -51,27 +50,24 @@ namespace UniversalHost.Views
 
                 if (DataContext is not MainWindowViewModel vm) return;
 
-                vm.ShowDocumentationWindow.RegisterHandler(interaction =>
-                    {
-                        var window = new DocumentationWindow(interaction.Input);
-                        WindowScreenSizing.FitAndCenter(window, this);
-                        window.Show(this);
-                        interaction.SetOutput(Unit.Default);
-                    })
-                    .DisposeWith(disposables);
+                disposables.Add(vm.ShowDocumentationWindow.RegisterHandler(interaction =>
+                {
+                    var window = new DocumentationWindow(interaction.Input);
+                    WindowScreenSizing.FitAndCenter(window, this);
+                    window.Show(this);
+                    interaction.SetOutput(RxVoid.Default);
+                }));
 
-                vm.ShowRenameDialog.RegisterHandler(async interaction =>
-                    {
-                        string oldName = interaction.Input;
+                disposables.Add(vm.ShowRenameDialog.RegisterHandler(async interaction =>
+                {
+                    string oldName = interaction.Input;
 
-                        var renameVm = new RenameWindowViewModel(oldName);
-                        var renameWindow = new RenameWindow { DataContext = renameVm };
-                        //renameWindow.Activate();
-                        string? result = await renameWindow.ShowDialog<string?>(this);
+                    var renameVm = new RenameWindowViewModel(oldName);
+                    var renameWindow = new RenameWindow { DataContext = renameVm };
+                    string? result = await renameWindow.ShowDialog<string?>(this);
 
-                        interaction.SetOutput(result);
-                    })
-                   .DisposeWith(disposables);
+                    interaction.SetOutput(result);
+                }));
             });
         }
 

@@ -1,8 +1,7 @@
 using Avalonia.Controls;
-using ReactiveUI.Avalonia.Reactive;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Avalonia;
 using System;
-using System.Reactive.Disposables.Fluent;
 using UniversalHost.ViewModels.Windows;
 
 namespace UniversalHost.Views.Windows;
@@ -33,14 +32,10 @@ public partial class RenameWindow : ReactiveWindow<RenameWindowViewModel>
             if (ViewModel == null) return;
 
             // 订阅确认命令，关闭窗口并传递新名称
-            ViewModel.ConfirmCommand
-                .Subscribe(result => Close(result))
-                .DisposeWith(disposables);
+            disposables.Add(ViewModel.ConfirmCommand.Subscribe(result => Close(result)));
 
             // 订阅取消命令，关闭窗口并传递 null
-            ViewModel.CancelCommand
-                .Subscribe(result => Close(result))
-                .DisposeWith(disposables);
+            disposables.Add(ViewModel.CancelCommand.Subscribe(result => Close(result)));
         });
     }
 }

@@ -1,13 +1,12 @@
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.SourceGenerators;
-using ReactiveUI.Binding.Reactive;
 using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
@@ -15,6 +14,7 @@ using System.Threading.Tasks;
 using UniversalHost.Models.Logging;
 using UniversalHost.Services;
 using UniversalHost.Services.Logging;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace UniversalHost.ViewModels.Windows;
 
@@ -56,9 +56,9 @@ public partial class LogViewerWindowViewModel : ReactiveObject, IDisposable
     private long _displayedThroughId;
     private bool _updatingFiles, _updatingFilters, _disposed;
 
-    public Interaction<Unit, string?> PickDirectory { get; } = new();
-    public Interaction<Unit, string?> PickFile { get; } = new();
-    public Interaction<string, Unit> CopyText { get; } = new();
+    public Interaction<RxVoid, string?> PickDirectory { get; } = new();
+    public Interaction<RxVoid, string?> PickFile { get; } = new();
+    public Interaction<string, RxVoid> CopyText { get; } = new();
     public event Action? EntriesChanging;
     public event Action<bool>? EntriesChanged;
     public event Action? ScrollToLatestRequested;
@@ -158,7 +158,7 @@ public partial class LogViewerWindowViewModel : ReactiveObject, IDisposable
     {
         try
         {
-            var path = await PickDirectory.Handle(Unit.Default);
+            var path = await PickDirectory.Handle(RxVoid.Default);
             if (!_disposed && path != null) OpenDirectory(path);
         }
         catch (Exception ex) { if (!_disposed) StatusText = $"打开目录失败：{ex.Message}"; }
@@ -169,7 +169,7 @@ public partial class LogViewerWindowViewModel : ReactiveObject, IDisposable
     {
         try
         {
-            var path = await PickFile.Handle(Unit.Default);
+            var path = await PickFile.Handle(RxVoid.Default);
             if (!_disposed && path != null) OpenFile(path);
         }
         catch (Exception ex) { if (!_disposed) StatusText = $"打开文件失败：{ex.Message}"; }

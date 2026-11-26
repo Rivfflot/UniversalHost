@@ -1,5 +1,5 @@
 using DynamicData;
-using ReactiveUI.Reactive;
+using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System.Collections.Generic;
 using System.Linq;

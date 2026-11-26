@@ -4,9 +4,9 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using ReactiveUI.Avalonia.Reactive;
-using ReactiveUI.Primitives.Reactive.Disposables;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Avalonia;
+using ReactiveUI.Primitives.Disposables;
 using System;
 using UniversalHost.Models;
 using UniversalHost.Services;
@@ -25,7 +25,7 @@ public partial class SettingWindow : ReactiveWindow<SettingWindowViewModel>
 
         InitializeComponent();
 
-        this.WhenActivated((ContainerDisposable disposables) =>
+        this.WhenActivated((MultipleDisposable _) =>
         {
             // 只需要这一行，服务会自动管理这个窗口的通知生命周期
             NotificationService.Register(this);

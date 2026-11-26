@@ -1,6 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
-using ReactiveUI.Avalonia.Reactive;
+using ReactiveUI.Avalonia;
 using System;
 
 namespace UniversalHost
@@ -18,10 +18,7 @@ namespace UniversalHost
         public static AppBuilder BuildAvaloniaApp() => AppBuilder
         .Configure<App>()
         .UsePlatformDetect()
-        .UseReactiveUI(rxui =>
-        {
-            // Optional: add custom registration here via rxui.WithRegistration(...)
-        })
+        .UseReactiveUI(_ => { })
         .RegisterReactiveUIViewsFromEntryAssembly();
     }
 }

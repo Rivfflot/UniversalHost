@@ -5,10 +5,10 @@ using Avalonia.Interactivity;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using ReactiveUI.Avalonia.Reactive;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Avalonia;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives.Signals;
 using ScottPlot;
 using System;
 using System.Collections.Generic;
@@ -107,7 +107,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             }
             viewModel.WhenAnyValue(x => x.SelectedCurveItem)
                 .Skip(1)
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(_ => EndYAxisDrag()).DisposeWith(subscriptions);
             var measurements = new CurveMeasurementController(CurvePlot.Plot,
                 () => GetMeasurementTarget(viewModel.SelectedCurveItem),
@@ -212,7 +212,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             viewModel.CapturePlotState += capturePlotStateHandler;
             ActualThemeVariantChanged += themeChangedHandler;
 
-            Disposable.Create(() =>
+            disposables.Add(Disposable.Create(() =>
             {
                 capturePlotStateHandler();
                 viewModel.RemoveCurve -= removeCurveHandler;
@@ -234,7 +234,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 CurvePlot.Plot.Remove(scanLine);
                 _currentHoveredItem?.Classes.Remove("drag-hover");
                 _currentHoveredItem = null;
-            }).DisposeWith(disposables);
+            }));
 
             foreach (var item in viewModel.DisplayCurves)
             {
@@ -254,7 +254,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
             }
             viewModel.CurvesLayout.WhenAnyValue(x => x.IsSharedYAxisEnabled)
                 .Skip(1)
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
                     EndYAxisDrag();
@@ -269,10 +269,10 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 }).DisposeWith(subscriptions);
             viewModel.CurvesLayout.WhenAnyValue(x => x.IsYAxisAutoScaleEnabled)
                 .Skip(1)
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(_ => RefreshPlot(resetAutoScale: true)).DisposeWith(subscriptions);
             viewModel.WhenAnyValue(x => x.MeasurementMode)
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(mode =>
                 {
                     EndYAxisDrag();
@@ -284,7 +284,7 @@ public partial class CurveMonitorView : ReactiveUserControl<CurveMonitorViewMode
                 }).DisposeWith(subscriptions);
             monitorConfig.WhenAnyValue(x => x.MaxSaveLen)
                 .Skip(1)
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
                     SetXAxisLimits();

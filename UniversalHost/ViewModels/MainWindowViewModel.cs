@@ -6,18 +6,17 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Dock.Model.Controls;
 using Dock.Model.Core;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Disposables;
-using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Models;
@@ -40,16 +39,16 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
     private readonly CompositeDisposable _disposables = [];
     //-------------菜单栏：文件 相关指令-------------
     //手动保存文件
-    public ReactiveCommand<Unit, Unit> SaveProjectCommand { get; }
-    public ReactiveCommand<Unit, Unit> ReloadSymbolsCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> SaveProjectCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ReloadSymbolsCommand { get; }
     //设置窗口
-    public ReactiveCommand<int, Unit> OpenSettingWindowCommand { get; }
+    public ReactiveCommand<int, RxVoid> OpenSettingWindowCommand { get; }
     private SettingWindow? _settingWindow;
     private LogViewerWindow? _logViewerWindow;
-    public ReactiveCommand<Unit, Unit> StartMonitorCommand { get; }
-    public ReactiveCommand<Unit, Unit> StopMonitorCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> StartMonitorCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> StopMonitorCommand { get; }
     public Interaction<string, string?> ShowRenameDialog { get; } = new Interaction<string, string?>();
-    public Interaction<Documentation, Unit> ShowDocumentationWindow { get; } = new();
+    public Interaction<Documentation, RxVoid> ShowDocumentationWindow { get; } = new();
 
     [Reactive] private IRootDock _layout;
     [Reactive] private UniversalHost.DockFactory _factory;
@@ -100,7 +99,7 @@ public partial class MainWindowViewModel : ReactiveObject, IDisposable
         }));
         ReloadSymbolsCommand = ReactiveCommand.CreateFromTask(FirmwareImportCoordinator.Instance.ReloadAsync,
             GlobalStatus.Instance.WhenAnyValue(x => x.CanEditFirmwareSymbols)
-                .ObserveOn(AvaloniaScheduler.Instance));
+                .WitnessOn(RxSchedulers.MainThreadScheduler));
         #endregion
         //开启设置窗口
         OpenSettingWindowCommand = ReactiveCommand.Create<int>((Action<int>)(tabIndex =>

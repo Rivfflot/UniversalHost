@@ -2,16 +2,16 @@ using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using DynamicData;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives.Concurrency;
+using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 using ScottPlot;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
@@ -256,7 +256,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
                             if (wasSelected)
                             {
                                 // 等待 DisplayCurves 绑定完成，避免 ListBox 因新项尚未出现而清空选择。
-                                AvaloniaScheduler.Instance.Schedule(() =>
+                                RxSchedulers.MainThreadScheduler.Schedule(() =>
                                 {
                                     if (SelectedCurveItem != null && !ReferenceEquals(SelectedCurveItem, oldItem)) return;
                                     SelectedCurveItem = CurvesLayout.CurvesSource.Items.FirstOrDefault(x => x.Id == oldItem.Id);
@@ -268,7 +268,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
                     .DisposeWith(_disposables);
 
         CurvesLayout.CurvesSource.Connect()
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Bind(out _displayCurves)
                 .Subscribe(_ =>
                 {
@@ -280,7 +280,7 @@ public partial class CurveMonitorViewModel : ReactiveObject, IDisposable
 
         // IsVisible 改变时刷新Plot
         CurvesLayout.CurvesSource.Connect()
-             .ObserveOn(AvaloniaScheduler.Instance)
+             .WitnessOn(RxSchedulers.MainThreadScheduler)
              .AutoRefresh(x => x.IsVisible)
              .Subscribe((_) => { RefreshCurve?.Invoke(); }).DisposeWith(_disposables);
 

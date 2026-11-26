@@ -1,7 +1,7 @@
 using Avalonia.Input.Platform;
 using DynamicData;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using UniversalHost.Models;
 using UniversalHost.Services;
@@ -77,7 +76,7 @@ public partial class GridCalibrateViewModel : ReactiveObject, IDisposable
                     SymbolRuntimeService.CalibrateSymbolRuntimesSource
                         .Lookup(key)
                         .Value)
-                .ObserveOn(AvaloniaScheduler.Instance)
+                .WitnessOn(RxSchedulers.MainThreadScheduler)
                 .Bind(out _displaySymbolRuntimes)
                 .Subscribe()
                 .DisposeWith(_disposables);

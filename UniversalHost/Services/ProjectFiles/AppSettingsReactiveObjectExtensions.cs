@@ -1,13 +1,13 @@
 using DynamicData;
-using ReactiveUI.Reactive;
+using ReactiveUI;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Threading;
 using UniversalHost.Models;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace UniversalHost.Services;
 
@@ -20,7 +20,6 @@ public static class AppSettingsReactiveObjectExtensions
         // 递归地获取所有嵌套的 ReactiveObject 的 Changed 事件流和 SourceList 变化流
         var allChanges = GetAllChanges(root);
 
-        // 使用 Observable.Merge 合并所有事件流
         // 只忽略订阅时同步发出的集合快照，保留初始化后的第一笔用户修改。
         var initialized = false;
         var subscription = Observable.Merge(allChanges)
@@ -35,7 +34,7 @@ public static class AppSettingsReactiveObjectExtensions
         Volatile.Write(ref initialized, true);
         return subscription;
     }
-    private static IEnumerable<IObservable<Unit>> GetAllChanges(object obj, HashSet<object>? visited = null)
+    private static IEnumerable<IObservable<RxVoid>> GetAllChanges(object obj, HashSet<object>? visited = null)
     {
         visited ??= new HashSet<object>();
 
@@ -48,28 +47,28 @@ public static class AppSettingsReactiveObjectExtensions
 
         if (obj is ReactiveObject reactiveObj)
         {
-            yield return reactiveObj.Changed.Select(_ => Unit.Default);
+            yield return reactiveObj.Changed.Select(_ => RxVoid.Default);
         }
 
         if (obj is ISourceList<string> paths)
-            yield return paths.Connect().Select(_ => Unit.Default);
+            yield return paths.Connect().Select(_ => RxVoid.Default);
 
         //添加SourceCache
         if (obj is ISourceCache<UserSymbolInfo, Guid> userSymbolCache)
         {
             yield return Observable.Merge(
-                userSymbolCache.Connect().Select(_ => Unit.Default),
+                userSymbolCache.Connect().Select(_ => RxVoid.Default),
                 userSymbolCache.Connect()
-                    .MergeMany(item => item.Changed.Select(_ => Unit.Default))
+                    .MergeMany(item => item.Changed.Select(_ => RxVoid.Default))
             );
         }
 
         if (obj is ISourceCache<UserCommand, byte> userCommandCache)
         {
             yield return Observable.Merge(
-                userCommandCache.Connect().Select(_ => Unit.Default),
+                userCommandCache.Connect().Select(_ => RxVoid.Default),
                 userCommandCache.Connect()
-                    .MergeMany(item => item.Changed.Select(_ => Unit.Default))
+                    .MergeMany(item => item.Changed.Select(_ => RxVoid.Default))
             );
         }
 

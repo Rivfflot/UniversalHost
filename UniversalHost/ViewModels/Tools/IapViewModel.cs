@@ -1,11 +1,10 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives;
 using ReactiveUI.SourceGenerators;
 using System;
-using System.Reactive;
-using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UniversalHost.Services;
@@ -22,9 +21,9 @@ namespace UniversalHost.ViewModels.Tools
         [Reactive] private string _currentStage = "准备就绪";
         [Reactive] private string _stageTimestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
         [Reactive] private bool _isRunning;
-        public ReactiveCommand<Window, Unit> SelectIapFileCommand { get; }
-        public ReactiveCommand<Unit, Unit> StartIapCommand { get; }
-        public ReactiveCommand<Unit, Unit> CancelIapCommand { get; }
+        public ReactiveCommand<Window, RxVoid> SelectIapFileCommand { get; }
+        public ReactiveCommand<RxVoid, RxVoid> StartIapCommand { get; }
+        public ReactiveCommand<RxVoid, RxVoid> CancelIapCommand { get; }
         public IapViewModel()
         {
 

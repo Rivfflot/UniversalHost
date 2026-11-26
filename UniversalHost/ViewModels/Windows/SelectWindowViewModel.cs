@@ -1,9 +1,9 @@
 ﻿using Avalonia.Data.Converters;
 using DynamicData;
 using DynamicData.Binding;
-using ReactiveUI.Binding.Reactive;
-using ReactiveUI.Primitives.Reactive.Concurrency;
-using ReactiveUI.Reactive;
+using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
@@ -93,7 +93,7 @@ public partial class SelectWindowViewModel : ReactiveObject, IDisposable
                                 .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                                 .Filter(symbol => symbol.IsMonitored)
                                 .Filter(monitorSymbolFilter)
-                                .ObserveOn(AvaloniaScheduler.Instance)
+                                .WitnessOn(RxSchedulers.MainThreadScheduler)
                                 .Bind(out _filteredMonitorSymbols)
                                 .Subscribe(_ => { SelectionRefreshVersion++; })
                                 .DisposeWith(_disposables);
@@ -108,7 +108,7 @@ public partial class SelectWindowViewModel : ReactiveObject, IDisposable
                                .AutoRefresh(symbol => symbol.Alias, changeSetBuffer: TimeSpan.FromSeconds(1))
                                .AutoRefresh(symbol => symbol.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                                .Filter(calibrateSymbolFilter)
-                               .ObserveOn(AvaloniaScheduler.Instance)
+                               .WitnessOn(RxSchedulers.MainThreadScheduler)
                                .Bind(out _filteredCalibrateSymbols)
                                .Subscribe()
                                .DisposeWith(_disposables);
@@ -123,7 +123,7 @@ public partial class SelectWindowViewModel : ReactiveObject, IDisposable
                            .AutoRefresh(c => c.Name, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .AutoRefresh(c => c.Description, changeSetBuffer: TimeSpan.FromSeconds(1))
                            .Filter(userCommandFilter)
-                           .ObserveOn(AvaloniaScheduler.Instance)
+                           .WitnessOn(RxSchedulers.MainThreadScheduler)
                            .Bind(out _filteredUserCommands)
                            .Subscribe()
                            .DisposeWith(_disposables);
